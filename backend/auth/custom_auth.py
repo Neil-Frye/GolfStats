@@ -5,11 +5,18 @@ This module provides username/password authentication functionality.
 """
 from typing import Dict, Any, Optional, Tuple
 import re
+import os
+import sys
 import logging
 import datetime
 from flask import Blueprint, request, redirect, session, url_for, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import SQLAlchemyError
+
+# Add the project root directory to Python path if not already added
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from backend.database.db_connection import get_db
 from backend.models.user import User

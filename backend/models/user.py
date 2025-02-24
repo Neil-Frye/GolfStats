@@ -4,9 +4,16 @@ User model for GolfStats application.
 This module defines the User model for authentication and user management.
 """
 from typing import Optional, Dict, Any
+import os
+import sys
 import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
 from sqlalchemy.orm import relationship
+
+# Add the project root directory to Python path if not already added
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from backend.database.db_connection import Base
 
