@@ -7,7 +7,13 @@ supporting SQLite, PostgreSQL, and optionally MongoDB.
 from typing import Generator, Optional, Any
 import logging
 import os
+import sys
 from contextlib import contextmanager
+
+# Add the project root directory to Python path if not already added
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from sqlalchemy import create_engine, MetaData, event
 from sqlalchemy.ext.declarative import declarative_base

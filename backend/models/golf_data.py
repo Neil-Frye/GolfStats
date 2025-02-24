@@ -4,10 +4,17 @@ Golf data models for GolfStats application.
 This module defines models for storing golf-related data such as rounds, shots,
 and statistics from various tracking systems.
 """
+import os
+import sys
 import datetime
 from typing import List, Optional
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text
 from sqlalchemy.orm import relationship
+
+# Add the project root directory to Python path if not already added
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from backend.database.db_connection import Base
 

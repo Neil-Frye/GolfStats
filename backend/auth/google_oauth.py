@@ -5,6 +5,7 @@ This module provides functionality to authenticate users via Google OAuth 2.0.
 """
 from typing import Dict, Any, Optional, Tuple
 import os
+import sys
 import json
 import logging
 import requests
@@ -13,6 +14,11 @@ import google.oauth2.credentials
 import google_auth_oauthlib.flow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
+
+# Add the project root directory to Python path if not already added
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from config.config import config
 from backend.database.db_connection import get_db
