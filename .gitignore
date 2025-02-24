@@ -30,8 +30,10 @@ ENV/
 *.sqlite3
 
 # Logs
-logs/
+logs/*.log
 *.log
+# But keep the logs directory
+!logs/.gitkeep
 
 # IDE files
 .idea/
