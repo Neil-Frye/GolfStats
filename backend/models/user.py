@@ -16,6 +16,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from backend.database.db_connection import Base
+from config.config import config
 
 class User(Base):
     """User model for authentication and profile information."""
@@ -44,6 +45,14 @@ class User(Base):
     handicap = Column(String(10), nullable=True)
     preferred_units = Column(String(10), default="yards")  # 'yards' or 'meters'
     
+    # Tracker credentials
+    trackman_username = Column(String(255), nullable=True)
+    trackman_password = Column(String(255), nullable=True)
+    arccos_email = Column(String(255), nullable=True)  
+    arccos_password = Column(String(255), nullable=True)
+    skytrak_username = Column(String(255), nullable=True)
+    skytrak_password = Column(String(255), nullable=True)
+    
     # Define relationships to other models
     golf_rounds = relationship("GolfRound", back_populates="user")
     clubs = relationship("Club", back_populates="user")
@@ -66,8 +75,116 @@ class User(Base):
             "auth_provider": self.auth_provider,
             "profile_picture": self.profile_picture,
             "handicap": self.handicap,
-            "preferred_units": self.preferred_units
+            "preferred_units": self.preferred_units,
+            "has_trackman": self.trackman_credentials_valid(),
+            "has_arccos": self.arccos_credentials_valid(),
+            "has_skytrak": self.skytrak_credentials_valid()
         }
+    
+    def trackman_credentials_valid(self) -> bool:
+        """
+        Check if user has valid Trackman credentials.
+        
+        Returns:
+            bool: True if has valid credentials
+        """
+        # First check user-specific credentials
+        if self.trackman_username and self.trackman_password:
+            return True
+        
+        # Then check global credentials from config
+        global_username = config["scrapers"]["trackman"]["username"]
+        global_password = config["scrapers"]["trackman"]["password"]
+        
+        return bool(global_username and global_password)
+    
+    def arccos_credentials_valid(self) -> bool:
+        """
+        Check if user has valid Arccos credentials.
+        
+        Returns:
+            bool: True if has valid credentials
+        """
+        # First check user-specific credentials
+        if self.arccos_email and self.arccos_password:
+            return True
+        
+        # Then check global credentials from config
+        global_email = config["scrapers"]["arccos"]["email"]
+        global_password = config["scrapers"]["arccos"]["password"]
+        
+        return bool(global_email and global_password)
+    
+    def skytrak_credentials_valid(self) -> bool:
+        """
+        Check if user has valid SkyTrak credentials.
+        
+        Returns:
+            bool: True if has valid credentials
+        """
+        # First check user-specific credentials
+        if self.skytrak_username and self.skytrak_password:
+            return True
+        
+        # Then check global credentials from config
+        global_username = config["scrapers"]["skytrak"]["username"]
+        global_password = config["scrapers"]["skytrak"]["password"]
+        
+        return bool(global_username and global_password)
+    
+    def get_trackman_credentials(self) -> Dict[str, str]:
+        """
+        Get Trackman credentials for this user.
+        
+        Returns:
+            Dictionary with username and password
+        """
+        if self.trackman_username and self.trackman_password:
+            return {
+                "username": self.trackman_username,
+                "password": self.trackman_password
+            }
+        else:
+            return {
+                "username": config["scrapers"]["trackman"]["username"],
+                "password": config["scrapers"]["trackman"]["password"]
+            }
+    
+    def get_arccos_credentials(self) -> Dict[str, str]:
+        """
+        Get Arccos credentials for this user.
+        
+        Returns:
+            Dictionary with email and password
+        """
+        if self.arccos_email and self.arccos_password:
+            return {
+                "email": self.arccos_email,
+                "password": self.arccos_password
+            }
+        else:
+            return {
+                "email": config["scrapers"]["arccos"]["email"],
+                "password": config["scrapers"]["arccos"]["password"]
+            }
+    
+    def get_skytrak_credentials(self) -> Dict[str, str]:
+        """
+        Get SkyTrak credentials for this user.
+        
+        Returns:
+            Dictionary with username and password
+        """
+        if self.skytrak_username and self.skytrak_password:
+            return {
+                "username": self.skytrak_username,
+                "password": self.skytrak_password
+            }
+        else:
+            return {
+                "username": config["scrapers"]["skytrak"]["username"],
+                "password": config["scrapers"]["skytrak"]["password"]
+            }
     
     @classmethod
     def from_oauth(cls, oauth_data: Dict[str, Any]) -> "User":

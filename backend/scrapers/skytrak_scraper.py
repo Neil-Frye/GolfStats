@@ -1,7 +1,7 @@
 """
-Trackman Data Scraper for GolfStats application.
+SkyTrak Data Scraper for GolfStats application.
 
-This module provides functionality to scrape golf data from Trackman website
+This module provides functionality to scrape golf data from SkyTrak website
 using Selenium to automate browser interactions.
 """
 import os
@@ -48,36 +48,35 @@ logger.addHandler(console_handler)
 # Create file handler
 logs_dir = os.path.join(project_root, 'logs')
 os.makedirs(logs_dir, exist_ok=True)
-file_handler = logging.FileHandler(os.path.join(logs_dir, 'trackman_scraper.log'))
+file_handler = logging.FileHandler(os.path.join(logs_dir, 'skytrak_scraper.log'))
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
-class TrackmanScraper:
+class SkyTrakScraper:
     """
-    Scraper for retrieving golf data from Trackman website.
+    Scraper for retrieving golf data from SkyTrak website.
     """
     
     def __init__(self, user_id: int, headless: bool = True):
         """
-        Initialize TrackmanScraper with user credentials.
+        Initialize SkyTrakScraper with user credentials.
         
         Args:
             user_id: ID of the user in the database
             headless: Whether to run the browser in headless mode
         """
         self.user_id = user_id
-        self.username = config["scrapers"]["trackman"]["username"]
-        self.password = config["scrapers"]["trackman"]["password"]
-        self.base_url = config["scrapers"]["trackman"]["url"]
+        self.username = config["scrapers"]["skytrak"]["username"]
+        self.password = config["scrapers"]["skytrak"]["password"]
+        self.base_url = config["scrapers"]["skytrak"]["url"]
         self.headless = headless
         self.driver = None
         self.wait = None
-        self.session_data = {}
         
         # Validate credentials
         if not self.username or not self.password:
-            logger.error("Trackman credentials not configured")
-            raise ValueError("Trackman credentials missing in configuration")
+            logger.error("SkyTrak credentials not configured")
+            raise ValueError("SkyTrak credentials missing in configuration")
     
     def setup_driver(self) -> None:
         """
@@ -107,13 +106,13 @@ class TrackmanScraper:
     
     def login(self) -> bool:
         """
-        Log in to Trackman website.
+        Log in to SkyTrak website.
         
         Returns:
             bool: True if login successful, False otherwise
         """
         try:
-            logger.info("Attempting to log in to Trackman")
+            logger.info("Attempting to log in to SkyTrak")
             self.driver.get(f"{self.base_url}/login")
             
             # Wait for login form to load
@@ -135,7 +134,7 @@ class TrackmanScraper:
                 EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'dashboard') or contains(@class, 'home')]"))
             )
             
-            logger.info("Successfully logged in to Trackman")
+            logger.info("Successfully logged in to SkyTrak")
             return True
         except TimeoutException:
             logger.error("Timeout waiting for login page elements or dashboard to load")
@@ -147,9 +146,9 @@ class TrackmanScraper:
             logger.error(f"Error during login: {str(e)}")
             return False
     
-    def get_session_list(self, limit: int = 20) -> List[Dict[str, Any]]:
+    def get_session_list(self, limit: int = 10) -> List[Dict[str, Any]]:
         """
-        Get list of recent Trackman sessions.
+        Get list of recent SkyTrak practice sessions.
         
         Args:
             limit: Maximum number of sessions to retrieve
@@ -159,14 +158,14 @@ class TrackmanScraper:
         """
         sessions = []
         try:
-            logger.info(f"Retrieving recent Trackman sessions (limit={limit})")
+            logger.info(f"Retrieving recent SkyTrak sessions (limit={limit})")
             
             # Navigate to sessions page
             self.driver.get(f"{self.base_url}/sessions")
             
             # Wait for sessions list to load
             session_elements = self.wait.until(
-                EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'session-item')]"))
+                EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'session-item') or contains(@class, 'practice-session')]"))
             )
             
             # Process session elements (limited to specified limit)
@@ -201,7 +200,7 @@ class TrackmanScraper:
     
     def get_session_details(self, session_id: str) -> Dict[str, Any]:
         """
-        Get detailed data for a specific Trackman session.
+        Get detailed data for a specific SkyTrak session.
         
         Args:
             session_id: The session ID to retrieve
@@ -209,12 +208,15 @@ class TrackmanScraper:
         Returns:
             Dictionary containing session data
         """
-        session_data = {"session_id": session_id, "shots": []}
+        session_data = {
+            "session_id": session_id,
+            "shots": []
+        }
         
         try:
             logger.info(f"Retrieving details for session {session_id}")
             
-            # Navigate to session page
+            # Navigate to session details page
             self.driver.get(f"{self.base_url}/sessions/{session_id}")
             
             # Wait for session data to load
@@ -226,47 +228,58 @@ class TrackmanScraper:
             try:
                 session_title = self.driver.find_element(By.XPATH, "//h1[contains(@class, 'session-title')]").text
                 session_date = self.driver.find_element(By.XPATH, "//div[contains(@class, 'session-date')]").text
-                location = self.driver.find_element(By.XPATH, "//div[contains(@class, 'session-location')]").text
                 
                 session_data.update({
                     "title": session_title,
-                    "date": session_date,
-                    "location": location
+                    "date": session_date
                 })
             except NoSuchElementException as e:
                 logger.warning(f"Could not extract some session metadata: {str(e)}")
             
-            # Get shot data
+            # Get shot data table
             try:
-                shot_rows = self.driver.find_elements(By.XPATH, "//table[contains(@class, 'shots-table')]//tr[contains(@class, 'shot-row')]")
+                # Check if we need to navigate to a data tab
+                try:
+                    data_tab = self.driver.find_element(By.XPATH, "//a[contains(@class, 'data-tab')]")
+                    data_tab.click()
+                    time.sleep(1)  # Wait for tab content to load
+                except NoSuchElementException:
+                    logger.info("No data tab found, assuming we're already on the data view")
+                
+                # Find shot table
+                shot_rows = self.driver.find_elements(By.XPATH, "//table[contains(@class, 'shots-table')]//tr[not(contains(@class, 'header'))]")
                 
                 for idx, shot_row in enumerate(shot_rows):
                     try:
+                        # Extract cells (adjust the selectors based on actual page structure)
+                        cells = shot_row.find_elements(By.TAG_NAME, "td")
+                        
+                        if len(cells) < 8:  # Basic validation
+                            continue
+                        
+                        # Ensure consistent indexing by checking headers or using robust selectors
+                        # This is a simplified example; real implementation would map cells to actual data points
+                        club = cells[0].text if len(cells) > 0 else None
+                        ball_speed = cells[1].text if len(cells) > 1 else None
+                        club_speed = cells[2].text if len(cells) > 2 else None
+                        smash = cells[3].text if len(cells) > 3 else None
+                        launch_angle = cells[4].text if len(cells) > 4 else None
+                        spin_rate = cells[5].text if len(cells) > 5 else None
+                        carry = cells[6].text if len(cells) > 6 else None
+                        total = cells[7].text if len(cells) > 7 else None
+                        
+                        # Clean and convert data
                         shot_data = {
                             "shot_number": idx + 1,
+                            "club": club,
+                            "ball_speed_mph": self._extract_numeric(ball_speed),
+                            "club_speed_mph": self._extract_numeric(club_speed),
+                            "smash_factor": self._extract_numeric(smash),
+                            "launch_angle_degrees": self._extract_numeric(launch_angle),
+                            "spin_rate_rpm": self._extract_numeric(spin_rate),
+                            "carry_distance_yards": self._extract_numeric(carry),
+                            "total_distance_yards": self._extract_numeric(total)
                         }
-                        
-                        # Extract cells
-                        club = shot_row.find_element(By.XPATH, ".//td[contains(@class, 'club')]").text
-                        ball_speed = shot_row.find_element(By.XPATH, ".//td[contains(@class, 'ball-speed')]").text
-                        club_speed = shot_row.find_element(By.XPATH, ".//td[contains(@class, 'club-speed')]").text
-                        smash = shot_row.find_element(By.XPATH, ".//td[contains(@class, 'smash')]").text
-                        launch_angle = shot_row.find_element(By.XPATH, ".//td[contains(@class, 'launch-angle')]").text
-                        spin_rate = shot_row.find_element(By.XPATH, ".//td[contains(@class, 'spin-rate')]").text
-                        carry = shot_row.find_element(By.XPATH, ".//td[contains(@class, 'carry')]").text
-                        total = shot_row.find_element(By.XPATH, ".//td[contains(@class, 'total')]").text
-                        
-                        # Clean data and convert to proper types
-                        shot_data.update({
-                            "club": club.strip(),
-                            "ball_speed_mph": float(ball_speed.replace('mph', '').strip()) if ball_speed else None,
-                            "club_speed_mph": float(club_speed.replace('mph', '').strip()) if club_speed else None,
-                            "smash_factor": float(smash.strip()) if smash else None,
-                            "launch_angle_degrees": float(launch_angle.replace('°', '').strip()) if launch_angle else None,
-                            "spin_rate_rpm": float(spin_rate.replace('rpm', '').strip()) if spin_rate else None,
-                            "carry_distance_yards": float(carry.replace('yds', '').strip()) if carry else None,
-                            "total_distance_yards": float(total.replace('yds', '').strip()) if total else None
-                        })
                         
                         session_data["shots"].append(shot_data)
                     except Exception as e:
@@ -274,7 +287,9 @@ class TrackmanScraper:
                 
                 logger.info(f"Retrieved {len(session_data['shots'])} shots for session {session_id}")
             except NoSuchElementException:
-                logger.warning(f"No shot data found for session {session_id}")
+                logger.warning(f"No shot data table found for session {session_id}")
+            except Exception as e:
+                logger.error(f"Error retrieving shot data: {str(e)}")
             
             return session_data
         
@@ -285,43 +300,62 @@ class TrackmanScraper:
             logger.error(f"Error retrieving session details: {str(e)}")
             return session_data
     
-    def transform_to_golf_round(self, session_data: Dict[str, Any]) -> Tuple[GolfRound, List[GolfShot]]:
+    def _extract_numeric(self, text: Optional[str]) -> Optional[float]:
         """
-        Transform Trackman session data to GolfStats data model.
+        Extract numeric value from text.
         
         Args:
-            session_data: Session data retrieved from Trackman
+            text: Text to extract numeric value from
+            
+        Returns:
+            Extracted numeric value or None
+        """
+        if not text:
+            return None
+        
+        try:
+            # Remove non-numeric characters except decimal point and negative sign
+            numeric_text = ''.join(c for c in text if c.isdigit() or c == '.' or c == '-')
+            return float(numeric_text) if numeric_text else None
+        except ValueError:
+            return None
+    
+    def transform_to_golf_round(self, session_data: Dict[str, Any]) -> Tuple[GolfRound, List[GolfShot]]:
+        """
+        Transform SkyTrak session data to GolfStats data model.
+        
+        Args:
+            session_data: Session data retrieved from SkyTrak
             
         Returns:
             Tuple of (GolfRound, list of GolfShot objects)
         """
         try:
-            logger.info(f"Transforming Trackman session {session_data['session_id']} to GolfStats model")
+            logger.info(f"Transforming SkyTrak session {session_data['session_id']} to GolfStats model")
             
             # Parse date
             try:
-                # This date format might need adjustment based on actual Trackman format
+                # This date format might need adjustment based on actual SkyTrak format
                 date_str = session_data.get("date", "")
                 date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M")
             except ValueError:
                 logger.warning(f"Could not parse date: {session_data.get('date')}, using current time")
                 date_obj = datetime.datetime.now()
             
-            # Create golf round
+            # Create golf round (practice session)
             golf_round = GolfRound(
                 user_id=self.user_id,
                 date=date_obj,
-                course_name=session_data.get("title", "Trackman Session"),
-                course_location=session_data.get("location", ""),
-                source_system="trackman",
-                notes=f"Trackman Session ID: {session_data['session_id']}"
+                course_name=session_data.get("title", "SkyTrak Practice Session"),
+                course_location="Practice Range",  # Default for practice sessions
+                source_system="skytrak",
+                notes=f"SkyTrak Session ID: {session_data['session_id']}"
             )
             
-            # Create default hole for shot data
-            # (Trackman range sessions don't have holes, so we create a virtual one)
+            # Create default hole for shots (practice sessions don't have holes)
             golf_hole = GolfHole(
                 hole_number=1,
-                par=4,  # Default par
+                par=4,  # Default par for practice
                 distance_yards=None
             )
             
@@ -341,7 +375,7 @@ class TrackmanScraper:
                     spin_rate_rpm=shot_data.get("spin_rate_rpm"),
                     carry_distance_yards=shot_data.get("carry_distance_yards"),
                     total_distance_yards=shot_data.get("total_distance_yards"),
-                    from_location="range",  # Default for Trackman sessions
+                    from_location="range",  # Default for SkyTrak sessions
                     to_location="range"
                 )
                 
@@ -395,7 +429,7 @@ class TrackmanScraper:
     
     def run(self, limit: int = 10) -> List[int]:
         """
-        Run the Trackman scraper to extract and store data.
+        Run the SkyTrak scraper to extract and store data.
         
         Args:
             limit: Maximum number of sessions to process
@@ -406,7 +440,7 @@ class TrackmanScraper:
         round_ids = []
         
         try:
-            logger.info(f"Starting Trackman scraper for user {self.user_id}")
+            logger.info(f"Starting SkyTrak scraper for user {self.user_id}")
             
             # Set up WebDriver
             self.setup_driver()
@@ -437,10 +471,10 @@ class TrackmanScraper:
                 except Exception as e:
                     logger.error(f"Error processing session {session.get('id', 'unknown')}: {str(e)}")
             
-            logger.info(f"Trackman scraper completed - processed {len(round_ids)} rounds")
+            logger.info(f"SkyTrak scraper completed - processed {len(round_ids)} rounds")
             
         except Exception as e:
-            logger.error(f"Trackman scraper failed: {str(e)}")
+            logger.error(f"SkyTrak scraper failed: {str(e)}")
         
         finally:
             # Clean up
@@ -450,9 +484,9 @@ class TrackmanScraper:
         
         return round_ids
 
-def get_trackman_data(user_id: int, limit: int = 10) -> List[int]:
+def get_skytrak_data(user_id: int, limit: int = 10) -> List[int]:
     """
-    Scrape Trackman data for a specific user.
+    Scrape SkyTrak data for a specific user.
     
     Args:
         user_id: The database ID of the user
@@ -461,5 +495,5 @@ def get_trackman_data(user_id: int, limit: int = 10) -> List[int]:
     Returns:
         List of golf round IDs that were processed
     """
-    scraper = TrackmanScraper(user_id=user_id)
+    scraper = SkyTrakScraper(user_id=user_id)
     return scraper.run(limit=limit)
