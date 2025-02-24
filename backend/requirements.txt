@@ -1,0 +1,7 @@
+Flask==2.3.2
+requests==2.31.0
+pandas==2.0.3
+sqlalchemy==2.0.20
+selenium==4.15.2
+webdriver-manager==4.0.1
+pyppeteer==1.0.2
