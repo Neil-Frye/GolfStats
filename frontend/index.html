@@ -3,18 +3,411 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GolfStats</title>
+    <title>GolfStats | Advanced Golf Performance Analytics</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header>
-        <h1>Welcome to GolfStats</h1>
-    </header>
-    <main>
-        <section id="stats">
-            <!-- Golf statistics will be displayed here -->
-        </section>
-    </main>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-golf-ball"></i>
+                    <span>GolfStats</span>
+                </div>
+                <button id="mobile-toggle" class="mobile-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active">
+                        <a href="#dashboard">
+                            <i class="fas fa-home"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#rounds">
+                            <i class="fas fa-flag"></i>
+                            <span>Rounds</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#stats">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Statistics</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#insights">
+                            <i class="fas fa-lightbulb"></i>
+                            <span>Insights</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#clubs">
+                            <i class="fas fa-ruler-horizontal"></i>
+                            <span>My Clubs</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#goals">
+                            <i class="fas fa-bullseye"></i>
+                            <span>Goals</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#settings">
+                            <i class="fas fa-cog"></i>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <img src="https://via.placeholder.com/40" alt="User avatar">
+                    </div>
+                    <div class="user-details">
+                        <p class="user-name">John Golfer</p>
+                        <p class="user-handicap">Handicap: 12.4</p>
+                    </div>
+                </div>
+                <a href="#logout" class="logout-button">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-left">
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <div class="date-filter">
+                        <select id="date-range">
+                            <option value="last30">Last 30 Days</option>
+                            <option value="last90">Last 90 Days</option>
+                            <option value="year">This Year</option>
+                            <option value="all">All Time</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+                    <button class="new-round-btn">
+                        <i class="fas fa-plus"></i> New Round
+                    </button>
+                    <div class="notification-bell">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-indicator"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <section id="dashboard-view" class="content-section active">
+                <div class="dashboard-overview">
+                    <div class="stats-card-container">
+                        <div class="stats-card">
+                            <div class="stats-card-header">
+                                <h3>Performance Index</h3>
+                                <i class="fas fa-info-circle" title="Your overall performance rating"></i>
+                            </div>
+                            <div class="stats-card-value performance-index">
+                                <div class="circular-progress" data-value="72">
+                                    <div class="progress-value">72</div>
+                                </div>
+                            </div>
+                            <div class="stats-card-trend positive">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>+3 Last Round</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-card">
+                            <div class="stats-card-header">
+                                <h3>Average Score</h3>
+                                <i class="fas fa-info-circle" title="Your average score for all rounds"></i>
+                            </div>
+                            <div class="stats-card-value">
+                                <span class="big-number">87</span>
+                            </div>
+                            <div class="stats-card-trend negative">
+                                <i class="fas fa-arrow-down"></i>
+                                <span>-2.5 Last 3 Rounds</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-card">
+                            <div class="stats-card-header">
+                                <h3>Fairways Hit</h3>
+                                <i class="fas fa-info-circle" title="Percentage of fairways hit"></i>
+                            </div>
+                            <div class="stats-card-value">
+                                <span class="big-number">62<span class="percentage">%</span></span>
+                            </div>
+                            <div class="stats-card-trend positive">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>+8% Last 3 Rounds</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-card">
+                            <div class="stats-card-header">
+                                <h3>GIR</h3>
+                                <i class="fas fa-info-circle" title="Greens in regulation percentage"></i>
+                            </div>
+                            <div class="stats-card-value">
+                                <span class="big-number">41<span class="percentage">%</span></span>
+                            </div>
+                            <div class="stats-card-trend neutral">
+                                <i class="fas fa-equals"></i>
+                                <span>No Change</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Score Trend</h3>
+                            <div class="chart-controls">
+                                <button class="chart-control active" data-period="round">By Round</button>
+                                <button class="chart-control" data-period="month">By Month</button>
+                            </div>
+                        </div>
+                        <div class="chart" id="score-trend-chart">
+                            <!-- Chart will be rendered here by JavaScript -->
+                            <div class="chart-placeholder">
+                                <img src="https://via.placeholder.com/800x300?text=Score+Trend+Chart" alt="Score trend chart">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-details">
+                    <div class="recent-rounds">
+                        <div class="section-header">
+                            <h3>Recent Rounds</h3>
+                            <a href="#rounds" class="view-all">View All</a>
+                        </div>
+                        <div class="rounds-table-container">
+                            <table class="rounds-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Course</th>
+                                        <th>Score</th>
+                                        <th>To Par</th>
+                                        <th>Fairways</th>
+                                        <th>GIR</th>
+                                        <th>Putts</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Jun 12, 2023</td>
+                                        <td>Pebble Beach Golf Links</td>
+                                        <td>85</td>
+                                        <td>+13</td>
+                                        <td>64%</td>
+                                        <td>39%</td>
+                                        <td>32</td>
+                                        <td><button class="view-round-btn">View</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>May 28, 2023</td>
+                                        <td>Torrey Pines (South)</td>
+                                        <td>89</td>
+                                        <td>+17</td>
+                                        <td>57%</td>
+                                        <td>33%</td>
+                                        <td>35</td>
+                                        <td><button class="view-round-btn">View</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>May 14, 2023</td>
+                                        <td>Bethpage Black</td>
+                                        <td>91</td>
+                                        <td>+19</td>
+                                        <td>50%</td>
+                                        <td>28%</td>
+                                        <td>34</td>
+                                        <td><button class="view-round-btn">View</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="strengths-weaknesses">
+                        <div class="section-header">
+                            <h3>Game Analysis</h3>
+                        </div>
+                        <div class="analysis-container">
+                            <div class="analysis-card strengths">
+                                <h4>Strengths</h4>
+                                <ul>
+                                    <li>
+                                        <span class="strength-label">Driving Accuracy</span>
+                                        <div class="strength-bar" style="width: 75%"></div>
+                                        <span class="strength-value">75%</span>
+                                    </li>
+                                    <li>
+                                        <span class="strength-label">Sand Saves</span>
+                                        <div class="strength-bar" style="width: 60%"></div>
+                                        <span class="strength-value">60%</span>
+                                    </li>
+                                    <li>
+                                        <span class="strength-label">Putting (5-10ft)</span>
+                                        <div class="strength-bar" style="width: 65%"></div>
+                                        <span class="strength-value">65%</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <div class="analysis-card weaknesses">
+                                <h4>Areas to Improve</h4>
+                                <ul>
+                                    <li>
+                                        <span class="weakness-label">Approach (150-200yd)</span>
+                                        <div class="weakness-bar" style="width: 35%"></div>
+                                        <span class="weakness-value">35%</span>
+                                    </li>
+                                    <li>
+                                        <span class="weakness-label">Putting (>20ft)</span>
+                                        <div class="weakness-bar" style="width: 28%"></div>
+                                        <span class="weakness-value">28%</span>
+                                    </li>
+                                    <li>
+                                        <span class="weakness-label">Par 3 Scoring</span>
+                                        <div class="weakness-bar" style="width: 40%"></div>
+                                        <span class="weakness-value">40%</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Placeholder for other views -->
+            <section id="rounds-view" class="content-section">
+                <div class="section-placeholder">
+                    <h2>Rounds View</h2>
+                    <p>This section will display your round history and details.</p>
+                </div>
+            </section>
+
+            <section id="stats-view" class="content-section">
+                <div class="section-placeholder">
+                    <h2>Statistics View</h2>
+                    <p>This section will display detailed statistics about your game.</p>
+                </div>
+            </section>
+
+            <section id="insights-view" class="content-section">
+                <div class="section-placeholder">
+                    <h2>Insights View</h2>
+                    <p>This section will provide AI-powered insights about your game.</p>
+                </div>
+            </section>
+
+            <section id="clubs-view" class="content-section">
+                <div class="section-placeholder">
+                    <h2>My Clubs View</h2>
+                    <p>This section will display information about your clubs and distances.</p>
+                </div>
+            </section>
+
+            <section id="goals-view" class="content-section">
+                <div class="section-placeholder">
+                    <h2>Goals View</h2>
+                    <p>This section will help you set and track your golf improvement goals.</p>
+                </div>
+            </section>
+
+            <section id="settings-view" class="content-section">
+                <div class="section-placeholder">
+                    <h2>Settings View</h2>
+                    <p>This section allows you to customize your GolfStats experience.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- New Round Modal -->
+    <div id="new-round-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Record New Round</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="new-round-form">
+                    <div class="form-group">
+                        <label for="round-date">Date</label>
+                        <input type="date" id="round-date" name="round-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="course-name">Course</label>
+                        <input type="text" id="course-name" name="course-name" placeholder="Enter course name" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tee-color">Tee</label>
+                            <select id="tee-color" name="tee-color">
+                                <option value="blue">Blue</option>
+                                <option value="white">White</option>
+                                <option value="red">Red</option>
+                                <option value="black">Black</option>
+                                <option value="gold">Gold</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="total-score">Score</label>
+                            <input type="number" id="total-score" name="total-score" min="50" max="200" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fairways-hit">Fairways Hit</label>
+                            <input type="number" id="fairways-hit" name="fairways-hit" min="0" max="14">
+                        </div>
+                        <div class="form-group">
+                            <label for="greens-hit">Greens Hit</label>
+                            <input type="number" id="greens-hit" name="greens-hit" min="0" max="18">
+                        </div>
+                        <div class="form-group">
+                            <label for="total-putts">Putts</label>
+                            <input type="number" id="total-putts" name="total-putts" min="0" max="72">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="round-notes">Notes</label>
+                        <textarea id="round-notes" name="round-notes" rows="3" placeholder="Add notes about your round..."></textarea>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn-secondary cancel-btn">Cancel</button>
+                        <button type="submit" class="btn-primary">Save Round</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import third-party libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

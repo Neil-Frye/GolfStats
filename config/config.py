@@ -19,7 +19,7 @@ default_config = {
     
     # Database settings
     "database": {
-        "type": "sqlite",  # 'sqlite', 'postgresql', 'mongodb'
+        "type": "postgresql",  # 'sqlite', 'postgresql', 'mongodb'
         "sqlite": {
             "path": "data/golfstats.db"
         },
@@ -28,7 +28,7 @@ default_config = {
             "port": 5432,
             "database": "golfstats",
             "user": "postgres",
-            "password": ""
+            "password": "postgres"
         },
         "mongodb": {
             "host": "localhost",
