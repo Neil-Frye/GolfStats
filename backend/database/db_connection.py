@@ -61,7 +61,14 @@ engine_args = {
 
 if poolclass:
     engine_args["poolclass"] = poolclass
+    # Configure PostgreSQL specific pooling settings
+    if db_type == "postgresql":
+        engine_args["pool_size"] = 5  # Number of connections to keep open
+        engine_args["max_overflow"] = 10  # Max number of connections to create beyond pool_size
+        engine_args["pool_timeout"] = 30  # Seconds to wait before giving up on getting a connection
+        engine_args["pool_recycle"] = 1800  # Recycle connections after 30 minutes
 
+logger.info(f"Connecting to database: {db_type} at {DATABASE_URI.split('@')[-1] if '@' in DATABASE_URI else DATABASE_URI}")
 engine = create_engine(DATABASE_URI, **engine_args)
 
 # Create a session factory
@@ -117,10 +124,17 @@ def init_db():
     This should be called when the application starts.
     """
     # Import all models to ensure they're registered with Base
-    from backend.models import user
+    from backend.models import user, golf_data
     
     Base.metadata.create_all(bind=engine)
     logger.info(f"Database initialized with type: {db_type}")
+    
+    if db_type == "postgresql":
+        # Check if database exists and create it if it doesn't
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        logger.info(f"Found existing tables: {tables}")
 
 def get_mongodb_client() -> Optional[Any]:
     """
