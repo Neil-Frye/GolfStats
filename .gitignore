@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
+env/
 build/
 develop-eggs/
 dist/
@@ -15,29 +16,42 @@ lib64/
 parts/
 sdist/
 var/
-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 
-# Environments
-.env
-.venv
-env/
+# Virtual Environment
 venv/
 ENV/
-env.bak/
-venv.bak/
+.env
 
-# IDE
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Database
+*.db
+*.sqlite3
 
-# Logs and databases
+# Logs
+logs/
 *.log
-*.sqlite
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Data files
+data/
+*.csv
+*.json
+*.xlsx
+
+# Sensitive information
+secrets.json
+credentials.json
+tokens.json
+client_secret.json
+
+# Scrapers
+node_modules/
+.env.local
