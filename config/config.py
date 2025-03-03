@@ -41,7 +41,13 @@ default_config = {
         "secret_key": os.environ.get("APP_SECRET_KEY", "dev-secret-key-change-in-production")
     },
     
-    # Database settings
+    # Supabase settings
+    "supabase": {
+        "url": os.environ.get("SUPABASE_URL", "https://qfuvwfghevxhnkfrwmwk.supabase.co"),
+        "anon_key": os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmdXZ3ZmdoZXZ4aG5rZnJ3bXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NzU2MDYsImV4cCI6MjA1NjU1MTYwNn0.yzPWndB4fcSxOHy1kQ6NoSknWshhEj5Wk-USuK_6S9Y"),
+    },
+    
+    # Legacy database settings (keeping for reference)
     "database": {
         "type": os.environ.get("DB_TYPE", "postgresql"),  # 'sqlite', 'postgresql', 'mongodb'
         "sqlite": {
@@ -132,6 +138,9 @@ def load_config() -> Dict[str, Any]:
     
     if "google" in log_config and "oauth" in log_config["google"]:
         log_config["google"]["oauth"]["client_secret"] = "********" if log_config["google"]["oauth"]["client_secret"] else ""
+    
+    if "supabase" in log_config:
+        log_config["supabase"]["anon_key"] = "********" if log_config["supabase"]["anon_key"] else ""
     
     logger.info(f"Configuration loaded: {log_config}")
     
