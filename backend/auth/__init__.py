@@ -1,10 +1,9 @@
 """
 Authentication package for GolfStats application.
 
-This package provides authentication functionality via both custom username/password
-authentication and Google OAuth.
+This package provides authentication functionality via Supabase Auth.
 """
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 from flask import Flask, session
 
@@ -15,23 +14,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def get_current_user() -> Dict[str, Any]:
-    """
-    Get the currently authenticated user from session.
-    
-    Returns:
-        Dictionary containing user information or empty dict if not authenticated
-    """
-    return session.get('user', {})
-
-def is_authenticated() -> bool:
-    """
-    Check if a user is currently authenticated.
-    
-    Returns:
-        bool: True if authenticated, False otherwise
-    """
-    return session.get('authenticated', False)
+# Import from supabase_auth module to expose key functions at package level
+from .supabase_auth import get_current_user, is_authenticated, require_auth
 
 def init_app(app: Flask) -> None:
     """
@@ -40,17 +24,16 @@ def init_app(app: Flask) -> None:
     Args:
         app: Flask application instance
     """
-    from .google_oauth import init_app as init_google_oauth
-    from .custom_auth import init_app as init_custom_auth
-    
     # Generate a secret key if not set
     if not app.secret_key:
         import os
         app.secret_key = os.urandom(24)
         logger.warning("Generated random secret key. For production, set a fixed secret key.")
     
-    # Initialize auth modules
-    init_google_oauth(app)
-    init_custom_auth(app)
+    # Register authentication routes
+    from . import routes
     
-    logger.info("Authentication modules initialized")
+    # Register the auth blueprint with the app
+    app.register_blueprint(routes.auth_bp)
+    
+    logger.info("Supabase authentication initialized")
