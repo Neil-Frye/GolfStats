@@ -74,13 +74,23 @@ def process_user_data(user: User) -> Dict[str, List[int]]:
     try:
         logger.info(f"Processing data for user {user.id} ({user.email})")
         
+        # Create storage handler
+        from backend.etl.data_transformer import GolfDataStorage
+        storage = GolfDataStorage()
+        
         # Process Trackman data
         if user.trackman_credentials_valid():
             try:
                 logger.info(f"Processing Trackman data for user {user.id}")
-                trackman_results = get_trackman_data(user_id=user.id, limit=20)
-                results["trackman"] = trackman_results
-                logger.info(f"Processed {len(trackman_results)} Trackman sessions")
+                trackman_data_list = get_trackman_data(user_id=user.id, limit=20)
+                
+                # Store each Trackman session
+                for trackman_data in trackman_data_list:
+                    round_id = storage.store_trackman_session(user.id, trackman_data)
+                    if round_id:
+                        results["trackman"].append(round_id)
+                
+                logger.info(f"Processed and stored {len(results['trackman'])} Trackman sessions")
             except Exception as e:
                 logger.error(f"Error processing Trackman data for user {user.id}: {str(e)}")
         
@@ -88,9 +98,15 @@ def process_user_data(user: User) -> Dict[str, List[int]]:
         if user.arccos_credentials_valid():
             try:
                 logger.info(f"Processing Arccos data for user {user.id}")
-                arccos_results = get_arrcos_data(user_id=user.id, limit=20)
-                results["arccos"] = arccos_results
-                logger.info(f"Processed {len(arccos_results)} Arccos rounds")
+                arccos_data_list = get_arrcos_data(user_id=user.id, limit=20)
+                
+                # Store each Arccos round
+                for arccos_data in arccos_data_list:
+                    round_id = storage.store_arccos_round(user.id, arccos_data)
+                    if round_id:
+                        results["arccos"].append(round_id)
+                
+                logger.info(f"Processed and stored {len(results['arccos'])} Arccos rounds")
             except Exception as e:
                 logger.error(f"Error processing Arccos data for user {user.id}: {str(e)}")
         
@@ -98,9 +114,15 @@ def process_user_data(user: User) -> Dict[str, List[int]]:
         if user.skytrak_credentials_valid():
             try:
                 logger.info(f"Processing SkyTrak data for user {user.id}")
-                skytrak_results = get_skytrak_data(user_id=user.id, limit=20)
-                results["skytrak"] = skytrak_results
-                logger.info(f"Processed {len(skytrak_results)} SkyTrak sessions")
+                skytrak_data_list = get_skytrak_data(user_id=user.id, limit=20)
+                
+                # Store each SkyTrak session
+                for skytrak_data in skytrak_data_list:
+                    round_id = storage.store_skytrak_session(user.id, skytrak_data)
+                    if round_id:
+                        results["skytrak"].append(round_id)
+                
+                logger.info(f"Processed and stored {len(results['skytrak'])} SkyTrak sessions")
             except Exception as e:
                 logger.error(f"Error processing SkyTrak data for user {user.id}: {str(e)}")
     

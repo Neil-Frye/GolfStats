@@ -30,7 +30,8 @@ api_bp = Blueprint('api', __name__, url_prefix='/api')
 from backend.database.supabase_data import (
     get_golf_rounds, get_golf_round, create_golf_round, 
     update_golf_round, delete_golf_round, get_shots_for_round,
-    add_shot, get_user_preferences, update_user_preferences
+    add_shot, get_user_preferences, update_user_preferences,
+    get_user_rounds_stats
 )
 
 # Import auth decorator
@@ -214,6 +215,28 @@ def update_preferences():
     return jsonify({
         "message": "Preferences updated successfully",
         "preferences": preferences
+    })
+
+@api_bp.route('/stats')
+@require_auth
+def get_stats():
+    """Get user statistics for various timeframes."""
+    from backend.auth import get_current_user
+    
+    user = get_current_user()
+    timeframe = request.args.get('timeframe', 'all')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    stats = get_user_rounds_stats(
+        user_id=user['id'], 
+        timeframe=timeframe,
+        start_date=start_date,
+        end_date=end_date
+    )
+    
+    return jsonify({
+        "stats": stats
     })
 
 # Register the API blueprint
