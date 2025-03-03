@@ -34,6 +34,9 @@
 - Install Supabase client: `pip install supabase`
 - Authentication flow uses Supabase Auth
 - Database tables managed through Supabase interface
+- Environment variables:
+  - `SUPABASE_URL` - Supabase project URL
+  - `SUPABASE_API_KEY` or `SUPABASE_KEY` - Supabase anon key
 - Initial setup: `supabase init` (requires Supabase CLI)
 - Local development: `supabase start`
 

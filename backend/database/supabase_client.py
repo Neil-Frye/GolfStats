@@ -36,7 +36,8 @@ class SupabaseClientSingleton:
         if cls._instance is None:
             # Get credentials from environment or config
             supabase_url = os.environ.get("SUPABASE_URL") or config["supabase"]["url"]
-            supabase_key = os.environ.get("SUPABASE_KEY") or config["supabase"]["anon_key"]
+            # Try multiple environment variable names for the API key
+            supabase_key = os.environ.get("SUPABASE_API_KEY") or os.environ.get("SUPABASE_KEY") or config["supabase"]["anon_key"]
             
             if not supabase_url or not supabase_key:
                 logger.error("Supabase credentials not configured")
