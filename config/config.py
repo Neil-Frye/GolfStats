@@ -43,8 +43,8 @@ default_config = {
     
     # Supabase settings
     "supabase": {
-        "url": os.environ.get("SUPABASE_URL", "https://qfuvwfghevxhnkfrwmwk.supabase.co"),
-        "anon_key": os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmdXZ3ZmdoZXZ4aG5rZnJ3bXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NzU2MDYsImV4cCI6MjA1NjU1MTYwNn0.yzPWndB4fcSxOHy1kQ6NoSknWshhEj5Wk-USuK_6S9Y"),
+        "url": os.environ.get("SUPABASE_URL", ""),
+        "anon_key": os.environ.get("SUPABASE_API_KEY") or os.environ.get("SUPABASE_KEY", ""),
     },
     
     # Legacy database settings (keeping for reference)
