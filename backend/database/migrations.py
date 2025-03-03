@@ -37,6 +37,31 @@ def check_if_column_exists(table_name, column_name):
     columns = [c['name'] for c in inspector.get_columns(table_name)]
     return column_name in columns
 
+def recreate_database():
+    """
+    Recreate the entire database schema from models.
+    
+    This is a more thorough approach that ensures all models are properly created.
+    """
+    logger.info("Recreating database schema from models")
+    
+    try:
+        # Import all models to ensure they're registered with Base
+        from backend.models import user, golf_data
+        
+        # Drop all tables
+        Base.metadata.drop_all(engine)
+        logger.info("Dropped all existing tables")
+        
+        # Create all tables
+        Base.metadata.create_all(engine)
+        logger.info("Created all tables from models")
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error recreating database: {str(e)}")
+        return False
+
 def add_tracker_credentials_columns():
     """
     Add credentials columns to users table.
@@ -83,8 +108,13 @@ def run_migrations():
     logger.info("Starting database migrations")
     
     try:
-        # Add tracker credentials columns
-        add_tracker_credentials_columns()
+        # Recreate database from models (preferred method for development)
+        if recreate_database():
+            logger.info("Database schema recreated from models")
+        else:
+            # Fall back to adding columns manually if recreation fails
+            logger.warning("Database recreation failed, attempting manual column addition")
+            add_tracker_credentials_columns()
         
         logger.info("Database migrations completed successfully")
     except Exception as e:
