@@ -7,7 +7,6 @@ using Selenium to automate browser interactions.
 import os
 import sys
 import time
-import logging
 import datetime
 import json
 from typing import Dict, List, Any, Optional, Tuple
@@ -22,7 +21,9 @@ from selenium.common.exceptions import (
     TimeoutException, 
     NoSuchElementException, 
     ElementClickInterceptedException,
-    StaleElementReferenceException
+    StaleElementReferenceException,
+    ElementNotInteractableException,
+    WebDriverException
 )
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -34,23 +35,19 @@ if project_root not in sys.path:
 from config.config import config
 from backend.database.db_connection import get_db
 from backend.models.golf_data import GolfRound, GolfHole, GolfShot, RoundStats
+from backend.scrapers.common import (
+    setup_logger, retry, log_exceptions, CaptchaDetector,
+    safe_wait_for_element, take_error_screenshot, 
+    save_json_data, generate_timestamp_filename
+)
 
-# Configure logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# Create console handler
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
-# Create file handler
+# Set up logger
 logs_dir = os.path.join(project_root, 'logs')
 os.makedirs(logs_dir, exist_ok=True)
-file_handler = logging.FileHandler(os.path.join(logs_dir, 'skytrak_scraper.log'))
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+logger = setup_logger(
+    __name__, 
+    log_file=os.path.join(logs_dir, 'skytrak_scraper.log')
+)
 
 class SkyTrakScraper:
     """
@@ -68,16 +65,21 @@ class SkyTrakScraper:
         self.user_id = user_id
         self.username = config["scrapers"]["skytrak"]["username"]
         self.password = config["scrapers"]["skytrak"]["password"]
-        self.base_url = config["scrapers"]["skytrak"]["url"]
+        self.base_url = config["scrapers"]["skytrak"]["url"] or "https://app.skytrakgolf.com"
         self.headless = headless
         self.driver = None
         self.wait = None
+        
+        # Directory for error screenshots
+        self.screenshot_dir = os.path.join(project_root, 'data', 'screenshots', 'skytrak')
+        os.makedirs(self.screenshot_dir, exist_ok=True)
         
         # Validate credentials
         if not self.username or not self.password:
             logger.error("SkyTrak credentials not configured")
             raise ValueError("SkyTrak credentials missing in configuration")
     
+    @log_exceptions()
     def setup_driver(self) -> None:
         """
         Set up the Selenium WebDriver with appropriate options.
@@ -94,9 +96,21 @@ class SkyTrakScraper:
             chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--window-size=1920,1080")
             
+            # Set user agent to avoid detection
+            chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36")
+            
+            # Disable automation flags
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            chrome_options.add_experimental_option('useAutomationExtension', False)
+            
             # Set up driver
             service = Service(ChromeDriverManager().install())
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            
+            # Set a reasonable page load timeout
+            self.driver.set_page_load_timeout(30)
+            
+            # Configure wait timeouts
             self.wait = WebDriverWait(self.driver, 20)  # 20 seconds timeout
             
             logger.info("Chrome WebDriver setup complete")
@@ -104,46 +118,167 @@ class SkyTrakScraper:
             logger.error(f"Failed to set up WebDriver: {str(e)}")
             raise
     
+    @retry(max_attempts=3, delay=2, backoff=2, 
+           exceptions=(TimeoutException, ElementClickInterceptedException))
+    @log_exceptions()
     def login(self) -> bool:
         """
-        Log in to SkyTrak website.
+        Log in to SkyTrak website with retry capability.
         
         Returns:
             bool: True if login successful, False otherwise
         """
         try:
             logger.info("Attempting to log in to SkyTrak")
+            
+            # SkyTrak login URL may be at app.skytrakgolf.com/login
             self.driver.get(f"{self.base_url}/login")
             
-            # Wait for login form to load
-            username_field = self.wait.until(
-                EC.presence_of_element_located((By.ID, "username"))
+            # Check for any CAPTCHA
+            if CaptchaDetector.is_captcha_present(self.driver):
+                CaptchaDetector.handle_captcha(self.driver, self.driver.current_url)
+            
+            # Wait for login form to load with multiple possible selectors
+            username_field = safe_wait_for_element(
+                self.driver, By.ID, "username", timeout=15,
+                condition=EC.presence_of_element_located
             )
-            password_field = self.driver.find_element(By.ID, "password")
-            login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
+            
+            if not username_field:
+                # Try alternative selectors
+                for selector in ["input[name='username']", "#user", "input[type='text']"]:
+                    username_field = safe_wait_for_element(
+                        self.driver, By.CSS_SELECTOR, selector, timeout=5,
+                        condition=EC.presence_of_element_located
+                    )
+                    if username_field:
+                        break
+            
+            if not username_field:
+                # Try email field instead (some sites use email instead of username)
+                username_field = safe_wait_for_element(
+                    self.driver, By.CSS_SELECTOR, "input[type='email'], #email", timeout=5,
+                    condition=EC.presence_of_element_located
+                )
+            
+            if not username_field:
+                logger.error("Login page did not load properly - username/email field not found")
+                take_error_screenshot(self.driver, "login_form_missing", self.screenshot_dir)
+                return False
+                
+            # Find password field - try multiple selectors
+            password_field = None
+            for selector in ["#password", "input[type='password']", "input[name='password']"]:
+                try:
+                    password_field = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if password_field:
+                        break
+                except NoSuchElementException:
+                    continue
+                    
+            if not password_field:
+                logger.error("Password field not found")
+                take_error_screenshot(self.driver, "password_field_missing", self.screenshot_dir)
+                return False
+                
+            # Find login button - try multiple selectors
+            login_button = None
+            button_selectors = [
+                "button[type='submit']", 
+                "input[type='submit']",
+                "button.login-button",
+                ".login-button",
+                "#login-button",
+                "button:contains('Sign In')",
+                "button:contains('Log In')"
+            ]
+            
+            for selector in button_selectors:
+                try:
+                    if "contains" in selector:
+                        # Use XPath for text contains
+                        xpath = selector.replace("button:contains('", "//button[contains(text(), '").replace("')", "')]")
+                        login_button = self.driver.find_element(By.XPATH, xpath)
+                    else:
+                        login_button = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if login_button:
+                        break
+                except NoSuchElementException:
+                    continue
+            
+            if not login_button:
+                logger.error("Login button not found")
+                take_error_screenshot(self.driver, "login_button_missing", self.screenshot_dir)
+                return False
             
             # Enter credentials
+            username_field.clear()
             username_field.send_keys(self.username)
+            
+            password_field.clear()
             password_field.send_keys(self.password)
             
-            # Click login
-            login_button.click()
+            # Click login with explicit wait
+            try:
+                login_button.click()
+            except ElementClickInterceptedException:
+                # Try JavaScript click if normal click is intercepted
+                logger.warning("Login button click intercepted, trying JavaScript click")
+                self.driver.execute_script("arguments[0].click();", login_button)
             
-            # Wait for dashboard to load (checking for a common element on dashboard)
-            self.wait.until(
-                EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'dashboard') or contains(@class, 'home')]"))
-            )
+            # Wait for dashboard elements to confirm successful login
+            # SkyTrak dashboard usually has these elements
+            dashboard_selectors = [
+                "//div[contains(@class, 'dashboard')]",
+                "//div[contains(@class, 'home')]",
+                "//div[contains(@class, 'user-profile')]",
+                "//div[contains(@class, 'sessions')]",
+                "//a[contains(text(), 'Sessions')]",
+                "//a[contains(text(), 'Practice')]",
+                "//a[contains(text(), 'Data')]",
+                "//h1[contains(text(), 'Dashboard')]",
+                "//div[contains(@class, 'welcome')]"
+            ]
+            
+            # Check for any successful login indicator
+            dashboard_loaded = False
+            for selector in dashboard_selectors:
+                element = safe_wait_for_element(
+                    self.driver, By.XPATH, selector,
+                    timeout=5, condition=EC.presence_of_element_located
+                )
+                if element:
+                    dashboard_loaded = True
+                    logger.debug(f"Found dashboard element with selector: {selector}")
+                    break
+            
+            if not dashboard_loaded:
+                # Check for error messages
+                error_msgs = self.driver.find_elements(By.XPATH, "//div[contains(@class, 'error')] | //p[contains(@class, 'error')] | //span[contains(@class, 'error-message')]")
+                if error_msgs:
+                    for msg in error_msgs:
+                        logger.error(f"Login error message: {msg.text}")
+                
+                # Take screenshot of the failed login attempt
+                take_error_screenshot(self.driver, "login_failed", self.screenshot_dir)
+                return False
             
             logger.info("Successfully logged in to SkyTrak")
             return True
-        except TimeoutException:
-            logger.error("Timeout waiting for login page elements or dashboard to load")
-            return False
+            
+        except TimeoutException as e:
+            logger.error(f"Timeout during login: {str(e)}")
+            take_error_screenshot(self.driver, "login_timeout", self.screenshot_dir)
+            raise  # Will be caught by retry decorator
+            
         except NoSuchElementException as e:
             logger.error(f"Element not found during login: {str(e)}")
+            take_error_screenshot(self.driver, "login_element_missing", self.screenshot_dir)
             return False
+            
         except Exception as e:
             logger.error(f"Error during login: {str(e)}")
+            take_error_screenshot(self.driver, "login_error", self.screenshot_dir)
             return False
     
     def get_session_list(self, limit: int = 10) -> List[Dict[str, Any]]:

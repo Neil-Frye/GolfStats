@@ -7,7 +7,6 @@ using Selenium to automate browser interactions.
 import os
 import sys
 import time
-import logging
 import datetime
 import json
 import re
@@ -23,7 +22,9 @@ from selenium.common.exceptions import (
     TimeoutException, 
     NoSuchElementException, 
     ElementClickInterceptedException,
-    StaleElementReferenceException
+    StaleElementReferenceException,
+    ElementNotInteractableException,
+    WebDriverException
 )
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -35,23 +36,19 @@ if project_root not in sys.path:
 from config.config import config
 from backend.database.db_connection import get_db
 from backend.models.golf_data import GolfRound, GolfHole, GolfShot, RoundStats
+from backend.scrapers.common import (
+    setup_logger, retry, log_exceptions, CaptchaDetector,
+    safe_wait_for_element, take_error_screenshot, 
+    save_json_data, generate_timestamp_filename
+)
 
-# Configure logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# Create console handler
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
-# Create file handler
+# Set up logger
 logs_dir = os.path.join(project_root, 'logs')
 os.makedirs(logs_dir, exist_ok=True)
-file_handler = logging.FileHandler(os.path.join(logs_dir, 'arccos_scraper.log'))
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+logger = setup_logger(
+    __name__, 
+    log_file=os.path.join(logs_dir, 'arccos_scraper.log')
+)
 
 class ArccosScraper:
     """
@@ -74,11 +71,16 @@ class ArccosScraper:
         self.driver = None
         self.wait = None
         
+        # Directory for error screenshots
+        self.screenshot_dir = os.path.join(project_root, 'data', 'screenshots', 'arccos')
+        os.makedirs(self.screenshot_dir, exist_ok=True)
+        
         # Validate credentials
         if not self.email or not self.password:
             logger.error("Arccos credentials not configured")
             raise ValueError("Arccos credentials missing in configuration")
     
+    @log_exceptions()
     def setup_driver(self) -> None:
         """
         Set up the Selenium WebDriver with appropriate options.
@@ -95,9 +97,21 @@ class ArccosScraper:
             chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--window-size=1920,1080")
             
+            # Set user agent to avoid detection
+            chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36")
+            
+            # Disable automation flags
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            chrome_options.add_experimental_option('useAutomationExtension', False)
+            
             # Set up driver
             service = Service(ChromeDriverManager().install())
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            
+            # Set a reasonable page load timeout
+            self.driver.set_page_load_timeout(30)
+            
+            # Configure wait timeouts
             self.wait = WebDriverWait(self.driver, 20)  # 20 seconds timeout
             
             logger.info("Chrome WebDriver setup complete")
@@ -105,51 +119,161 @@ class ArccosScraper:
             logger.error(f"Failed to set up WebDriver: {str(e)}")
             raise
     
+    @retry(max_attempts=3, delay=2, backoff=2, 
+           exceptions=(TimeoutException, ElementClickInterceptedException))
+    @log_exceptions()
     def login(self) -> bool:
         """
-        Log in to Arccos Golf website.
+        Log in to Arccos Golf website with retry capability.
         
         Returns:
             bool: True if login successful, False otherwise
         """
         try:
             logger.info("Attempting to log in to Arccos Golf")
-            self.driver.get(f"{self.base_url}/login")
             
-            # Wait for login form to load
-            email_field = self.wait.until(
-                EC.presence_of_element_located((By.ID, "email"))
+            # Arccos login URL is actually at dashboard.arccosgolf.com/login
+            self.driver.get("https://dashboard.arccosgolf.com/login")
+            
+            # Check for any CAPTCHA
+            if CaptchaDetector.is_captcha_present(self.driver):
+                CaptchaDetector.handle_captcha(self.driver, self.driver.current_url)
+            
+            # Wait for login form to load - Arccos uses both email and username fields
+            email_field = safe_wait_for_element(
+                self.driver, By.CSS_SELECTOR, "input[type='email']", timeout=15,
+                condition=EC.presence_of_element_located
             )
-            password_field = self.driver.find_element(By.ID, "password")
-            login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
+            
+            if not email_field:
+                # Try alternate selector
+                email_field = safe_wait_for_element(
+                    self.driver, By.ID, "email", timeout=5,
+                    condition=EC.presence_of_element_located
+                )
+            
+            if not email_field:
+                logger.error("Login page did not load properly - email field not found")
+                take_error_screenshot(self.driver, "login_form_missing", self.screenshot_dir)
+                return False
+                
+            # Find password field - try multiple selectors
+            password_field = None
+            for selector in ["input[type='password']", "#password", "input[name='password']"]:
+                try:
+                    password_field = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if password_field:
+                        break
+                except NoSuchElementException:
+                    continue
+                    
+            if not password_field:
+                logger.error("Password field not found")
+                take_error_screenshot(self.driver, "password_field_missing", self.screenshot_dir)
+                return False
+                
+            # Find login button - try multiple selectors
+            login_button = None
+            button_selectors = [
+                "button[type='submit']", 
+                "button.login-button",
+                "button:contains('Sign In')",
+                "button:contains('Log In')",
+                "input[type='submit']"
+            ]
+            
+            for selector in button_selectors:
+                try:
+                    if "contains" in selector:
+                        # Use XPath for text contains
+                        xpath = selector.replace("button:contains('", "//button[contains(text(), '").replace("')", "')]")
+                        login_button = self.driver.find_element(By.XPATH, xpath)
+                    else:
+                        login_button = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if login_button:
+                        break
+                except NoSuchElementException:
+                    continue
+            
+            if not login_button:
+                logger.error("Login button not found")
+                take_error_screenshot(self.driver, "login_button_missing", self.screenshot_dir)
+                return False
             
             # Enter credentials
+            email_field.clear()
             email_field.send_keys(self.email)
+            
+            password_field.clear()
             password_field.send_keys(self.password)
             
-            # Click login
-            login_button.click()
+            # Click login with explicit wait
+            try:
+                login_button.click()
+            except ElementClickInterceptedException:
+                # Try JavaScript click if normal click is intercepted
+                logger.warning("Login button click intercepted, trying JavaScript click")
+                self.driver.execute_script("arguments[0].click();", login_button)
             
-            # Wait for dashboard to load (checking for a common element on dashboard)
-            self.wait.until(
-                EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'dashboard') or contains(@class, 'home')]"))
-            )
+            # Wait for dashboard elements to confirm successful login
+            # Arccos dashboard usually has these elements
+            dashboard_selectors = [
+                "//div[contains(@class, 'dashboard')]",
+                "//div[contains(@class, 'home')]",
+                "//a[contains(text(), 'Dashboard')]",
+                "//h1[contains(text(), 'Dashboard')]",
+                "//div[contains(@class, 'user-profile')]",
+                "//div[contains(@class, 'rounds')]",
+                "//a[contains(text(), 'Rounds')]"
+            ]
+            
+            # Check for any successful login indicator
+            dashboard_loaded = False
+            for selector in dashboard_selectors:
+                element = safe_wait_for_element(
+                    self.driver, By.XPATH, selector,
+                    timeout=5, condition=EC.presence_of_element_located
+                )
+                if element:
+                    dashboard_loaded = True
+                    logger.debug(f"Found dashboard element with selector: {selector}")
+                    break
+            
+            if not dashboard_loaded:
+                # Check for error messages
+                error_msgs = self.driver.find_elements(By.XPATH, "//div[contains(@class, 'error')] | //p[contains(@class, 'error')] | //span[contains(@class, 'error-message')]")
+                if error_msgs:
+                    for msg in error_msgs:
+                        logger.error(f"Login error message: {msg.text}")
+                
+                # Take screenshot of the failed login attempt
+                take_error_screenshot(self.driver, "login_failed", self.screenshot_dir)
+                return False
             
             logger.info("Successfully logged in to Arccos Golf")
             return True
-        except TimeoutException:
-            logger.error("Timeout waiting for login page elements or dashboard to load")
-            return False
+            
+        except TimeoutException as e:
+            logger.error(f"Timeout during login: {str(e)}")
+            take_error_screenshot(self.driver, "login_timeout", self.screenshot_dir)
+            raise  # Will be caught by retry decorator
+            
         except NoSuchElementException as e:
             logger.error(f"Element not found during login: {str(e)}")
+            take_error_screenshot(self.driver, "login_element_missing", self.screenshot_dir)
             return False
+            
         except Exception as e:
             logger.error(f"Error during login: {str(e)}")
+            take_error_screenshot(self.driver, "login_error", self.screenshot_dir)
             return False
     
+    @retry(max_attempts=2, delay=3, 
+           exceptions=(TimeoutException, StaleElementReferenceException))
+    @log_exceptions()
     def get_round_list(self, limit: int = 10) -> List[Dict[str, Any]]:
         """
-        Get list of recent Arccos Golf rounds.
+        Get list of recent Arccos Golf rounds with retry capability.
         
         Args:
             limit: Maximum number of rounds to retrieve
@@ -161,44 +285,181 @@ class ArccosScraper:
         try:
             logger.info(f"Retrieving recent Arccos Golf rounds (limit={limit})")
             
-            # Navigate to rounds page
-            self.driver.get(f"{self.base_url}/rounds")
+            # Navigate to rounds page (real Arccos URL)
+            self.driver.get("https://dashboard.arccosgolf.com/rounds")
             
-            # Wait for rounds list to load
-            round_elements = self.wait.until(
-                EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'round-card')]"))
+            # Check for CAPTCHA
+            if CaptchaDetector.is_captcha_present(self.driver):
+                CaptchaDetector.handle_captcha(self.driver, self.driver.current_url)
+            
+            # Wait for rounds list to load safely
+            # Look for a container that holds the rounds
+            rounds_container = safe_wait_for_element(
+                self.driver, By.XPATH, 
+                "//div[contains(@class, 'rounds-list') or contains(@class, 'rounds-container')]",
+                timeout=15, condition=EC.presence_of_element_located
             )
+            
+            if not rounds_container:
+                logger.warning("Rounds container not found, looking for individual round elements")
+            
+            # Try several different selectors for round cards
+            round_elements = None
+            round_selectors = [
+                "//div[contains(@class, 'round-card')]",
+                "//div[contains(@class, 'round-item')]",
+                "//div[contains(@class, 'round-container')]",
+                "//div[contains(@class, 'round-entry')]",
+                "//div[contains(@class, 'round')][@data-id]",
+                "//article[contains(@class, 'round')]"
+            ]
+            
+            for selector in round_selectors:
+                try:
+                    elements = self.driver.find_elements(By.XPATH, selector)
+                    if elements and len(elements) > 0:
+                        round_elements = elements
+                        logger.info(f"Found {len(elements)} rounds using selector: {selector}")
+                        break
+                except Exception:
+                    continue
+            
+            if not round_elements:
+                logger.error("Could not find any round elements on the page")
+                take_error_screenshot(self.driver, "no_rounds_found", self.screenshot_dir)
+                return []
+            
+            # Add a short pause to ensure all elements are properly loaded
+            time.sleep(1)
             
             # Process round elements (limited to specified limit)
             for idx, element in enumerate(round_elements[:limit]):
                 try:
-                    # Extract round details
-                    date_element = element.find_element(By.XPATH, ".//div[contains(@class, 'round-date')]")
-                    course_element = element.find_element(By.XPATH, ".//div[contains(@class, 'course-name')]")
-                    score_element = element.find_element(By.XPATH, ".//div[contains(@class, 'score')]")
-                    round_id = element.get_attribute("data-round-id")
+                    # Extract round details (try multiple possible selectors)
+                    round_info = {}
                     
-                    round_data = {
-                        "id": round_id,
-                        "date": date_element.text,
-                        "course": course_element.text,
-                        "score": score_element.text,
-                        "url": f"{self.base_url}/rounds/{round_id}"
-                    }
+                    # Try to extract round ID
+                    round_id = None
+                    for attr in ['data-round-id', 'data-id', 'id']:
+                        try:
+                            round_id = element.get_attribute(attr)
+                            if round_id and not round_id.isspace():
+                                break
+                        except Exception:
+                            pass
                     
-                    rounds.append(round_data)
+                    if not round_id:
+                        # Try to extract from URL in an anchor tag
+                        try:
+                            anchor = element.find_element(By.TAG_NAME, "a")
+                            href = anchor.get_attribute("href")
+                            if href and '/rounds/' in href:
+                                round_id = href.split('/rounds/')[1].split('/')[0].split('?')[0]
+                        except Exception:
+                            pass
+                    
+                    if not round_id:
+                        logger.warning(f"Could not extract round ID for element {idx+1}")
+                        continue
+                    
+                    round_info["id"] = round_id
+                    round_info["url"] = f"https://dashboard.arccosgolf.com/rounds/{round_id}"
+                    
+                    # Try to extract date using multiple selectors
+                    date_text = None
+                    date_selectors = [
+                        ".//div[contains(@class, 'round-date')]",
+                        ".//span[contains(@class, 'date')]",
+                        ".//time",
+                        ".//div[contains(@class, 'date')]",
+                        ".//span[contains(text(), '/') or contains(text(), '-')]" # Common date format indicators
+                    ]
+                    
+                    for date_selector in date_selectors:
+                        try:
+                            elements = element.find_elements(By.XPATH, date_selector)
+                            if elements:
+                                date_text = elements[0].text
+                                break
+                        except Exception:
+                            pass
+                    
+                    round_info["date"] = date_text or "Unknown date"
+                    
+                    # Try to extract course name using multiple selectors
+                    course_text = None
+                    course_selectors = [
+                        ".//div[contains(@class, 'course-name')]",
+                        ".//span[contains(@class, 'course')]",
+                        ".//div[contains(@class, 'course')]",
+                        ".//h3",
+                        ".//h4"
+                    ]
+                    
+                    for course_selector in course_selectors:
+                        try:
+                            elements = element.find_elements(By.XPATH, course_selector)
+                            if elements:
+                                course_text = elements[0].text
+                                break
+                        except Exception:
+                            pass
+                    
+                    round_info["course"] = course_text or f"Round {round_id}"
+                    
+                    # Try to extract score using multiple selectors
+                    score_text = None
+                    score_selectors = [
+                        ".//div[contains(@class, 'score')]",
+                        ".//span[contains(@class, 'score')]",
+                        ".//div[contains(text(), '+') or contains(text(), '-') or contains(text(), 'E')]", # Look for +/- scores or Even
+                        ".//span[contains(text(), '+') or contains(text(), '-') or contains(text(), 'E')]"
+                    ]
+                    
+                    for score_selector in score_selectors:
+                        try:
+                            elements = element.find_elements(By.XPATH, score_selector)
+                            if elements:
+                                score_text = elements[0].text
+                                break
+                        except Exception:
+                            pass
+                    
+                    round_info["score"] = score_text or "N/A"
+                    
+                    logger.debug(f"Extracted round: ID={round_info['id']}, Course={round_info['course']}, Date={round_info['date']}")
+                    rounds.append(round_info)
+                    
                 except NoSuchElementException as e:
-                    logger.warning(f"Error extracting round data: {str(e)}")
+                    logger.warning(f"Error extracting data for round {idx+1}: {str(e)}")
+                    continue
                 except Exception as e:
-                    logger.warning(f"Unexpected error processing round element: {str(e)}")
+                    logger.warning(f"Unexpected error processing round {idx+1}: {str(e)}")
+                    continue
             
-            logger.info(f"Retrieved {len(rounds)} rounds")
+            if not rounds:
+                logger.warning("No rounds could be extracted from the page")
+                take_error_screenshot(self.driver, "rounds_extraction_failed", self.screenshot_dir)
+            else:
+                logger.info(f"Successfully extracted {len(rounds)} rounds")
+                
+                # Save rounds to JSON for debugging/recovery
+                save_json_data(
+                    rounds,
+                    generate_timestamp_filename("arccos_rounds", "json"),
+                    os.path.join(project_root, 'data', 'arccos')
+                )
+            
             return rounds
-        except TimeoutException:
-            logger.error("Timeout waiting for rounds list to load")
-            return []
+            
+        except TimeoutException as e:
+            logger.error(f"Timeout waiting for rounds list to load: {str(e)}")
+            take_error_screenshot(self.driver, "rounds_list_timeout", self.screenshot_dir)
+            raise  # Will be caught by retry decorator
+            
         except Exception as e:
             logger.error(f"Error retrieving rounds list: {str(e)}")
+            take_error_screenshot(self.driver, "rounds_list_error", self.screenshot_dir)
             return []
     
     def get_round_details(self, round_id: str) -> Dict[str, Any]:
