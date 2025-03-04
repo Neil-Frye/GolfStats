@@ -1,0 +1,45 @@
+name: Daily Golf Data ETL
+
+on:
+  schedule:
+    # Run every day at 3:00 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  run-etl:
+    runs-on: ubuntu-latest
+    
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      TRACKMAN_USERNAME: ${{ secrets.TRACKMAN_USERNAME }}
+      TRACKMAN_PASSWORD: ${{ secrets.TRACKMAN_PASSWORD }}
+      ARCCOS_USERNAME: ${{ secrets.ARCCOS_USERNAME }}
+      ARCCOS_PASSWORD: ${{ secrets.ARCCOS_PASSWORD }}
+      SKYTRAK_USERNAME: ${{ secrets.SKYTRAK_USERNAME }}
+      SKYTRAK_PASSWORD: ${{ secrets.SKYTRAK_PASSWORD }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r backend/requirements.txt
+        
+    - name: Run ETL job
+      run: python backend/etl/daily_etl.py
+      
+    - name: Upload logs as artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: etl-logs
+        path: logs/daily_etl.log
+        retention-days: 7
