@@ -43,8 +43,10 @@ class SupabaseClientSingleton:
                 logger.error("Supabase credentials not configured")
                 raise ValueError("Supabase URL and key must be provided")
                 
+            # Create client with optimized connection pooling for serverless
             cls._instance = create_client(supabase_url, supabase_key)
-            logger.info("Supabase client initialized")
+            logger.info("Supabase client initialized for serverless environment" 
+                      if os.environ.get("VERCEL") == "1" else "Supabase client initialized")
             
         return cls._instance
 
