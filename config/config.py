@@ -16,20 +16,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load environment variables from .env file
-env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
-if os.path.exists(env_path):
-    load_dotenv(env_path)
-    logger.info(f"Loaded environment variables from {env_path}")
-else:
-    logger.warning(f".env file not found at {env_path}. Using default configuration or environment variables.")
-    # Try loading from .env.example for development
-    example_env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.example')
-    if os.path.exists(example_env_path):
-        load_dotenv(example_env_path)
-        logger.info(f"Loaded environment variables from {example_env_path} (for development only)")
+# Load environment variables
+# In Vercel, environment variables are injected automatically
+# Only try to load .env file in development environments
+if os.environ.get("VERCEL") != "1" and os.environ.get("VERCEL_ENV") is None:
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+        logger.info(f"Loaded environment variables from {env_path}")
     else:
-        logger.warning(f".env.example file not found. Using default configuration or environment variables.")
+        logger.warning(f".env file not found at {env_path}. Using default configuration or environment variables.")
+        # Try loading from .env.example for development
+        example_env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.example')
+        if os.path.exists(example_env_path):
+            load_dotenv(example_env_path)
+            logger.info(f"Loaded environment variables from {example_env_path} (for development only)")
+        else:
+            logger.warning(f".env.example file not found. Using default configuration or environment variables.")
+else:
+    logger.info("Running in Vercel environment, using injected environment variables")
 
 # Default configuration
 default_config = {

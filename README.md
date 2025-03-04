@@ -13,12 +13,33 @@ GolfStats is a comprehensive golf statistics tracking application that integrate
 
 ## Setup
 1. Clone the repository.
-2. Install dependencies: `pip install -r backend/requirements.txt`
+2. Install dependencies: `pip install -r requirements.txt`
 3. Configure the application in `config/config.py`.
 4. Run the backend: `python backend/app.py`
 5. Run with ETL scheduler: `python run.py --scheduler`
 6. Run one-time ETL process: `python run.py --etl`
 7. Open `frontend/index.html` in your browser.
+
+## Deployment
+
+### Vercel Deployment
+
+This project is configured for deployment on Vercel with the following features:
+
+- Serverless API functions
+- Automatic builds on GitHub push
+- Environment variable management through Vercel dashboard
+
+To deploy on Vercel:
+
+1. Push to GitHub
+2. Connect repository to Vercel
+3. Set the following environment variables in Vercel dashboard:
+   - `SUPABASE_URL`
+   - `SUPABASE_API_KEY`
+   - `APP_SECRET_KEY`
+   - Other scraper-specific credentials
+4. Deploy!
 
 ## GitHub Actions
 This project uses GitHub Actions to automate the daily ETL process:

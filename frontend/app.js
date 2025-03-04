@@ -849,7 +849,7 @@ function showErrorState(error) {
 // API service
 const ApiService = {
     // Base URL for the backend API
-    baseUrl: 'http://localhost:5000/api',
+    baseUrl: '/api',
     
     // Get user profile
     async getUserProfile() {

@@ -13,17 +13,26 @@ The GolfStats project aims to provide golfers with a comprehensive platform to t
 ## Architecture
 
 ### Backend
-- Flask web application
+- Flask web application (adapted as serverless functions in Vercel)
 - Supabase integration for authentication and database
 - SQLAlchemy ORM for database abstraction
 - Web scrapers for data collection from golf platforms
 - ETL processes for data normalization and aggregation
-- Scheduled tasks for automated data collection
+- Scheduled tasks for automated data collection (GitHub Actions)
 
 ### Frontend
 - Simple HTML/CSS/JavaScript interface
 - Data visualization using charts and statistics
 - Mobile-responsive design
+- Optimized for serverless deployment
+
+### Deployment
+- **Vercel**: Serverless deployment platform
+  - API routes as serverless functions
+  - Static hosting for frontend assets
+  - Environment variable management
+  - Automatic deployment from GitHub
+- **GitHub Actions**: Automated workflows for ETL and testing
 
 ### Data Sources
 - Trackman: Launch monitor data and golf simulator rounds
@@ -143,12 +152,18 @@ RLS policies are:
    - Generate aggregated metrics
    - Log processing results for monitoring
 
-3. **Data Access**
-   - User requests data via API
+3. **Data Storage**
+   - Supabase PostgreSQL database
+   - Row Level Security (RLS) for data isolation
+   - Efficient query optimization
+   - Vercel-optimized database connections
+
+4. **Data Access**
+   - User requests data via API (serverless functions on Vercel)
    - RLS policies ensure data isolation
    - API returns only authorized data
 
-4. **Visualization**
+5. **Visualization**
    - Frontend displays statistics and trends
    - Interactive charts and data exploration
    - Performance insights and recommendations

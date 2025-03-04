@@ -1,12 +1,20 @@
 # GolfStats Backend Application
 import os
 import sys
+import logging
 from typing import Dict, Any
 from flask import Flask, request, jsonify, session
 
 # Add the project root directory to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Create Flask application
 app = Flask(__name__)
@@ -18,7 +26,7 @@ app.config.update(
     DEBUG=config["app"]["debug"]
 )
 
-# Initialize authentication modules
+# Initialize authentication modules - this will also set up the before_first_request handler
 from backend.auth import init_app as init_auth
 init_auth(app)
 
@@ -34,8 +42,8 @@ from backend.database.supabase_data import (
     get_user_rounds_stats
 )
 
-# Import auth decorator
-from backend.auth import require_auth
+# Import auth decorators
+from backend.auth import require_auth, require_admin
 
 @app.route('/')
 def index():
@@ -48,7 +56,8 @@ def health():
     return jsonify({
         "status": "healthy",
         "version": "1.0.0",
-        "supabase": True
+        "supabase": True,
+        "rls_enabled": True
     })
 
 @api_bp.route('/user')
@@ -239,6 +248,26 @@ def get_stats():
         "stats": stats
     })
 
+@api_bp.route('/admin/apply-rls', methods=['POST'])
+@require_admin
+def admin_apply_rls():
+    """
+    Admin endpoint to manually apply RLS policies.
+    Only accessible to superusers.
+    """
+    from backend.database.migrations import apply_rls_policies
+    success = apply_rls_policies()
+    
+    if success:
+        return jsonify({
+            "success": True, 
+            "message": "RLS policies applied successfully"
+        })
+    else:
+        return jsonify({
+            "error": "Failed to apply RLS policies"
+        }), 500
+
 # Register the API blueprint
 app.register_blueprint(api_bp)
 
@@ -252,7 +281,9 @@ def server_error(error):
     """Handle 500 errors."""
     return jsonify({"error": "Internal server error"}), 500
 
+# For local development only
 if __name__ == '__main__':
+    logger.info(f"Starting GolfStats backend server on port {os.environ.get('PORT', 8000)}")
     app.run(
         host='0.0.0.0',
         port=int(os.environ.get('PORT', 8000)),

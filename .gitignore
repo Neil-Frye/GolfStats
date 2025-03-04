@@ -42,6 +42,9 @@ logs/*.log
 *.swo
 .DS_Store
 
+# Vercel
+.vercel/
+
 # Data files
 data/
 *.csv
