@@ -301,46 +301,704 @@
                 </div>
             </section>
 
-            <!-- Placeholder for other views -->
+            <!-- Rounds View -->
             <section id="rounds-view" class="content-section">
-                <div class="section-placeholder">
-                    <h2>Rounds View</h2>
-                    <p>This section will display your round history and details.</p>
+                <div class="section-header-actions">
+                    <div class="section-title">
+                        <h2>Round History</h2>
+                        <p class="section-subtitle">Track your performance over time</p>
+                    </div>
+                    <div class="section-actions">
+                        <div class="filter-controls">
+                            <select id="rounds-filter">
+                                <option value="all">All Rounds</option>
+                                <option value="year">This Year</option>
+                                <option value="season">This Season</option>
+                                <option value="last10">Last 10 Rounds</option>
+                            </select>
+                        </div>
+                        <button class="add-btn">
+                            <i class="fas fa-plus"></i> New Round
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="rounds-list-container">
+                    <table class="rounds-table full-width">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Course</th>
+                                <th>Score</th>
+                                <th>To Par</th>
+                                <th>Fairways</th>
+                                <th>GIR</th>
+                                <th>Putts</th>
+                                <th>Weather</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rounds-table-body">
+                            <tr class="loading-row">
+                                <td colspan="9">
+                                    <div class="loading-indicator">
+                                        <div class="loading-spinner small"></div>
+                                        <span>Loading rounds...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="rounds-empty-state" style="display: none;">
+                    <i class="fas fa-flag-checkered fa-3x"></i>
+                    <h3>No Rounds Recorded</h3>
+                    <p>You haven't recorded any rounds yet. Add your first round to start tracking your golf performance.</p>
+                    <button class="add-btn primary-btn">
+                        <i class="fas fa-plus"></i> Add First Round
+                    </button>
+                </div>
+                
+                <div class="pagination">
+                    <button class="pagination-prev" disabled>
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </button>
+                    <span class="pagination-info">Page <span class="current-page">1</span> of <span class="total-pages">1</span></span>
+                    <button class="pagination-next" disabled>
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
             </section>
 
+            <!-- Statistics View -->
             <section id="stats-view" class="content-section">
-                <div class="section-placeholder">
-                    <h2>Statistics View</h2>
-                    <p>This section will display detailed statistics about your game.</p>
+                <div class="section-header-actions">
+                    <div class="section-title">
+                        <h2>Performance Statistics</h2>
+                        <p class="section-subtitle">Analyze your game with detailed metrics</p>
+                    </div>
+                    <div class="section-actions">
+                        <div class="filter-controls">
+                            <select id="stats-timeframe">
+                                <option value="all">All Time</option>
+                                <option value="year">This Year</option>
+                                <option value="season">This Season</option>
+                                <option value="last10">Last 10 Rounds</option>
+                            </select>
+                        </div>
+                        <button class="export-btn">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stats-card-lg scoring">
+                        <h3>Scoring</h3>
+                        <div class="stats-card-content">
+                            <div class="stat-item">
+                                <span class="stat-label">Average Score</span>
+                                <span class="stat-value" id="avg-score">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Scoring Differential</span>
+                                <span class="stat-value" id="score-diff">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Best Round</span>
+                                <span class="stat-value" id="best-round">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Par 3 Average</span>
+                                <span class="stat-value" id="par3-avg">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Par 4 Average</span>
+                                <span class="stat-value" id="par4-avg">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Par 5 Average</span>
+                                <span class="stat-value" id="par5-avg">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-card-lg tee-to-green">
+                        <h3>Tee to Green</h3>
+                        <div class="stats-card-content">
+                            <div class="stat-item">
+                                <span class="stat-label">Driving Accuracy</span>
+                                <span class="stat-value" id="driving-accuracy">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">GIR Percentage</span>
+                                <span class="stat-value" id="gir-percentage">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Average Drive</span>
+                                <span class="stat-value" id="avg-drive">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Scrambling</span>
+                                <span class="stat-value" id="scrambling">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Sand Saves</span>
+                                <span class="stat-value" id="sand-saves">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Penalty Strokes/Round</span>
+                                <span class="stat-value" id="penalties">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-card-lg putting">
+                        <h3>Putting</h3>
+                        <div class="stats-card-content">
+                            <div class="stat-item">
+                                <span class="stat-label">Putts per Round</span>
+                                <span class="stat-value" id="putts-per-round">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Putts per GIR</span>
+                                <span class="stat-value" id="putts-per-gir">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">One-Putts</span>
+                                <span class="stat-value" id="one-putts">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Three-Putts</span>
+                                <span class="stat-value" id="three-putts">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Make % (3-5 ft)</span>
+                                <span class="stat-value" id="putt-3-5">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Make % (6-10 ft)</span>
+                                <span class="stat-value" id="putt-6-10">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-card-lg scoring-dist">
+                        <h3>Score Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="score-distribution-chart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </section>
 
+            <!-- Insights View -->
             <section id="insights-view" class="content-section">
-                <div class="section-placeholder">
-                    <h2>Insights View</h2>
-                    <p>This section will provide AI-powered insights about your game.</p>
+                <div class="section-header-actions">
+                    <div class="section-title">
+                        <h2>Game Insights</h2>
+                        <p class="section-subtitle">AI-powered analysis of your golf performance</p>
+                    </div>
+                    <div class="section-actions">
+                        <button class="refresh-btn">
+                            <i class="fas fa-sync-alt"></i> Refresh Analysis
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="insights-container">
+                    <div class="insight-card improvement">
+                        <div class="insight-header">
+                            <h3><i class="fas fa-chart-line"></i> Improvement Trends</h3>
+                            <span class="insight-date">Updated today</span>
+                        </div>
+                        <div class="insight-content">
+                            <p>Based on your last 10 rounds, you've shown significant improvement in <strong>fairway accuracy</strong>, increasing from 54% to 68%. Your putting has also improved with 1.8 fewer putts per round.</p>
+                            <div class="trend-chart">
+                                <canvas id="improvement-chart"></canvas>
+                            </div>
+                            <div class="insight-recommendation">
+                                <p><strong>Recommendation:</strong> Continue focusing on your approach shots from 100-150 yards to improve GIR percentage.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card focus-areas">
+                        <div class="insight-header">
+                            <h3><i class="fas fa-bullseye"></i> Focus Areas</h3>
+                            <span class="insight-date">Updated today</span>
+                        </div>
+                        <div class="insight-content">
+                            <p>Your statistics indicate three key areas that could significantly lower your scores:</p>
+                            <ol class="focus-list">
+                                <li>
+                                    <span class="focus-area">Putting from 6-10 feet</span>
+                                    <div class="focus-bar-container">
+                                        <div class="focus-bar" style="width: 85%"></div>
+                                    </div>
+                                    <span class="focus-impact">High Impact</span>
+                                </li>
+                                <li>
+                                    <span class="focus-area">Approach shots from 150-175 yards</span>
+                                    <div class="focus-bar-container">
+                                        <div class="focus-bar" style="width: 70%"></div>
+                                    </div>
+                                    <span class="focus-impact">Medium Impact</span>
+                                </li>
+                                <li>
+                                    <span class="focus-area">Scrambling from bunkers</span>
+                                    <div class="focus-bar-container">
+                                        <div class="focus-bar" style="width: 55%"></div>
+                                    </div>
+                                    <span class="focus-impact">Medium Impact</span>
+                                </li>
+                            </ol>
+                            <div class="insight-recommendation">
+                                <p><strong>Practice Plan:</strong> Allocate 50% of practice time to putting drills, 30% to approach shots, and 20% to bunker play.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card course-strategy">
+                        <div class="insight-header">
+                            <h3><i class="fas fa-map-marked-alt"></i> Course Strategy</h3>
+                            <span class="insight-date">Updated today</span>
+                        </div>
+                        <div class="insight-content">
+                            <p>Our analysis of your performance indicates you could improve your scoring by adjusting your strategy on specific hole types:</p>
+                            <div class="strategy-items">
+                                <div class="strategy-item">
+                                    <h4>Par 3s</h4>
+                                    <p>You're averaging 0.8 strokes above your target on par 3s. Consider a more conservative approach, aiming for the center of greens rather than attacking pins.</p>
+                                </div>
+                                <div class="strategy-item">
+                                    <h4>Par 5s</h4>
+                                    <p>You're making bogey or worse on 65% of par 5s. Consider laying up to your preferred wedge distance rather than attempting risky approach shots.</p>
+                                </div>
+                            </div>
+                            <div class="insight-recommendation">
+                                <p><strong>Key Takeaway:</strong> Your statistics suggest a more conservative strategy may lower your scores immediately while you work on improving your technical skills.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
+            <!-- Clubs View -->
             <section id="clubs-view" class="content-section">
-                <div class="section-placeholder">
-                    <h2>My Clubs View</h2>
-                    <p>This section will display information about your clubs and distances.</p>
+                <div class="section-header-actions">
+                    <div class="section-title">
+                        <h2>My Clubs</h2>
+                        <p class="section-subtitle">Track distances and performance for each club</p>
+                    </div>
+                    <div class="section-actions">
+                        <button class="add-btn">
+                            <i class="fas fa-plus"></i> Add Club
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="clubs-container">
+                    <div class="clubs-grid">
+                        <div class="club-card driver">
+                            <div class="club-header">
+                                <h3>Driver</h3>
+                                <div class="club-actions">
+                                    <button class="edit-club"><i class="fas fa-edit"></i></button>
+                                </div>
+                            </div>
+                            <div class="club-specs">
+                                <div class="spec-item">
+                                    <span class="spec-label">Brand/Model</span>
+                                    <span class="spec-value">TaylorMade Stealth</span>
+                                </div>
+                                <div class="spec-item">
+                                    <span class="spec-label">Loft</span>
+                                    <span class="spec-value">10.5°</span>
+                                </div>
+                                <div class="spec-item">
+                                    <span class="spec-label">Shaft</span>
+                                    <span class="spec-value">Fujikura Ventus Blue 6-S</span>
+                                </div>
+                            </div>
+                            <div class="club-stats">
+                                <div class="club-distance">
+                                    <span class="distance-value">265</span>
+                                    <span class="distance-unit">yards</span>
+                                    <span class="distance-label">Avg. Distance</span>
+                                </div>
+                                <div class="club-accuracy">
+                                    <span class="accuracy-label">Accuracy</span>
+                                    <div class="accuracy-bar">
+                                        <div class="accuracy-value" style="width: 62%"></div>
+                                    </div>
+                                    <span class="accuracy-percentage">62%</span>
+                                </div>
+                            </div>
+                            <div class="shot-distribution">
+                                <div class="shot-item left">
+                                    <span class="shot-value">25%</span>
+                                    <span class="shot-label">Left</span>
+                                </div>
+                                <div class="shot-item straight">
+                                    <span class="shot-value">62%</span>
+                                    <span class="shot-label">Straight</span>
+                                </div>
+                                <div class="shot-item right">
+                                    <span class="shot-value">13%</span>
+                                    <span class="shot-label">Right</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="club-card iron">
+                            <div class="club-header">
+                                <h3>7 Iron</h3>
+                                <div class="club-actions">
+                                    <button class="edit-club"><i class="fas fa-edit"></i></button>
+                                </div>
+                            </div>
+                            <div class="club-specs">
+                                <div class="spec-item">
+                                    <span class="spec-label">Brand/Model</span>
+                                    <span class="spec-value">Titleist T200</span>
+                                </div>
+                                <div class="spec-item">
+                                    <span class="spec-label">Loft</span>
+                                    <span class="spec-value">32°</span>
+                                </div>
+                                <div class="spec-item">
+                                    <span class="spec-label">Shaft</span>
+                                    <span class="spec-value">True Temper AMT Black S300</span>
+                                </div>
+                            </div>
+                            <div class="club-stats">
+                                <div class="club-distance">
+                                    <span class="distance-value">170</span>
+                                    <span class="distance-unit">yards</span>
+                                    <span class="distance-label">Avg. Distance</span>
+                                </div>
+                                <div class="club-accuracy">
+                                    <span class="accuracy-label">Accuracy</span>
+                                    <div class="accuracy-bar">
+                                        <div class="accuracy-value" style="width: 74%"></div>
+                                    </div>
+                                    <span class="accuracy-percentage">74%</span>
+                                </div>
+                            </div>
+                            <div class="shot-distribution">
+                                <div class="shot-item left">
+                                    <span class="shot-value">18%</span>
+                                    <span class="shot-label">Left</span>
+                                </div>
+                                <div class="shot-item straight">
+                                    <span class="shot-value">74%</span>
+                                    <span class="shot-label">Straight</span>
+                                </div>
+                                <div class="shot-item right">
+                                    <span class="shot-value">8%</span>
+                                    <span class="shot-label">Right</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="club-card wedge">
+                            <div class="club-header">
+                                <h3>Pitching Wedge</h3>
+                                <div class="club-actions">
+                                    <button class="edit-club"><i class="fas fa-edit"></i></button>
+                                </div>
+                            </div>
+                            <div class="club-specs">
+                                <div class="spec-item">
+                                    <span class="spec-label">Brand/Model</span>
+                                    <span class="spec-value">Titleist T200</span>
+                                </div>
+                                <div class="spec-item">
+                                    <span class="spec-label">Loft</span>
+                                    <span class="spec-value">43°</span>
+                                </div>
+                                <div class="spec-item">
+                                    <span class="spec-label">Shaft</span>
+                                    <span class="spec-value">True Temper AMT Black S300</span>
+                                </div>
+                            </div>
+                            <div class="club-stats">
+                                <div class="club-distance">
+                                    <span class="distance-value">135</span>
+                                    <span class="distance-unit">yards</span>
+                                    <span class="distance-label">Avg. Distance</span>
+                                </div>
+                                <div class="club-accuracy">
+                                    <span class="accuracy-label">Accuracy</span>
+                                    <div class="accuracy-bar">
+                                        <div class="accuracy-value" style="width: 82%"></div>
+                                    </div>
+                                    <span class="accuracy-percentage">82%</span>
+                                </div>
+                            </div>
+                            <div class="shot-distribution">
+                                <div class="shot-item left">
+                                    <span class="shot-value">10%</span>
+                                    <span class="shot-label">Left</span>
+                                </div>
+                                <div class="shot-item straight">
+                                    <span class="shot-value">82%</span>
+                                    <span class="shot-label">Straight</span>
+                                </div>
+                                <div class="shot-item right">
+                                    <span class="shot-value">8%</span>
+                                    <span class="shot-label">Right</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="club-card add-club">
+                            <div class="add-club-content">
+                                <i class="fas fa-plus-circle"></i>
+                                <span>Add New Club</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="club-distances-chart">
+                        <h3>Club Distance Gapping</h3>
+                        <div class="chart-container">
+                            <canvas id="club-distances-chart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </section>
 
+            <!-- Goals View -->
             <section id="goals-view" class="content-section">
-                <div class="section-placeholder">
-                    <h2>Goals View</h2>
-                    <p>This section will help you set and track your golf improvement goals.</p>
+                <div class="section-header-actions">
+                    <div class="section-title">
+                        <h2>My Golf Goals</h2>
+                        <p class="section-subtitle">Set, track, and achieve your improvement targets</p>
+                    </div>
+                    <div class="section-actions">
+                        <button class="add-btn">
+                            <i class="fas fa-plus"></i> New Goal
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="goals-grid">
+                    <div class="goal-card handicap">
+                        <div class="goal-header">
+                            <h3>Lower Handicap</h3>
+                            <div class="goal-type scoring">Scoring</div>
+                        </div>
+                        <div class="goal-target">
+                            <div class="current-value">12.4</div>
+                            <div class="target-line">
+                                <div class="progress-line">
+                                    <div class="progress-marker" style="left: 65%"></div>
+                                </div>
+                                <div class="target-value">9.0</div>
+                            </div>
+                        </div>
+                        <div class="goal-details">
+                            <div class="goal-metric">
+                                <span class="metric-label">Progress</span>
+                                <span class="metric-value">65%</span>
+                            </div>
+                            <div class="goal-metric">
+                                <span class="metric-label">Target Date</span>
+                                <span class="metric-value">Sep 30, 2023</span>
+                            </div>
+                        </div>
+                        <div class="goal-actions">
+                            <button class="edit-goal"><i class="fas fa-edit"></i></button>
+                            <button class="delete-goal"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="goal-card fairways">
+                        <div class="goal-header">
+                            <h3>Fairways Hit</h3>
+                            <div class="goal-type tee-to-green">Tee to Green</div>
+                        </div>
+                        <div class="goal-target">
+                            <div class="current-value">64%</div>
+                            <div class="target-line">
+                                <div class="progress-line">
+                                    <div class="progress-marker" style="left: 78%"></div>
+                                </div>
+                                <div class="target-value">70%</div>
+                            </div>
+                        </div>
+                        <div class="goal-details">
+                            <div class="goal-metric">
+                                <span class="metric-label">Progress</span>
+                                <span class="metric-value">78%</span>
+                            </div>
+                            <div class="goal-metric">
+                                <span class="metric-label">Target Date</span>
+                                <span class="metric-value">Jul 15, 2023</span>
+                            </div>
+                        </div>
+                        <div class="goal-actions">
+                            <button class="edit-goal"><i class="fas fa-edit"></i></button>
+                            <button class="delete-goal"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="goal-card putts">
+                        <div class="goal-header">
+                            <h3>Putts Per Round</h3>
+                            <div class="goal-type putting">Putting</div>
+                        </div>
+                        <div class="goal-target">
+                            <div class="current-value">32</div>
+                            <div class="target-line">
+                                <div class="progress-line">
+                                    <div class="progress-marker" style="left: 40%"></div>
+                                </div>
+                                <div class="target-value">29</div>
+                            </div>
+                        </div>
+                        <div class="goal-details">
+                            <div class="goal-metric">
+                                <span class="metric-label">Progress</span>
+                                <span class="metric-value">40%</span>
+                            </div>
+                            <div class="goal-metric">
+                                <span class="metric-label">Target Date</span>
+                                <span class="metric-value">Aug 31, 2023</span>
+                            </div>
+                        </div>
+                        <div class="goal-actions">
+                            <button class="edit-goal"><i class="fas fa-edit"></i></button>
+                            <button class="delete-goal"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="goal-card gir">
+                        <div class="goal-header">
+                            <h3>Greens in Regulation</h3>
+                            <div class="goal-type tee-to-green">Tee to Green</div>
+                        </div>
+                        <div class="goal-target">
+                            <div class="current-value">45%</div>
+                            <div class="target-line">
+                                <div class="progress-line">
+                                    <div class="progress-marker" style="left: 50%"></div>
+                                </div>
+                                <div class="target-value">55%</div>
+                            </div>
+                        </div>
+                        <div class="goal-details">
+                            <div class="goal-metric">
+                                <span class="metric-label">Progress</span>
+                                <span class="metric-value">50%</span>
+                            </div>
+                            <div class="goal-metric">
+                                <span class="metric-label">Target Date</span>
+                                <span class="metric-value">Oct 15, 2023</span>
+                            </div>
+                        </div>
+                        <div class="goal-actions">
+                            <button class="edit-goal"><i class="fas fa-edit"></i></button>
+                            <button class="delete-goal"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="goal-tracking-chart">
+                    <h3>Goal Progress Tracking</h3>
+                    <div class="chart-container">
+                        <canvas id="goal-tracking-chart"></canvas>
+                    </div>
                 </div>
             </section>
 
+            <!-- Settings View -->
             <section id="settings-view" class="content-section">
-                <div class="section-placeholder">
-                    <h2>Settings View</h2>
-                    <p>This section allows you to customize your GolfStats experience.</p>
+                <div class="section-header">
+                    <h2>Settings</h2>
+                    <p class="section-subtitle">Customize your GolfStats experience</p>
+                </div>
+                
+                <div class="settings-container">
+                    <div class="settings-sidebar">
+                        <ul class="settings-nav">
+                            <li class="active" data-section="profile">Profile</li>
+                            <li data-section="preferences">Preferences</li>
+                            <li data-section="integrations">Integrations</li>
+                            <li data-section="notifications">Notifications</li>
+                            <li data-section="account">Account</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="settings-content">
+                        <!-- Profile Settings -->
+                        <div class="settings-section active" id="profile-settings">
+                            <h3>Profile Settings</h3>
+                            
+                            <form class="settings-form">
+                                <div class="profile-avatar">
+                                    <img src="https://via.placeholder.com/100" alt="Profile picture">
+                                    <button type="button" class="change-avatar">Change Photo</button>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="fullname">Full Name</label>
+                                    <input type="text" id="fullname" name="fullname" value="John Golfer">
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="email">Email Address</label>
+                                        <input type="email" id="email" name="email" value="john@example.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="phone">Phone Number</label>
+                                        <input type="tel" id="phone" name="phone" value="(555) 123-4567">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="handicap">Handicap Index</label>
+                                        <input type="number" id="handicap" name="handicap" value="12.4" step="0.1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="home-course">Home Course</label>
+                                        <input type="text" id="home-course" name="home-course" value="Pebble Beach Golf Links">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-buttons">
+                                    <button type="button" class="btn-secondary">Cancel</button>
+                                    <button type="submit" class="btn-primary">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Placeholder for other settings sections -->
+                        <div class="settings-section" id="preferences-settings">
+                            <h3>Preferences</h3>
+                            <p>This section will be implemented in a future update.</p>
+                        </div>
+                        
+                        <div class="settings-section" id="integrations-settings">
+                            <h3>Integrations</h3>
+                            <p>This section will be implemented in a future update.</p>
+                        </div>
+                        
+                        <div class="settings-section" id="notifications-settings">
+                            <h3>Notifications</h3>
+                            <p>This section will be implemented in a future update.</p>
+                        </div>
+                        
+                        <div class="settings-section" id="account-settings">
+                            <h3>Account</h3>
+                            <p>This section will be implemented in a future update.</p>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>
