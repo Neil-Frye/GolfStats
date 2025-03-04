@@ -3,10 +3,46 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize the application
     console.log('GolfStats frontend initialized');
+    
+    // Initialize navigation and event listeners
     initNavigation();
     initNewRoundModal();
-    loadDashboardData();
     setupEventListeners();
+    
+    // Load data for the active view
+    const hash = window.location.hash.substring(1);
+    if (hash && hash !== 'dashboard') {
+        // If there's a hash, load the corresponding view
+        console.log(`Initial hash: ${hash}`);
+        
+        // Trigger click on the navigation item
+        const navLink = document.querySelector(`.sidebar-nav a[href="#${hash}"]`);
+        if (navLink) {
+            navLink.click();
+        }
+        
+        // Load data for the specific view
+        switch(hash) {
+            case 'rounds':
+                loadRoundsData('all');
+                break;
+            case 'stats':
+                loadStatsData('all');
+                break;
+            case 'insights':
+                // Insights charts will be initialized when the tab is clicked
+                break;
+            case 'clubs':
+                // Clubs chart will be initialized when the tab is clicked
+                break;
+            case 'goals':
+                // Goals chart will be initialized when the tab is clicked
+                break;
+        }
+    } else {
+        // Default to dashboard view
+        loadDashboardData();
+    }
 });
 
 // Navigation handling
@@ -26,7 +62,12 @@ function initNavigation() {
             const targetId = this.getAttribute('href').substring(1);
             const targetSection = document.getElementById(`${targetId}-view`);
             
-            if (!targetSection) return;
+            console.log(`Navigating to: ${targetId}`, targetSection);
+            
+            if (!targetSection) {
+                console.error(`Target section not found: ${targetId}-view`);
+                return;
+            }
             
             // Update active nav link
             navLinks.forEach(link => {
@@ -47,8 +88,28 @@ function initNavigation() {
             if (window.innerWidth < 768) {
                 sidebar.classList.remove('open');
             }
+            
+            // Update URL hash for better browser navigation
+            window.location.hash = targetId;
         });
     });
+    
+    // Check for hash in URL and activate corresponding tab
+    const checkUrlHash = () => {
+        const hash = window.location.hash.substring(1);
+        if (hash) {
+            const linkToActivate = document.querySelector(`.sidebar-nav a[href="#${hash}"]`);
+            if (linkToActivate) {
+                linkToActivate.click();
+            }
+        }
+    };
+    
+    // Check hash on initial load
+    checkUrlHash();
+    
+    // Listen for hash changes
+    window.addEventListener('hashchange', checkUrlHash);
     
     // Mobile menu toggle
     mobileToggle.addEventListener('click', function() {
@@ -289,30 +350,102 @@ function setupEventListeners() {
     
     // Handle date filter changes
     const dateFilter = document.getElementById('date-range');
-    dateFilter.addEventListener('change', function() {
-        console.log(`Date filter changed to: ${this.value}`);
-        
-        // Convert date-range values to API timeframe parameters
-        let timeframe;
-        switch(this.value) {
-            case 'last30':
-                timeframe = '30days';
-                break;
-            case 'last90':
-                timeframe = '90days';
-                break;
-            case 'year':
-                timeframe = 'year';
-                break;
-            case 'all':
-            default:
-                timeframe = 'all';
-                break;
-        }
-        
-        // Reload data with new timeframe
-        loadDataWithTimeframe(timeframe);
+    if (dateFilter) {
+        dateFilter.addEventListener('change', function() {
+            console.log(`Date filter changed to: ${this.value}`);
+            
+            // Convert date-range values to API timeframe parameters
+            let timeframe;
+            switch(this.value) {
+                case 'last30':
+                    timeframe = '30days';
+                    break;
+                case 'last90':
+                    timeframe = '90days';
+                    break;
+                case 'year':
+                    timeframe = 'year';
+                    break;
+                case 'all':
+                default:
+                    timeframe = 'all';
+                    break;
+            }
+            
+            // Reload data with new timeframe
+            loadDataWithTimeframe(timeframe);
+        });
+    }
+    
+    // Rounds tab filter
+    const roundsFilter = document.getElementById('rounds-filter');
+    if (roundsFilter) {
+        roundsFilter.addEventListener('change', function() {
+            console.log(`Rounds filter changed to: ${this.value}`);
+            loadRoundsData(this.value);
+        });
+    }
+    
+    // Statistics tab timeframe filter
+    const statsTimeframe = document.getElementById('stats-timeframe');
+    if (statsTimeframe) {
+        statsTimeframe.addEventListener('change', function() {
+            console.log(`Stats timeframe changed to: ${this.value}`);
+            loadStatsData(this.value);
+        });
+    }
+    
+    // Settings tab navigation
+    const settingsNavItems = document.querySelectorAll('.settings-nav li');
+    settingsNavItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const section = this.getAttribute('data-section');
+            
+            // Update active nav item
+            settingsNavItems.forEach(navItem => {
+                navItem.classList.remove('active');
+            });
+            this.classList.add('active');
+            
+            // Show corresponding section
+            const settingsSections = document.querySelectorAll('.settings-section');
+            settingsSections.forEach(settingsSection => {
+                settingsSection.classList.remove('active');
+            });
+            
+            document.getElementById(`${section}-settings`).classList.add('active');
+        });
     });
+    
+    // Add club button
+    const addClubButton = document.querySelector('.club-card.add-club');
+    if (addClubButton) {
+        addClubButton.addEventListener('click', function() {
+            console.log('Add club clicked');
+            // In a real app, this would open a form to add a new club
+            alert('Add club functionality will be implemented in a future update.');
+        });
+    }
+    
+    // Add goal button
+    const addGoalButton = document.querySelector('#goals-view .add-btn');
+    if (addGoalButton) {
+        addGoalButton.addEventListener('click', function() {
+            console.log('Add goal clicked');
+            // In a real app, this would open a form to add a new goal
+            alert('Add goal functionality will be implemented in a future update.');
+        });
+    }
+    
+    // Refresh insights button
+    const refreshInsightsButton = document.querySelector('#insights-view .refresh-btn');
+    if (refreshInsightsButton) {
+        refreshInsightsButton.addEventListener('click', function() {
+            console.log('Refresh insights clicked');
+            // In a real app, this would refresh the insights data
+            alert('Insights refresh functionality will be implemented in a future update.');
+        });
+    }
     
     // Function to load data with specific timeframe
     function loadDataWithTimeframe(timeframe) {
@@ -370,14 +503,578 @@ function setupEventListeners() {
                     chartContainer.classList.remove('loading');
                 }
             });
-    }}
+    }
+    
+    // Pagination buttons for rounds
+    const prevPageBtn = document.querySelector('.pagination-prev');
+    const nextPageBtn = document.querySelector('.pagination-next');
+    
+    if (prevPageBtn && nextPageBtn) {
+        prevPageBtn.addEventListener('click', function() {
+            if (!this.hasAttribute('disabled')) {
+                const currentPage = parseInt(document.querySelector('.current-page').textContent);
+                if (currentPage > 1) {
+                    navigateToPage(currentPage - 1);
+                }
+            }
+        });
+        
+        nextPageBtn.addEventListener('click', function() {
+            if (!this.hasAttribute('disabled')) {
+                const currentPage = parseInt(document.querySelector('.current-page').textContent);
+                const totalPages = parseInt(document.querySelector('.total-pages').textContent);
+                if (currentPage < totalPages) {
+                    navigateToPage(currentPage + 1);
+                }
+            }
+        });
+    }
     
     // Handle notification bell clicks
     const notificationBell = document.querySelector('.notification-bell');
-    notificationBell.addEventListener('click', function() {
-        console.log('Notification bell clicked');
-        // In a real app, this would open a notifications panel
+    if (notificationBell) {
+        notificationBell.addEventListener('click', function() {
+            console.log('Notification bell clicked');
+            // In a real app, this would open a notifications panel
+        });
+    }
+    
+    // Initialize charts when tabs are clicked
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            const targetId = this.getAttribute('href').substring(1);
+            
+            // Initialize charts for the specific tab
+            setTimeout(() => {
+                switch(targetId) {
+                    case 'stats':
+                        initStatsCharts();
+                        break;
+                    case 'insights':
+                        initInsightsCharts();
+                        break;
+                    case 'clubs':
+                        initClubsChart();
+                        break;
+                    case 'goals':
+                        initGoalsChart();
+                        break;
+                }
+            }, 100); // Small delay to ensure DOM is ready
+        });
     });
+}
+
+// Function to load rounds data
+function loadRoundsData(filter = 'all') {
+    const tableBody = document.getElementById('rounds-table-body');
+    if (!tableBody) return;
+    
+    // Show loading state
+    tableBody.innerHTML = `
+        <tr class="loading-row">
+            <td colspan="9">
+                <div class="loading-indicator">
+                    <div class="loading-spinner small"></div>
+                    <span>Loading rounds...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+    
+    // Fetch rounds data
+    ApiService.getRounds({ filter: filter, limit: 10, page: 1 })
+        .then(data => {
+            if (data && data.rounds && data.rounds.length > 0) {
+                // Update table with rounds
+                updateRoundsTable(data.rounds, data.pagination);
+            } else {
+                // Show empty state
+                showRoundsEmptyState();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading rounds data:', error);
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="error-message">
+                        Error loading rounds. Please try again.
+                    </td>
+                </tr>
+            `;
+        });
+}
+
+// Function to update rounds table
+function updateRoundsTable(rounds, pagination) {
+    const tableBody = document.getElementById('rounds-table-body');
+    if (!tableBody) return;
+    
+    // Clear table
+    tableBody.innerHTML = '';
+    
+    // Add rows
+    rounds.forEach(round => {
+        const row = document.createElement('tr');
+        
+        // Format date
+        const date = new Date(round.date);
+        const formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+        
+        // Calculate to par
+        const toPar = round.total_score - (round.course_par || 72);
+        const toParDisplay = toPar > 0 ? `+${toPar}` : toPar;
+        
+        // Build row content
+        row.innerHTML = `
+            <td>${formattedDate}</td>
+            <td>${round.course || 'N/A'}</td>
+            <td>${round.total_score || 'N/A'}</td>
+            <td>${toParDisplay}</td>
+            <td>${round.fairways_hit_percentage || 'N/A'}%</td>
+            <td>${round.gir_percentage || 'N/A'}%</td>
+            <td>${round.total_putts || 'N/A'}</td>
+            <td>${round.weather || 'N/A'}</td>
+            <td>
+                <button class="view-round-btn" data-round-id="${round.id}">View</button>
+            </td>
+        `;
+        
+        tableBody.appendChild(row);
+    });
+    
+    // Update pagination
+    if (pagination) {
+        updatePagination(pagination);
+    }
+    
+    // Hide empty state if visible
+    document.querySelector('.rounds-empty-state').style.display = 'none';
+    
+    // Re-attach event listeners
+    attachRoundViewListeners();
+}
+
+// Function to show empty rounds state
+function showRoundsEmptyState() {
+    const tableBody = document.getElementById('rounds-table-body');
+    if (!tableBody) return;
+    
+    // Clear table
+    tableBody.innerHTML = '';
+    
+    // Show empty state
+    document.querySelector('.rounds-empty-state').style.display = 'flex';
+    
+    // Update pagination
+    updatePagination({ current_page: 1, total_pages: 1, total_items: 0 });
+}
+
+// Function to update pagination
+function updatePagination(pagination) {
+    const currentPage = document.querySelector('.current-page');
+    const totalPages = document.querySelector('.total-pages');
+    const prevButton = document.querySelector('.pagination-prev');
+    const nextButton = document.querySelector('.pagination-next');
+    
+    if (currentPage && totalPages) {
+        currentPage.textContent = pagination.current_page;
+        totalPages.textContent = pagination.total_pages;
+    }
+    
+    if (prevButton) {
+        if (pagination.current_page <= 1) {
+            prevButton.setAttribute('disabled', '');
+        } else {
+            prevButton.removeAttribute('disabled');
+        }
+    }
+    
+    if (nextButton) {
+        if (pagination.current_page >= pagination.total_pages) {
+            nextButton.setAttribute('disabled', '');
+        } else {
+            nextButton.removeAttribute('disabled');
+        }
+    }
+}
+
+// Function to navigate to a specific page
+function navigateToPage(page) {
+    const filter = document.getElementById('rounds-filter').value;
+    
+    // Show loading state
+    const tableBody = document.getElementById('rounds-table-body');
+    if (tableBody) {
+        tableBody.innerHTML = `
+            <tr class="loading-row">
+                <td colspan="9">
+                    <div class="loading-indicator">
+                        <div class="loading-spinner small"></div>
+                        <span>Loading rounds...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+    
+    // Fetch data for the specified page
+    ApiService.getRounds({ filter: filter, limit: 10, page: page })
+        .then(data => {
+            if (data && data.rounds && data.rounds.length > 0) {
+                // Update table with rounds
+                updateRoundsTable(data.rounds, data.pagination);
+            } else {
+                // Show empty state
+                showRoundsEmptyState();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading rounds data:', error);
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="error-message">
+                            Error loading rounds. Please try again.
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+}
+
+// Function to load stats data
+function loadStatsData(timeframe = 'all') {
+    // Get stat value elements
+    const avgScore = document.getElementById('avg-score');
+    const scoreDiff = document.getElementById('score-diff');
+    const bestRound = document.getElementById('best-round');
+    const par3Avg = document.getElementById('par3-avg');
+    const par4Avg = document.getElementById('par4-avg');
+    const par5Avg = document.getElementById('par5-avg');
+    const drivingAccuracy = document.getElementById('driving-accuracy');
+    const girPercentage = document.getElementById('gir-percentage');
+    const avgDrive = document.getElementById('avg-drive');
+    const scrambling = document.getElementById('scrambling');
+    const sandSaves = document.getElementById('sand-saves');
+    const penalties = document.getElementById('penalties');
+    const puttsPerRound = document.getElementById('putts-per-round');
+    const puttsPerGir = document.getElementById('putts-per-gir');
+    const onePutts = document.getElementById('one-putts');
+    const threePutts = document.getElementById('three-putts');
+    const putt3to5 = document.getElementById('putt-3-5');
+    const putt6to10 = document.getElementById('putt-6-10');
+    
+    // Show loading state for all stats
+    const statValues = document.querySelectorAll('.stat-value');
+    statValues.forEach(value => {
+        value.textContent = 'Loading...';
+    });
+    
+    // Fetch stats data
+    ApiService.getStats(timeframe)
+        .then(data => {
+            if (data && data.stats) {
+                const stats = data.stats;
+                
+                // Update scoring stats
+                if (avgScore) avgScore.textContent = stats.average_score || '--';
+                if (scoreDiff) scoreDiff.textContent = stats.score_differential || '--';
+                if (bestRound) bestRound.textContent = stats.best_score || '--';
+                if (par3Avg) par3Avg.textContent = stats.par3_average ? stats.par3_average.toFixed(1) : '--';
+                if (par4Avg) par4Avg.textContent = stats.par4_average ? stats.par4_average.toFixed(1) : '--';
+                if (par5Avg) par5Avg.textContent = stats.par5_average ? stats.par5_average.toFixed(1) : '--';
+                
+                // Update tee to green stats
+                if (drivingAccuracy) drivingAccuracy.textContent = stats.fairways_percentage ? `${stats.fairways_percentage}%` : '--';
+                if (girPercentage) girPercentage.textContent = stats.gir_percentage ? `${stats.gir_percentage}%` : '--';
+                if (avgDrive) avgDrive.textContent = stats.average_drive ? `${stats.average_drive} yds` : '--';
+                if (scrambling) scrambling.textContent = stats.scrambling ? `${stats.scrambling}%` : '--';
+                if (sandSaves) sandSaves.textContent = stats.sand_saves ? `${stats.sand_saves}%` : '--';
+                if (penalties) penalties.textContent = stats.penalties_per_round || '--';
+                
+                // Update putting stats
+                if (puttsPerRound) puttsPerRound.textContent = stats.putts_per_round || '--';
+                if (puttsPerGir) puttsPerGir.textContent = stats.putts_per_gir || '--';
+                if (onePutts) onePutts.textContent = stats.one_putts_percentage ? `${stats.one_putts_percentage}%` : '--';
+                if (threePutts) threePutts.textContent = stats.three_putts_percentage ? `${stats.three_putts_percentage}%` : '--';
+                if (putt3to5) putt3to5.textContent = stats.putt_3_5_ft ? `${stats.putt_3_5_ft}%` : '--';
+                if (putt6to10) putt6to10.textContent = stats.putt_6_10_ft ? `${stats.putt_6_10_ft}%` : '--';
+                
+                // Initialize score distribution chart
+                initScoreDistributionChart(stats);
+            } else {
+                // Handle empty data
+                statValues.forEach(value => {
+                    value.textContent = '--';
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading stats data:', error);
+            statValues.forEach(value => {
+                value.textContent = '--';
+            });
+        });
+}
+
+// Initialize stats page charts
+function initStatsCharts() {
+    // Check if we've already initialized
+    if (window.scoreDistChart) return;
+    
+    const scoreDistCanvas = document.getElementById('score-distribution-chart');
+    if (!scoreDistCanvas) return;
+    
+    // Create a placeholder chart that will be updated with real data
+    window.scoreDistChart = new Chart(scoreDistCanvas, {
+        type: 'bar',
+        data: {
+            labels: ['70-75', '76-80', '81-85', '86-90', '91-95', '96-100', '100+'],
+            datasets: [{
+                label: 'Score Distribution',
+                data: [1, 3, 6, 9, 4, 2, 1],
+                backgroundColor: 'rgba(44, 140, 88, 0.7)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            return tooltipItems[0].label;
+                        },
+                        label: function(context) {
+                            return `${context.raw} rounds`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Rounds'
+                    },
+                    ticks: {
+                        stepSize: 1
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Score Range'
+                    }
+                }
+            }
+        }
+    });
+    
+    // Load stats data to update the chart
+    loadStatsData('all');
+}
+
+// Update score distribution chart with real data
+function initScoreDistributionChart(stats) {
+    if (!window.scoreDistChart || !stats.score_distribution) return;
+    
+    const distributionData = stats.score_distribution;
+    const labels = Object.keys(distributionData).sort((a, b) => parseInt(a) - parseInt(b));
+    const data = labels.map(key => distributionData[key]);
+    
+    // Format labels for better display
+    const displayLabels = labels.map(label => {
+        const rangeStart = parseInt(label);
+        return rangeStart >= 100 ? '100+' : `${rangeStart}-${rangeStart + 4}`;
+    });
+    
+    window.scoreDistChart.data.labels = displayLabels;
+    window.scoreDistChart.data.datasets[0].data = data;
+    window.scoreDistChart.update();
+}
+
+// Initialize insights charts
+function initInsightsCharts() {
+    // Check if charts are already initialized
+    if (window.improvementChart) return;
+    
+    const improvementCanvas = document.getElementById('improvement-chart');
+    if (improvementCanvas) {
+        window.improvementChart = new Chart(improvementCanvas, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Fairway Accuracy',
+                    data: [54, 56, 58, 61, 65, 68],
+                    borderColor: 'rgba(44, 140, 88, 0.8)',
+                    backgroundColor: 'rgba(44, 140, 88, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                },
+                {
+                    label: 'Putts/Round',
+                    data: [34.2, 33.8, 33.2, 32.5, 31.8, 31.4],
+                    borderColor: 'rgba(52, 152, 219, 0.8)',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Fairway Accuracy (%)'
+                        },
+                        min: 50,
+                        max: 70
+                    },
+                    y1: {
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Putts/Round'
+                        },
+                        min: 30,
+                        max: 35,
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Initialize clubs distance chart
+function initClubsChart() {
+    // Check if chart is already initialized
+    if (window.clubDistancesChart) return;
+    
+    const clubDistancesCanvas = document.getElementById('club-distances-chart');
+    if (clubDistancesCanvas) {
+        window.clubDistancesChart = new Chart(clubDistancesCanvas, {
+            type: 'bar',
+            data: {
+                labels: ['Driver', '3 Wood', '5 Wood', '4 Iron', '5 Iron', '6 Iron', '7 Iron', '8 Iron', '9 Iron', 'PW', 'GW', 'SW', 'LW'],
+                datasets: [{
+                    label: 'Average Distance (yards)',
+                    data: [265, 240, 225, 210, 195, 185, 170, 160, 150, 135, 120, 105, 90],
+                    backgroundColor: 'rgba(44, 140, 88, 0.7)',
+                    borderColor: 'rgba(44, 140, 88, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 80,
+                        title: {
+                            display: true,
+                            text: 'Distance (yards)'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.raw} yards`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Initialize goals tracking chart
+function initGoalsChart() {
+    // Check if chart is already initialized
+    if (window.goalTrackingChart) return;
+    
+    const goalTrackingCanvas = document.getElementById('goal-tracking-chart');
+    if (goalTrackingCanvas) {
+        window.goalTrackingChart = new Chart(goalTrackingCanvas, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Handicap Index',
+                    data: [14.2, 13.9, 13.5, 13.1, 12.7, 12.4],
+                    borderColor: 'rgba(25, 118, 210, 0.8)',
+                    backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                },
+                {
+                    label: 'Fairways Hit %',
+                    data: [57, 59, 61, 62, 63, 64],
+                    borderColor: 'rgba(46, 125, 50, 0.8)',
+                    backgroundColor: 'rgba(46, 125, 50, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    hidden: true
+                },
+                {
+                    label: 'Putts/Round',
+                    data: [34, 33.5, 33, 32.5, 32.2, 32],
+                    borderColor: 'rgba(194, 24, 91, 0.8)',
+                    backgroundColor: 'rgba(194, 24, 91, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    hidden: true
+                },
+                {
+                    label: 'GIR %',
+                    data: [39, 41, 42, 43, 44, 45],
+                    borderColor: 'rgba(230, 81, 0, 0.8)',
+                    backgroundColor: 'rgba(230, 81, 0, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    hidden: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            boxWidth: 12,
+                            usePointStyle: true
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
 // Load dashboard data
@@ -387,31 +1084,57 @@ async function loadDashboardData() {
     
     try {
         // Get user profile
-        const userProfile = await ApiService.getUserProfile();
-        if (userProfile && userProfile.user) {
-            updateUserInfo(userProfile.user);
+        let userProfile;
+        try {
+            userProfile = await ApiService.getUserProfile();
+            if (userProfile && userProfile.user) {
+                updateUserInfo(userProfile.user);
+            } else {
+                console.warn('User profile data is incomplete or missing');
+            }
+        } catch (userError) {
+            console.error('Error loading user profile:', userError);
+            // Continue with other data loading despite user profile error
         }
         
         // Get statistics
-        const timeframe = document.getElementById('date-range').value;
-        const statsData = await ApiService.getStats(timeframe);
-        
-        if (statsData && statsData.stats) {
-            // Update dashboard with real data
-            updateDashboardStats(statsData.stats);
+        const timeframe = document.getElementById('date-range')?.value || 'all';
+        let statsData;
+        try {
+            statsData = await ApiService.getStats(timeframe);
             
-            // Get recent rounds
+            if (statsData && statsData.stats) {
+                // Update dashboard with real data
+                updateDashboardStats(statsData.stats);
+                
+                // Initialize charts with real data
+                initChartsWithData(statsData.stats);
+            } else {
+                console.warn('Stats data is incomplete or missing');
+            }
+        } catch (statsError) {
+            console.error('Error loading stats data:', statsError);
+            // Continue with other data loading despite stats error
+        }
+        
+        // Get recent rounds
+        try {
             const roundsData = await ApiService.getRounds({limit: 5});
             if (roundsData && roundsData.rounds) {
                 updateRecentRounds(roundsData.rounds);
+            } else {
+                console.warn('Rounds data is incomplete or missing');
             }
-            
-            // Initialize charts with real data
-            initChartsWithData(statsData.stats);
-        } else {
-            // Handle empty data state
+        } catch (roundsError) {
+            console.error('Error loading rounds data:', roundsError);
+        }
+        
+        // Show empty state if we have no meaningful data
+        if ((!statsData || !statsData.stats) && 
+            (!userProfile || !userProfile.user)) {
             showEmptyState();
         }
+        
     } catch (error) {
         console.error('Error loading dashboard data:', error);
         showErrorState(error);
@@ -851,18 +1574,66 @@ const ApiService = {
     // Base URL for the backend API
     baseUrl: '/api',
     
+    // Maximum number of retry attempts
+    maxRetries: 3,
+    
+    // Helper method to handle API requests with retry logic
+    async fetchWithRetry(url, options = {}, retries = 0) {
+        try {
+            console.log(`Fetching ${url}, attempt ${retries + 1}`);
+            const response = await fetch(url, options);
+            
+            if (!response.ok) {
+                // Special handling for different status codes
+                if (response.status === 401) {
+                    console.error('Authentication error - user not logged in');
+                    // Redirect to login page in a real app
+                    return { error: 'Authentication required' };
+                }
+                
+                if (response.status === 404) {
+                    console.error(`Resource not found: ${url}`);
+                    return { error: 'Resource not found' };
+                }
+                
+                if (response.status >= 500) {
+                    // Server error, might be worth retrying
+                    if (retries < this.maxRetries) {
+                        console.warn(`Server error (${response.status}), retrying... (${retries + 1}/${this.maxRetries})`);
+                        // Exponential backoff: 300ms, 900ms, 2700ms
+                        const delay = Math.pow(3, retries) * 300;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        return this.fetchWithRetry(url, options, retries + 1);
+                    }
+                }
+                
+                throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+            }
+            
+            try {
+                return await response.json();
+            } catch (jsonError) {
+                console.error('Error parsing JSON response:', jsonError);
+                return { error: 'Invalid response format' };
+            }
+        } catch (error) {
+            if (retries < this.maxRetries && error.message.includes('fetch')) {
+                // Network error, retry
+                console.warn(`Network error, retrying... (${retries + 1}/${this.maxRetries})`);
+                const delay = Math.pow(2, retries) * 500;
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return this.fetchWithRetry(url, options, retries + 1);
+            }
+            throw error;
+        }
+    },
+    
     // Get user profile
     async getUserProfile() {
         try {
-            const response = await fetch(`${this.baseUrl}/user`, {
+            return await this.fetchWithRetry(`${this.baseUrl}/user`, {
                 credentials: 'include' // Important for session cookies
             });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            
-            return await response.json();
         } catch (error) {
             console.error('Error fetching user profile:', error);
             return null;
@@ -878,15 +1649,17 @@ const ApiService = {
                 url += `?${params.toString()}`;
             }
             
-            const response = await fetch(url, {
+            const result = await this.fetchWithRetry(url, {
                 credentials: 'include'
             });
             
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
+            // If result contains an error property, return empty rounds
+            if (result.error) {
+                console.warn('Error getting rounds:', result.error);
+                return { rounds: [] };
             }
             
-            return await response.json();
+            return result;
         } catch (error) {
             console.error('Error fetching rounds:', error);
             return { rounds: [] };
@@ -896,7 +1669,7 @@ const ApiService = {
     // Save a new round
     async saveRound(roundData) {
         try {
-            const response = await fetch(`${this.baseUrl}/rounds`, {
+            return await this.fetchWithRetry(`${this.baseUrl}/rounds`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -904,12 +1677,6 @@ const ApiService = {
                 credentials: 'include',
                 body: JSON.stringify(roundData)
             });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            
-            return await response.json();
         } catch (error) {
             console.error('Error saving round:', error);
             throw error;
@@ -919,18 +1686,20 @@ const ApiService = {
     // Get statistics for a user
     async getStats(timeframe = 'all') {
         try {
-            const response = await fetch(`${this.baseUrl}/stats?timeframe=${timeframe}`, {
+            const result = await this.fetchWithRetry(`${this.baseUrl}/stats?timeframe=${timeframe}`, {
                 credentials: 'include'
             });
             
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
+            // If result contains an error property, handle it
+            if (result.error) {
+                console.warn('Error getting stats:', result.error);
+                return { stats: {} };
             }
             
-            return await response.json();
+            return result;
         } catch (error) {
             console.error('Error fetching stats:', error);
-            throw error;
+            return { stats: {} };
         }
     }
 };
