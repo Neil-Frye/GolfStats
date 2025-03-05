@@ -48,6 +48,9 @@ elif db_type == "postgresql":
     poolclass = QueuePool
     
 elif db_type == "supabase":
+    # Initialize DATABASE_URI to empty to avoid reference errors
+    DATABASE_URI = ""
+    
     # Get Supabase credentials
     supabase_password = os.environ.get("SUPABASE_PASSWORD", "")
     supabase_api_key = os.environ.get("SUPABASE_API_KEY", "") or os.environ.get("SUPABASE_KEY", "")
@@ -55,27 +58,49 @@ elif db_type == "supabase":
     
     logger.info(f"Supabase credentials available: password={bool(supabase_password)}, API key={bool(supabase_api_key)}, DB URL={bool(supabase_db_url)}")
     
+    # Debug the supabase configuration we're receiving
+    if "supabase" in config:
+        logger.info(f"Config has supabase section: {list(config['supabase'].keys())}")
+        has_db_url = "db_url" in config["supabase"] and config["supabase"]["db_url"]
+        db_url_is_stars = has_db_url and "********" in str(config["supabase"]["db_url"])
+        logger.info(f"Config supabase.db_url exists: {has_db_url}, contains stars: {db_url_is_stars}")
+    
+    if "database" in config and "supabase" in config["database"]:
+        logger.info(f"Config has database.supabase section: {list(config['database']['supabase'].keys())}")
+        has_conn_url = "connection_url" in config["database"]["supabase"] and config["database"]["supabase"]["connection_url"]
+        conn_url_is_stars = has_conn_url and "********" in str(config["database"]["supabase"]["connection_url"])
+        logger.info(f"Config database.supabase.connection_url exists: {has_conn_url}, contains stars: {conn_url_is_stars}")
+    
     # Try different methods to construct the DATABASE_URI
-    if "supabase" in config["database"] and "connection_url" in config["database"]["supabase"]:
+    if "supabase" in config["database"] and "connection_url" in config["database"]["supabase"] and config["database"]["supabase"]["connection_url"]:
         # Method 1: Use the pre-parsed connection URL from config
         DATABASE_URI = config["database"]["supabase"]["connection_url"]
-        logger.info(f"Using Supabase connection URL from parsed config at {config['database']['supabase']['host']}")
-    elif supabase_db_url:
-        # Method 2: Use the DB_URL environment variable directly
-        DATABASE_URI = supabase_db_url
-        logger.info(f"Using SUPABASE_DB_URL environment variable directly")
-    else:
-        # Method 3: Construct the URL using available credentials
-        # For Supabase, some sources say to use the password, others say to use the API key
-        # We'll try both options but prefer the dedicated password
-        db_password = supabase_password or supabase_api_key
         
-        if not db_password:
-            logger.warning("No Supabase password or API key found! Connection will likely fail.")
-            db_password = ""
-        
-        DATABASE_URI = f"postgresql://postgres:{db_password}@db.qfuvwfghevxhnkfrwmwk.supabase.co:5432/postgres"
-        logger.info(f"Constructed Supabase connection URL with explicit parameters")
+        # Make sure we don't have stars in the actual connection string
+        if "********" in DATABASE_URI:
+            logger.warning("Connection URL contains stars! This suggests a logging issue. Falling back to environment variables.")
+            DATABASE_URI = ""  # Reset since it contains stars
+        else:
+            logger.info(f"Using Supabase connection URL from parsed config at {config['database']['supabase']['host']}")
+    
+    # If we don't have a valid DATABASE_URI yet, try other methods
+    if not DATABASE_URI:
+        if supabase_db_url:
+            # Method 2: Use the DB_URL environment variable directly
+            DATABASE_URI = supabase_db_url
+            logger.info(f"Using SUPABASE_DB_URL environment variable directly")
+        else:
+            # Method 3: Construct the URL using available credentials
+            # For Supabase, some sources say to use the password, others say to use the API key
+            # We'll try both options but prefer the dedicated password
+            db_password = supabase_password or supabase_api_key
+            
+            if not db_password:
+                logger.warning("No Supabase password or API key found! Connection will likely fail.")
+                db_password = ""
+            
+            DATABASE_URI = f"postgresql://postgres:{db_password}@db.qfuvwfghevxhnkfrwmwk.supabase.co:5432/postgres"
+            logger.info(f"Constructed Supabase connection URL with explicit parameters")
     
     # Debug output - mask password for security but show structure
     debug_uri = DATABASE_URI
