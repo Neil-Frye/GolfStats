@@ -47,6 +47,22 @@ elif db_type == "postgresql":
     connect_args = {}
     poolclass = QueuePool
     
+elif db_type == "supabase":
+    # Use Supabase direct PostgreSQL connection
+    if "supabase" in config["database"] and "connection_url" in config["database"]["supabase"]:
+        # Use the pre-parsed connection URL directly
+        DATABASE_URI = config["database"]["supabase"]["connection_url"]
+        logger.info(f"Using Supabase direct PostgreSQL connection at {config['database']['supabase']['host']}")
+    else:
+        # Fallback to constructing URL from components
+        pg_config = config["database"]["supabase"]
+        DATABASE_URI = f"postgresql://{pg_config['user']}:{pg_config['password']}@{pg_config['host']}:{pg_config['port']}/{pg_config['database']}"
+        logger.info(f"Using constructed Supabase connection at {pg_config['host']}")
+    
+    # SSL required for Supabase connections
+    connect_args = {"sslmode": "require"}
+    poolclass = QueuePool
+    
 elif db_type == "mongodb":
     # MongoDB support would require pymongo instead of SQLAlchemy
     # This is a placeholder for potential future implementation
@@ -68,13 +84,27 @@ engine_args = {
 if poolclass:
     engine_args["poolclass"] = poolclass
     # Configure PostgreSQL specific pooling settings
-    if db_type == "postgresql":
+    if db_type in ["postgresql", "supabase"]:
         engine_args["pool_size"] = 5  # Number of connections to keep open
         engine_args["max_overflow"] = 10  # Max number of connections to create beyond pool_size
         engine_args["pool_timeout"] = 30  # Seconds to wait before giving up on getting a connection
         engine_args["pool_recycle"] = 1800  # Recycle connections after 30 minutes
+        
+        # For Supabase pooler connections, adjust settings
+        if db_type == "supabase" and config["supabase"]["use_pooler"]:
+            # Pooler already manages connection pooling, so we use minimal SQLAlchemy pooling
+            engine_args["pool_size"] = 2
+            engine_args["max_overflow"] = 3
 
-logger.info(f"Connecting to database: {db_type} at {DATABASE_URI.split('@')[-1] if '@' in DATABASE_URI else DATABASE_URI}")
+# For logging, mask credentials but still show the host
+if '@' in DATABASE_URI:
+    # Extract user:pass and host part
+    parts = DATABASE_URI.split('@')
+    # Display only the host part for privacy, not the credentials
+    host_part = parts[-1]
+    logger.info(f"Connecting to database: {db_type} at {host_part}")
+else:
+    logger.info(f"Connecting to database: {db_type} at {DATABASE_URI}")
 engine = create_engine(DATABASE_URI, **engine_args)
 
 # Create a session factory

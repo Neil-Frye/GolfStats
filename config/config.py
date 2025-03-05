@@ -50,11 +50,14 @@ default_config = {
     "supabase": {
         "url": os.environ.get("SUPABASE_URL", ""),
         "anon_key": os.environ.get("SUPABASE_API_KEY") or os.environ.get("SUPABASE_KEY", ""),
+        "db_url": os.environ.get("SUPABASE_DB_URL", "postgresql://postgres:[YOUR-PASSWORD]@db.qfuvwfghevxhnkfrwmwk.supabase.co:5432/postgres"),
+        "pooler_url": os.environ.get("SUPABASE_POOLER_URL", "postgresql://postgres.qfuvwfghevxhnkfrwmwk:[YOUR-PASSWORD]@aws-0-us-west-1.pooler.supabase.com:6543/postgres"),
+        "use_pooler": os.environ.get("SUPABASE_USE_POOLER", "false").lower() == "true"
     },
     
-    # Legacy database settings (keeping for reference)
+    # Database settings
     "database": {
-        "type": os.environ.get("DB_TYPE", "postgresql"),  # 'sqlite', 'postgresql', 'mongodb'
+        "type": os.environ.get("DB_TYPE", "supabase"),  # 'sqlite', 'postgresql', 'supabase', 'mongodb'
         "sqlite": {
             "path": "data/golfstats.db"
         },
@@ -64,6 +67,9 @@ default_config = {
             "database": os.environ.get("DB_NAME", "golfstats"),
             "user": os.environ.get("DB_USER", "postgres"),
             "password": os.environ.get("DB_PASSWORD", "postgres")
+        },
+        "supabase": {
+            # These will be populated from the supabase section
         },
         "mongodb": {
             "host": os.environ.get("DB_HOST", "localhost"),
@@ -130,11 +136,37 @@ def load_config() -> Dict[str, Any]:
     
     config = default_config.copy()
     
+    # Populate Supabase database settings from the supabase section
+    if config["database"]["type"] == "supabase":
+        # Decide which URL to use based on pooler setting
+        db_url = config["supabase"]["pooler_url"] if config["supabase"]["use_pooler"] else config["supabase"]["db_url"]
+        
+        # Parse the URL to extract components
+        import re
+        match = re.match(r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/([^?]+)', db_url)
+        if match:
+            user, password, host, port, database = match.groups()
+            config["database"]["supabase"] = {
+                "host": host,
+                "port": int(port),
+                "database": database,
+                "user": user,
+                "password": password,
+                "connection_url": db_url
+            }
+        else:
+            logger.warning(f"Could not parse Supabase database URL: {db_url}")
+    
     # Log loaded configuration (excluding sensitive information)
     log_config = config.copy()
+    
     # Remove sensitive information for logging
-    if "database" in log_config and "postgresql" in log_config["database"]:
-        log_config["database"]["postgresql"]["password"] = "********" if log_config["database"]["postgresql"]["password"] else ""
+    if "database" in log_config:
+        for db_type in ["postgresql", "supabase"]:
+            if db_type in log_config["database"] and "password" in log_config["database"][db_type]:
+                log_config["database"][db_type]["password"] = "********" if log_config["database"][db_type]["password"] else ""
+                if "connection_url" in log_config["database"][db_type]:
+                    log_config["database"][db_type]["connection_url"] = "********" 
     
     if "scrapers" in log_config:
         for scraper in log_config["scrapers"].values():
@@ -146,6 +178,8 @@ def load_config() -> Dict[str, Any]:
     
     if "supabase" in log_config:
         log_config["supabase"]["anon_key"] = "********" if log_config["supabase"]["anon_key"] else ""
+        log_config["supabase"]["db_url"] = "********" if log_config["supabase"]["db_url"] else ""
+        log_config["supabase"]["pooler_url"] = "********" if log_config["supabase"]["pooler_url"] else ""
     
     logger.info(f"Configuration loaded: {log_config}")
     
