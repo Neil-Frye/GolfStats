@@ -5,6 +5,7 @@ This module provides configuration parameters for the application, including
 API keys, database settings, and other environment-specific variables.
 """
 import os
+import re
 import logging
 from typing import Dict, Any
 from dotenv import load_dotenv
@@ -16,29 +17,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-# In Vercel, environment variables are injected automatically
-# Only try to load .env file in development environments
+# Load environment variables only if not running on Vercel
 if os.environ.get("VERCEL") != "1" and os.environ.get("VERCEL_ENV") is None:
     env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
     if os.path.exists(env_path):
         load_dotenv(env_path)
         logger.info(f"Loaded environment variables from {env_path}")
     else:
-        logger.warning(f".env file not found at {env_path}. Using default configuration or environment variables.")
-        # Try loading from .env.example for development
+        logger.warning(f".env file not found at {env_path}. Using environment variables or defaults.")
         example_env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.example')
         if os.path.exists(example_env_path):
             load_dotenv(example_env_path)
-            logger.info(f"Loaded environment variables from {example_env_path} (for development only)")
+            logger.info(f"Loaded environment variables from {example_env_path} (development only)")
         else:
-            logger.warning(f".env.example file not found. Using default configuration or environment variables.")
+            logger.warning(".env.example file not found. Using only environment variables.")
 else:
-    logger.info("Running in Vercel environment, using injected environment variables")
+    logger.info("Running in a Vercel environment, using injected environment variables")
 
-# Default configuration
 default_config = {
-    # Application settings
     "app": {
         "name": "GolfStats",
         "debug": os.environ.get("APP_DEBUG", "true").lower() == "true",
@@ -46,16 +42,14 @@ default_config = {
         "secret_key": os.environ.get("APP_SECRET_KEY", "dev-secret-key-change-in-production")
     },
     
-    # Supabase settings
     "supabase": {
         "url": os.environ.get("SUPABASE_URL", ""),
         "anon_key": os.environ.get("SUPABASE_API_KEY") or os.environ.get("SUPABASE_KEY", ""),
-        "db_url": os.environ.get("SUPABASE_DB_URL", ""),  # Read directly from environment
-        "pooler_url": os.environ.get("SUPABASE_POOLER_URL", ""),  # Read directly from environment
+        "db_url": os.environ.get("SUPABASE_DB_URL", ""),   # read from env
+        "pooler_url": os.environ.get("SUPABASE_POOLER_URL", ""),
         "use_pooler": os.environ.get("SUPABASE_USE_POOLER", "false").lower() == "true"
     },
     
-    # Database settings
     "database": {
         "type": os.environ.get("DB_TYPE", "supabase"),  # 'sqlite', 'postgresql', 'supabase', 'mongodb'
         "sqlite": {
@@ -69,7 +63,7 @@ default_config = {
             "password": os.environ.get("DB_PASSWORD", "postgres")
         },
         "supabase": {
-            # These will be populated from the supabase section
+            # will be filled in once we parse the supabase DB URL
         },
         "mongodb": {
             "host": os.environ.get("DB_HOST", "localhost"),
@@ -78,7 +72,6 @@ default_config = {
         }
     },
     
-    # Data scraper settings
     "scrapers": {
         "trackman": {
             "url": "https://mytrackman.com",
@@ -100,7 +93,6 @@ default_config = {
         }
     },
     
-    # Google API settings
     "google": {
         "oauth": {
             "client_id": os.environ.get("GOOGLE_CLIENT_ID", ""),
@@ -113,28 +105,19 @@ default_config = {
         }
     },
     
-    # ETL job settings
     "etl": {
         "schedule": {
-            "daily_update": os.environ.get("ETL_DAILY_UPDATE_SCHEDULE", "0 0 * * *"),  # Every day at midnight (cron format)
-            "weekly_report": os.environ.get("ETL_WEEKLY_REPORT_SCHEDULE", "0 0 * * 0")   # Every Sunday at midnight
+            "daily_update": os.environ.get("ETL_DAILY_UPDATE_SCHEDULE", "0 0 * * *"),
+            "weekly_report": os.environ.get("ETL_WEEKLY_REPORT_SCHEDULE", "0 0 * * 0")
         },
         "output_dir": "data/etl"
     }
 }
 
 def load_config() -> Dict[str, Any]:
-    """
-    Load configuration, with environment variables overriding defaults.
-    
-    Returns:
-        Dict containing merged configuration settings
-    """
-    # Create a copy of the default config
     config = default_config.copy()
     
-    # IMPORTANT: Always read current environment values for Supabase
-    # This ensures we get the latest values even if they changed after module import
+    # Always read environment for supabase (could change after import)
     config["supabase"] = {
         "url": os.environ.get("SUPABASE_URL", config["supabase"]["url"]),
         "anon_key": os.environ.get("SUPABASE_API_KEY", os.environ.get("SUPABASE_KEY", config["supabase"]["anon_key"])),
@@ -143,22 +126,14 @@ def load_config() -> Dict[str, Any]:
         "use_pooler": os.environ.get("SUPABASE_USE_POOLER", "false").lower() == "true"
     }
     
-    # Populate Supabase database settings from the supabase section
     if config["database"]["type"] == "supabase":
-        # Decide which URL to use based on pooler setting
+        # Decide which URL to use: db_url vs. pooler_url
         db_url = config["supabase"]["pooler_url"] if config["supabase"]["use_pooler"] else config["supabase"]["db_url"]
         
-        # Add direct access to the database password from environment
-        supabase_password = os.environ.get("SUPABASE_PASSWORD", "")
-        
-        # If the URL contains placeholder [YOUR-PASSWORD], replace it with actual password
-        if "[YOUR-PASSWORD]" in db_url and supabase_password:
-            db_url = db_url.replace("[YOUR-PASSWORD]", supabase_password)
-            logger.info("Replaced password placeholder in database URL")
-        
-        # Parse the URL to extract components
-        import re
-        match = re.match(r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/([^?]+)', db_url)
+        # Attempt to parse it (optional, best-effort)
+        # This pattern tolerates ?sslmode= etc. at the end:
+        #   postgresql://user:pass@host:5432/dbname?sslmode=require
+        match = re.match(r'^postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/([^?]+)(?:\?.*)?$', db_url)
         if match:
             user, password, host, port, database = match.groups()
             config["database"]["supabase"] = {
@@ -169,37 +144,50 @@ def load_config() -> Dict[str, Any]:
                 "password": password,
                 "connection_url": db_url
             }
-            logger.info(f"Successfully parsed Supabase database URL for {host}")
+            logger.info(f"Parsed Supabase DB URL for host: {host}")
         else:
-            logger.warning(f"Could not parse Supabase database URL. Using direct environment variables.")
+            logger.warning("Could not parse Supabase DB URL; will rely on environment variables directly.")
     
-    # Log loaded configuration (excluding sensitive information)
-    log_config = config.copy()
+    # IMPORTANT: Make a DEEP copy for logging that redacts sensitive fields
+    # A regular copy() is shallow and might modify nested dictionaries in the original
+    import copy
+    log_config = copy.deepcopy(config)
     
-    # Remove sensitive information for logging
+    # Hide DB passwords & connection URLs in the COPY only
     if "database" in log_config:
         for db_type in ["postgresql", "supabase"]:
             if db_type in log_config["database"] and "password" in log_config["database"][db_type]:
-                log_config["database"][db_type]["password"] = "********" if log_config["database"][db_type]["password"] else ""
-                if "connection_url" in log_config["database"][db_type]:
-                    log_config["database"][db_type]["connection_url"] = "********" 
+                log_config["database"][db_type]["password"] = "********"
+            if db_type in log_config["database"] and "connection_url" in log_config["database"][db_type]:
+                log_config["database"][db_type]["connection_url"] = "********"
     
+    # Hide scraper passwords in the COPY only
     if "scrapers" in log_config:
         for scraper in log_config["scrapers"].values():
             if "password" in scraper:
-                scraper["password"] = "********" if scraper["password"] else ""
+                scraper["password"] = "********"
     
+    # Hide Google client secret in the COPY only
     if "google" in log_config and "oauth" in log_config["google"]:
-        log_config["google"]["oauth"]["client_secret"] = "********" if log_config["google"]["oauth"]["client_secret"] else ""
+        log_config["google"]["oauth"]["client_secret"] = "********"
     
+    # Hide supabase anon key and DB URLs in the COPY only
     if "supabase" in log_config:
-        log_config["supabase"]["anon_key"] = "********" if log_config["supabase"]["anon_key"] else ""
-        log_config["supabase"]["db_url"] = "********" if log_config["supabase"]["db_url"] else ""
-        log_config["supabase"]["pooler_url"] = "********" if log_config["supabase"]["pooler_url"] else ""
+        log_config["supabase"]["anon_key"] = "********"
+        log_config["supabase"]["db_url"] = "********"
+        log_config["supabase"]["pooler_url"] = "********"
+        
+    # Verify we didn't accidentally modify the original config (debug)
+    if "supabase" in config and "db_url" in config["supabase"]:
+        has_stars = "********" in str(config["supabase"]["db_url"])
+        logger.info(f"Original config supabase.db_url contains stars: {has_stars}")
+        
+    if "database" in config and "supabase" in config["database"] and "connection_url" in config["database"]["supabase"]:
+        has_stars = "********" in str(config["database"]["supabase"]["connection_url"])
+        logger.info(f"Original config database.supabase.connection_url contains stars: {has_stars}")
     
     logger.info(f"Configuration loaded: {log_config}")
     
     return config
 
-# Load configuration on module import
 config = load_config()
