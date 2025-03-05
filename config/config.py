@@ -50,8 +50,8 @@ default_config = {
     "supabase": {
         "url": os.environ.get("SUPABASE_URL", ""),
         "anon_key": os.environ.get("SUPABASE_API_KEY") or os.environ.get("SUPABASE_KEY", ""),
-        "db_url": os.environ.get("SUPABASE_DB_URL", "postgresql://postgres:[YOUR-PASSWORD]@db.qfuvwfghevxhnkfrwmwk.supabase.co:5432/postgres"),
-        "pooler_url": os.environ.get("SUPABASE_POOLER_URL", "postgresql://postgres.qfuvwfghevxhnkfrwmwk:[YOUR-PASSWORD]@aws-0-us-west-1.pooler.supabase.com:6543/postgres"),
+        "db_url": os.environ.get("SUPABASE_DB_URL", ""),  # Read directly from environment
+        "pooler_url": os.environ.get("SUPABASE_POOLER_URL", ""),  # Read directly from environment
         "use_pooler": os.environ.get("SUPABASE_USE_POOLER", "false").lower() == "true"
     },
     
@@ -130,16 +130,31 @@ def load_config() -> Dict[str, Any]:
     Returns:
         Dict containing merged configuration settings
     """
-    # Since we're now using os.environ.get() with defaults in the default_config,
-    # we don't need to do the individual overrides anymore.
-    # Environment variables are already applied in the default_config.
-    
+    # Create a copy of the default config
     config = default_config.copy()
+    
+    # IMPORTANT: Always read current environment values for Supabase
+    # This ensures we get the latest values even if they changed after module import
+    config["supabase"] = {
+        "url": os.environ.get("SUPABASE_URL", config["supabase"]["url"]),
+        "anon_key": os.environ.get("SUPABASE_API_KEY", os.environ.get("SUPABASE_KEY", config["supabase"]["anon_key"])),
+        "db_url": os.environ.get("SUPABASE_DB_URL", config["supabase"]["db_url"]),
+        "pooler_url": os.environ.get("SUPABASE_POOLER_URL", config["supabase"]["pooler_url"]),
+        "use_pooler": os.environ.get("SUPABASE_USE_POOLER", "false").lower() == "true"
+    }
     
     # Populate Supabase database settings from the supabase section
     if config["database"]["type"] == "supabase":
         # Decide which URL to use based on pooler setting
         db_url = config["supabase"]["pooler_url"] if config["supabase"]["use_pooler"] else config["supabase"]["db_url"]
+        
+        # Add direct access to the database password from environment
+        supabase_password = os.environ.get("SUPABASE_PASSWORD", "")
+        
+        # If the URL contains placeholder [YOUR-PASSWORD], replace it with actual password
+        if "[YOUR-PASSWORD]" in db_url and supabase_password:
+            db_url = db_url.replace("[YOUR-PASSWORD]", supabase_password)
+            logger.info("Replaced password placeholder in database URL")
         
         # Parse the URL to extract components
         import re
@@ -154,8 +169,9 @@ def load_config() -> Dict[str, Any]:
                 "password": password,
                 "connection_url": db_url
             }
+            logger.info(f"Successfully parsed Supabase database URL for {host}")
         else:
-            logger.warning(f"Could not parse Supabase database URL: {db_url}")
+            logger.warning(f"Could not parse Supabase database URL. Using direct environment variables.")
     
     # Log loaded configuration (excluding sensitive information)
     log_config = config.copy()
