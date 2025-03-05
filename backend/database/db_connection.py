@@ -48,28 +48,44 @@ elif db_type == "postgresql":
     poolclass = QueuePool
     
 elif db_type == "supabase":
-    # Use Supabase direct PostgreSQL connection
+    # Get Supabase credentials
+    supabase_password = os.environ.get("SUPABASE_PASSWORD", "")
+    supabase_api_key = os.environ.get("SUPABASE_API_KEY", "") or os.environ.get("SUPABASE_KEY", "")
+    supabase_db_url = os.environ.get("SUPABASE_DB_URL", "")
+    
+    logger.info(f"Supabase credentials available: password={bool(supabase_password)}, API key={bool(supabase_api_key)}, DB URL={bool(supabase_db_url)}")
+    
+    # Try different methods to construct the DATABASE_URI
     if "supabase" in config["database"] and "connection_url" in config["database"]["supabase"]:
-        # Use the pre-parsed connection URL directly
+        # Method 1: Use the pre-parsed connection URL from config
         DATABASE_URI = config["database"]["supabase"]["connection_url"]
-        logger.info(f"Using Supabase direct PostgreSQL connection at {config['database']['supabase']['host']}")
+        logger.info(f"Using Supabase connection URL from parsed config at {config['database']['supabase']['host']}")
+    elif supabase_db_url:
+        # Method 2: Use the DB_URL environment variable directly
+        DATABASE_URI = supabase_db_url
+        logger.info(f"Using SUPABASE_DB_URL environment variable directly")
     else:
-        # Direct fallback to environment variable if configuration parsing failed
-        supabase_db_url = os.environ.get("SUPABASE_DB_URL")
-        if supabase_db_url:
-            DATABASE_URI = supabase_db_url
-            logger.info(f"Using SUPABASE_DB_URL environment variable for direct connection")
-        else:
-            # If no URL, try the original method
-            try:
-                pg_config = config["database"]["supabase"]
-                DATABASE_URI = f"postgresql://{pg_config['user']}:{pg_config['password']}@{pg_config['host']}:{pg_config['port']}/{pg_config['database']}"
-                logger.info(f"Using constructed Supabase connection at {pg_config['host']}")
-            except (KeyError, TypeError):
-                # Last resort fallback to default URL
-                supabase_password = os.environ.get("SUPABASE_PASSWORD", "")
-                DATABASE_URI = f"postgresql://postgres:{supabase_password}@db.qfuvwfghevxhnkfrwmwk.supabase.co:5432/postgres"
-                logger.info(f"Using hardcoded fallback Supabase connection URL")
+        # Method 3: Construct the URL using available credentials
+        # For Supabase, some sources say to use the password, others say to use the API key
+        # We'll try both options but prefer the dedicated password
+        db_password = supabase_password or supabase_api_key
+        
+        if not db_password:
+            logger.warning("No Supabase password or API key found! Connection will likely fail.")
+            db_password = ""
+        
+        DATABASE_URI = f"postgresql://postgres:{db_password}@db.qfuvwfghevxhnkfrwmwk.supabase.co:5432/postgres"
+        logger.info(f"Constructed Supabase connection URL with explicit parameters")
+    
+    # Debug output - mask password for security but show structure
+    debug_uri = DATABASE_URI
+    if '@' in debug_uri:
+        parts = debug_uri.split('@')
+        auth_part = parts[0].split(':')
+        # Replace password with ****** but keep structure visible
+        if len(auth_part) > 2:
+            masked_uri = f"{auth_part[0]}:******@{parts[1]}"
+            logger.info(f"Final connection string structure: {masked_uri}")
     
     # SSL required for Supabase connections
     connect_args = {"sslmode": "require"}
@@ -117,7 +133,32 @@ if '@' in DATABASE_URI:
     logger.info(f"Connecting to database: {db_type} at {host_part}")
 else:
     logger.info(f"Connecting to database: {db_type} at {DATABASE_URI}")
-engine = create_engine(DATABASE_URI, **engine_args)
+
+# Additional debug info
+logger.info(f"Engine arguments: {engine_args}")
+logger.info(f"SSL mode: {connect_args.get('sslmode', 'not specified')}")
+
+# Print without logging to ensure visibility
+print(f"\n*** DATABASE CONNECTION INFORMATION ***")
+print(f"Database type: {db_type}")
+if '@' in DATABASE_URI:
+    user_part = DATABASE_URI.split('@')[0].split(':')[0]
+    host_part = DATABASE_URI.split('@')[1]
+    print(f"Connection: {user_part}:*****@{host_part}")
+else:
+    print(f"Connection: {DATABASE_URI}")
+print(f"Engine arguments: {str(engine_args)}")
+print(f"*** END DATABASE INFO ***\n")
+
+try:
+    engine = create_engine(DATABASE_URI, **engine_args)
+    logger.info("Database engine created successfully")
+except Exception as e:
+    logger.error(f"Error creating database engine: {str(e)}")
+    print(f"\n*** DATABASE CONNECTION ERROR ***")
+    print(f"Error: {str(e)}")
+    print(f"*** END ERROR ***\n")
+    raise
 
 # Create a session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
