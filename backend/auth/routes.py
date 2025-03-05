@@ -4,10 +4,12 @@ Authentication routes for GolfStats application.
 This module provides routes for user authentication using Supabase.
 """
 import logging
+import os
 from typing import Dict, Any
 from flask import Blueprint, request, jsonify, session, redirect, url_for
 
 from .supabase_auth import login_with_email, logout, sign_up, get_current_user, is_authenticated
+from .crypto_utils import encrypt_value, decrypt_value
 
 # Configure logging
 logger = logging.getLogger(__name__)

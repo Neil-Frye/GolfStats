@@ -417,6 +417,15 @@ function setupEventListeners() {
         });
     });
     
+    // Handle integration connection buttons
+    const connectButtons = document.querySelectorAll('.connect-integration-btn');
+    connectButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const service = this.getAttribute('data-service');
+            showIntegrationModal(service);
+        });
+    });
+    
     // Add club button
     const addClubButton = document.querySelector('.club-card.add-club');
     if (addClubButton) {
@@ -1097,6 +1106,23 @@ async function loadDashboardData() {
             // Continue with other data loading despite user profile error
         }
         
+        // Get integration status
+        try {
+            const integrationStatus = await ApiService.getIntegrationStatus();
+            if (integrationStatus && integrationStatus.integrations) {
+                // Update integration status in the UI
+                Object.keys(integrationStatus.integrations).forEach(service => {
+                    updateIntegrationStatus(
+                        service, 
+                        integrationStatus.integrations[service].connected
+                    );
+                });
+            }
+        } catch (integrationError) {
+            console.error('Error loading integration status:', integrationError);
+            // Continue with other data loading despite integration error
+        }
+        
         // Get statistics
         const timeframe = document.getElementById('date-range')?.value || 'all';
         let statsData;
@@ -1135,12 +1161,66 @@ async function loadDashboardData() {
             showEmptyState();
         }
         
+        // Check if any onboarding needed
+        checkIntegrationOnboarding();
+        
     } catch (error) {
         console.error('Error loading dashboard data:', error);
         showErrorState(error);
     } finally {
         // Hide loading state
         hideLoadingState();
+    }
+}
+
+// Check if integration onboarding is needed and display guidance
+function checkIntegrationOnboarding() {
+    // Check if user has any integrations connected
+    const hasConnectedIntegrations = document.querySelector('.integration-status.connected');
+    
+    if (!hasConnectedIntegrations) {
+        // Display onboarding guidance
+        const dashboardDetails = document.querySelector('.dashboard-details');
+        if (dashboardDetails) {
+            const onboardingGuidance = document.createElement('div');
+            onboardingGuidance.className = 'onboarding-guidance';
+            onboardingGuidance.innerHTML = `
+                <div class="guidance-header">
+                    <i class="fas fa-plug"></i>
+                    <h3>Connect Your Golf Platforms</h3>
+                    <button class="close-guidance">&times;</button>
+                </div>
+                <p>Connect your Trackman, Arccos, or SkyTrak accounts to automatically import your golf data.</p>
+                <button class="setup-integrations-btn">Set Up Integrations</button>
+            `;
+            
+            // Insert before the first child
+            dashboardDetails.insertBefore(onboardingGuidance, dashboardDetails.firstChild);
+            
+            // Add event listeners
+            const closeBtn = onboardingGuidance.querySelector('.close-guidance');
+            const setupBtn = onboardingGuidance.querySelector('.setup-integrations-btn');
+            
+            closeBtn.addEventListener('click', function() {
+                onboardingGuidance.remove();
+            });
+            
+            setupBtn.addEventListener('click', function() {
+                // Navigate to integrations settings
+                const settingsLink = document.querySelector('a[href="#settings"]');
+                if (settingsLink) {
+                    settingsLink.click();
+                    
+                    // Select integrations tab
+                    setTimeout(() => {
+                        const integrationsTab = document.querySelector('.settings-nav li[data-section="integrations"]');
+                        if (integrationsTab) {
+                            integrationsTab.click();
+                        }
+                    }, 100);
+                }
+            });
+        }
     }
 }
 
@@ -1481,6 +1561,232 @@ function viewRoundDetails(roundId) {
     }
 }
 
+// Integration modal
+function showIntegrationModal(service) {
+    // Get service display name
+    const serviceNames = {
+        'trackman': 'Trackman',
+        'arccos': 'Arccos',
+        'skytrak': 'SkyTrak'
+    };
+    
+    const serviceName = serviceNames[service] || service;
+    
+    // Create modal if it doesn't exist
+    if (!document.getElementById('integration-modal')) {
+        const modal = document.createElement('div');
+        modal.id = 'integration-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content integration-modal-content">
+                <div class="modal-header">
+                    <h2>Connect <span class="service-name">${serviceName}</span></h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="loading-container" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Connecting to ${serviceName}...</p>
+                    </div>
+                    <div class="error-container" style="display: none;">
+                        <div class="error-icon">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="error-message"></div>
+                        <button class="try-again-btn">Try Again</button>
+                    </div>
+                    <form id="integration-form">
+                        <div class="form-group" id="username-field">
+                            <label for="integration-username">Username/Email</label>
+                            <input type="text" id="integration-username" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="integration-password">Password</label>
+                            <input type="password" id="integration-password" name="password" required>
+                        </div>
+                        <div class="form-options">
+                            <div class="remember-credentials">
+                                <input type="checkbox" id="remember-credentials" name="remember" checked>
+                                <label for="remember-credentials">Remember my credentials securely</label>
+                            </div>
+                        </div>
+                        <div class="security-callout">
+                            <i class="fas fa-lock"></i>
+                            <span>Your credentials are securely encrypted and stored using industry-standard security practices.</span>
+                        </div>
+                        <div class="form-buttons">
+                            <button type="button" class="btn-secondary cancel-integration-btn">Cancel</button>
+                            <button type="submit" class="btn-primary connect-btn">Connect</button>
+                        </div>
+                    </form>
+                    <div class="success-container" style="display: none;">
+                        <div class="success-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h3>Connection Successful!</h3>
+                        <p>Your <span class="service-name">${serviceName}</span> account has been successfully connected.</p>
+                        <button class="done-btn">Done</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Add event listeners
+        const closeBtn = modal.querySelector('.close-modal');
+        const cancelBtn = modal.querySelector('.cancel-integration-btn');
+        const form = modal.querySelector('#integration-form');
+        const tryAgainBtn = modal.querySelector('.try-again-btn');
+        const doneBtn = modal.querySelector('.done-btn');
+        
+        // Close modal functions
+        function closeIntegrationModal() {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        closeBtn.addEventListener('click', closeIntegrationModal);
+        cancelBtn.addEventListener('click', closeIntegrationModal);
+        
+        // Close when clicking outside the modal content
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeIntegrationModal();
+            }
+        });
+        
+        // Handle form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            const loadingContainer = modal.querySelector('.loading-container');
+            const formContainer = form;
+            
+            formContainer.style.display = 'none';
+            loadingContainer.style.display = 'flex';
+            
+            try {
+                // Get form data
+                const formData = new FormData(form);
+                const credentials = {
+                    service: service,
+                    username: formData.get('username'),
+                    password: formData.get('password'),
+                    remember: formData.get('remember') === 'on'
+                };
+                
+                // Special case for Arccos which uses email instead of username
+                if (service === 'arccos') {
+                    credentials.email = credentials.username;
+                    delete credentials.username;
+                }
+                
+                // Send to API with retry logic
+                const result = await ApiService.connectIntegration(credentials);
+                
+                if (result.success) {
+                    // Show success state
+                    loadingContainer.style.display = 'none';
+                    const successContainer = modal.querySelector('.success-container');
+                    successContainer.style.display = 'flex';
+                    
+                    // Update UI to show connected state
+                    updateIntegrationStatus(service, true);
+                    
+                    // Close modal after delay if user doesn't click Done
+                    setTimeout(() => {
+                        if (modal.style.display !== 'none') {
+                            closeIntegrationModal();
+                        }
+                    }, 3000);
+                    
+                    // Handle done button
+                    doneBtn.addEventListener('click', closeIntegrationModal);
+                } else {
+                    throw new Error(result.message || 'Connection failed');
+                }
+            } catch (error) {
+                console.error(`Error connecting to ${serviceName}:`, error);
+                
+                // Show error state
+                loadingContainer.style.display = 'none';
+                const errorContainer = modal.querySelector('.error-container');
+                const errorMessage = modal.querySelector('.error-message');
+                
+                errorMessage.textContent = `Unable to connect to your ${serviceName} account. Please check your credentials and try again.`;
+                errorContainer.style.display = 'flex';
+                
+                // Try again button resets the form
+                tryAgainBtn.addEventListener('click', function() {
+                    errorContainer.style.display = 'none';
+                    formContainer.style.display = 'block';
+                });
+            }
+        });
+    } else {
+        // Update existing modal
+        const modal = document.getElementById('integration-modal');
+        const serviceNameEl = modal.querySelectorAll('.service-name');
+        serviceNameEl.forEach(el => {
+            el.textContent = serviceName;
+        });
+        
+        // Reset form
+        const form = modal.querySelector('#integration-form');
+        form.reset();
+        form.style.display = 'block';
+        
+        // Hide other containers
+        modal.querySelector('.loading-container').style.display = 'none';
+        modal.querySelector('.error-container').style.display = 'none';
+        modal.querySelector('.success-container').style.display = 'none';
+        
+        // Update username field label for Arccos (uses email)
+        const usernameField = modal.querySelector('#username-field');
+        if (usernameField) {
+            const label = usernameField.querySelector('label');
+            const input = usernameField.querySelector('input');
+            
+            if (service === 'arccos') {
+                label.textContent = 'Email Address';
+                input.type = 'email';
+            } else {
+                label.textContent = 'Username';
+                input.type = 'text';
+            }
+        }
+    }
+    
+    // Display the modal
+    const modal = document.getElementById('integration-modal');
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+// Update integration status in the UI
+function updateIntegrationStatus(service, isConnected) {
+    const integrationItem = document.getElementById(`${service}-integration`);
+    if (!integrationItem) return;
+    
+    const statusEl = integrationItem.querySelector('.integration-status');
+    const buttonEl = integrationItem.querySelector('.connect-integration-btn');
+    
+    if (isConnected) {
+        statusEl.textContent = 'Connected';
+        statusEl.classList.remove('disconnected');
+        statusEl.classList.add('connected');
+        
+        buttonEl.textContent = 'Manage Connection';
+    } else {
+        statusEl.textContent = 'Disconnected';
+        statusEl.classList.remove('connected');
+        statusEl.classList.add('disconnected');
+        
+        buttonEl.textContent = 'Connect Account';
+    }
+}
+
 // Loading state functions
 function showLoadingState() {
     // Add loading class to main content
@@ -1625,6 +1931,76 @@ const ApiService = {
                 return this.fetchWithRetry(url, options, retries + 1);
             }
             throw error;
+        }
+    },
+    
+    // Connect to golf service integrations
+    async connectIntegration(credentials) {
+        try {
+            // Extra validation based on service type
+            if (credentials.service === 'arccos' && !credentials.email) {
+                return { success: false, message: 'Email is required for Arccos' };
+            } else if ((credentials.service === 'trackman' || credentials.service === 'skytrak') && !credentials.username) {
+                return { success: false, message: 'Username is required' };
+            }
+            
+            if (!credentials.password) {
+                return { success: false, message: 'Password is required' };
+            }
+            
+            const response = await this.fetchWithRetry(`${this.baseUrl}/integrations/connect`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(credentials)
+            });
+            
+            if (response.error) {
+                return { success: false, message: response.error };
+            }
+            
+            return response;
+        } catch (error) {
+            console.error('Error connecting integration:', error);
+            return { 
+                success: false, 
+                message: error.message || 'Failed to connect to the service. Please try again.'
+            };
+        }
+    },
+    
+    // Get status of integrations
+    async getIntegrationStatus() {
+        try {
+            const response = await this.fetchWithRetry(`${this.baseUrl}/integrations/status`, {
+                credentials: 'include'
+            });
+            
+            if (response.error) {
+                return { integrations: {} };
+            }
+            
+            return response;
+        } catch (error) {
+            console.error('Error getting integration status:', error);
+            return { integrations: {} };
+        }
+    },
+    
+    // Test integration connection
+    async testIntegration(service) {
+        try {
+            const response = await this.fetchWithRetry(`${this.baseUrl}/integrations/test/${service}`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            
+            return response;
+        } catch (error) {
+            console.error(`Error testing ${service} integration:`, error);
+            return { success: false, message: error.message };
         }
     },
     

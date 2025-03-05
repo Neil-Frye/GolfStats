@@ -32,6 +32,9 @@ init_auth(app)
 
 # Create API blueprint
 from flask import Blueprint
+from backend.integrations.routes import integrations_bp
+from backend.auth.routes import auth_bp
+
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 # Import Supabase data access functions
@@ -43,7 +46,7 @@ from backend.database.supabase_data import (
 )
 
 # Import auth decorators
-from backend.auth import require_auth, require_admin
+from backend.auth import require_auth
 
 @app.route('/')
 def index():
@@ -249,7 +252,7 @@ def get_stats():
     })
 
 @api_bp.route('/admin/apply-rls', methods=['POST'])
-@require_admin
+@require_auth
 def admin_apply_rls():
     """
     Admin endpoint to manually apply RLS policies.
@@ -270,6 +273,9 @@ def admin_apply_rls():
 
 # Register the API blueprint
 app.register_blueprint(api_bp)
+# auth_bp is already registered by init_auth
+# app.register_blueprint(auth_bp)
+app.register_blueprint(integrations_bp)
 
 @app.errorhandler(404)
 def not_found(error):

@@ -6,9 +6,10 @@ This module sets up the Python path and starts the Flask application,
 optionally with background ETL scheduler.
 
 Usage:
-    python run.py              # Run just the web app
-    python run.py --scheduler  # Run the web app with ETL scheduler
-    python run.py --etl        # Run a one-time ETL process and exit
+    python run.py                # Run just the web app
+    python run.py --scheduler    # Run the web app with ETL scheduler
+    python run.py --etl          # Run a one-time ETL process and exit
+    python run.py --setup-db     # Setup Supabase database tables and user profiles
 """
 import os
 import sys
@@ -61,15 +62,30 @@ def run_etl():
         for error in results['errors']:
             print(f"- {error}")
 
+def setup_database():
+    """
+    Setup Supabase database tables and user profiles.
+    """
+    from backend.database.setup_supabase import setup_supabase
+    print("Setting up Supabase database...")
+    if setup_supabase():
+        print("Database setup completed successfully")
+    else:
+        print("Database setup failed. Check logs for details.")
+
 if __name__ == '__main__':
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="GolfStats Application Server")
     parser.add_argument('--scheduler', action='store_true', help='Run with ETL scheduler')
     parser.add_argument('--etl', action='store_true', help='Run a one-time ETL process and exit')
+    parser.add_argument('--setup-db', action='store_true', help='Setup Supabase database tables and user profiles')
     parser.add_argument('--port', type=int, default=8000, help='Port to run the web server on')
     args = parser.parse_args()
     
-    if args.etl:
+    if args.setup_db:
+        # Setup database tables and user profiles
+        setup_database()
+    elif args.etl:
         # Run ETL only
         run_etl()
     elif args.scheduler:
