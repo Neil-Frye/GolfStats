@@ -54,10 +54,22 @@ elif db_type == "supabase":
         DATABASE_URI = config["database"]["supabase"]["connection_url"]
         logger.info(f"Using Supabase direct PostgreSQL connection at {config['database']['supabase']['host']}")
     else:
-        # Fallback to constructing URL from components
-        pg_config = config["database"]["supabase"]
-        DATABASE_URI = f"postgresql://{pg_config['user']}:{pg_config['password']}@{pg_config['host']}:{pg_config['port']}/{pg_config['database']}"
-        logger.info(f"Using constructed Supabase connection at {pg_config['host']}")
+        # Direct fallback to environment variable if configuration parsing failed
+        supabase_db_url = os.environ.get("SUPABASE_DB_URL")
+        if supabase_db_url:
+            DATABASE_URI = supabase_db_url
+            logger.info(f"Using SUPABASE_DB_URL environment variable for direct connection")
+        else:
+            # If no URL, try the original method
+            try:
+                pg_config = config["database"]["supabase"]
+                DATABASE_URI = f"postgresql://{pg_config['user']}:{pg_config['password']}@{pg_config['host']}:{pg_config['port']}/{pg_config['database']}"
+                logger.info(f"Using constructed Supabase connection at {pg_config['host']}")
+            except (KeyError, TypeError):
+                # Last resort fallback to default URL
+                supabase_password = os.environ.get("SUPABASE_PASSWORD", "")
+                DATABASE_URI = f"postgresql://postgres:{supabase_password}@db.qfuvwfghevxhnkfrwmwk.supabase.co:5432/postgres"
+                logger.info(f"Using hardcoded fallback Supabase connection URL")
     
     # SSL required for Supabase connections
     connect_args = {"sslmode": "require"}
