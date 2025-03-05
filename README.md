@@ -15,10 +15,15 @@ GolfStats is a comprehensive golf statistics tracking application that integrate
 1. Clone the repository.
 2. Install dependencies: `pip install -r requirements.txt`
 3. Configure the application in `config/config.py`.
-4. Run the backend: `python backend/app.py`
-5. Run with ETL scheduler: `python run.py --scheduler`
-6. Run one-time ETL process: `python run.py --etl`
-7. Open `frontend/index.html` in your browser.
+4. Setup the Supabase database (see `SUPABASE_DATABASE_SETUP.md`):
+   - Configure your Supabase credentials in `start_with_supabase.sh`
+   - Run the SQL scripts to create tables in your Supabase project
+   - Create a user profile entry for your account
+5. Start the application with Supabase integration:
+   - `./start_with_supabase.sh` (for web app only)
+   - `./start_with_supabase.sh --scheduler` (with ETL scheduler)
+   - `./start_with_supabase.sh --etl` (run one-time ETL process)
+6. Open `frontend/index.html` in your browser.
 
 ## Deployment
 

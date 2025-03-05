@@ -6,10 +6,17 @@
 - Run web app only: `python run.py`
 - Run with ETL scheduler: `python run.py --scheduler`
 - Run one-time ETL process: `python run.py --etl`
+- Setup local database: `python run.py --setup-db`
 - Run all tests: `python -m unittest discover tests`
 - Run single test: `python -m unittest tests.test_app.TestApp.test_index`
 - Lint code: `pylint backend tests`
 - Type check: `mypy backend tests`
+
+## Supabase Database Commands
+- Run with Supabase database: `./start_with_supabase.sh`
+- Run with Supabase and ETL scheduler: `./start_with_supabase.sh --scheduler`
+- Run Supabase one-time ETL: `./start_with_supabase.sh --etl`
+- Manual SQL table creation: Run SQL in `backend/database/sql/create_tables.sql` using Supabase SQL Editor
 
 ## Code Style Guidelines
 - Follow PEP 8 standards with 79 character line limit
