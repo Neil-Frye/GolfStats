@@ -6,7 +6,7 @@
 # ========================================================
 SUPABASE_URL="https://qfuvwfghevxhnkfrwmwk.supabase.co"
 SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmdXZ3ZmdoZXZ4aG5rZnJ3bXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NzU2MDYsImV4cCI6MjA1NjU1MTYwNn0.yzPWndB4fcSxOHy1kQ6NoSknWshhEj5Wk-USuK_6S9Y"
-SUPABASE_PASSWORD="pqzA23aCUlUr" # REQUIRED: Your Supabase database password
+SUPABASE_PASSWORD="F245-Jak63-we" # REQUIRED: Your Supabase database password in project settings -> Database → Settings → Database Password
 
 # ========================================================
 # For Supabase direct connections, you must use your database password, not the API key
