@@ -17,22 +17,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load environment variables only if not running on Vercel
-if os.environ.get("VERCEL") != "1" and os.environ.get("VERCEL_ENV") is None:
-    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
-    if os.path.exists(env_path):
-        load_dotenv(env_path)
-        logger.info(f"Loaded environment variables from {env_path}")
-    else:
-        logger.warning(f".env file not found at {env_path}. Using environment variables or defaults.")
-        example_env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.example')
-        if os.path.exists(example_env_path):
-            load_dotenv(example_env_path)
-            logger.info(f"Loaded environment variables from {example_env_path} (development only)")
-        else:
-            logger.warning(".env.example file not found. Using only environment variables.")
+# Load environment variables based on APP_ENVIRONMENT
+env = os.getenv('APP_ENVIRONMENT', 'test').lower()
+env_file = '.env.production' if env == 'production' else '.env.test'
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), env_file)
+
+if os.path.exists(env_path):
+    load_dotenv(env_path)
+    logger.info(f"Loaded environment variables from {env_path} for {env} environment")
 else:
-    logger.info("Running in a Vercel environment, using injected environment variables")
+    logger.warning(f"{env_file} not found at {env_path}. Using environment variables or defaults.")
 
 default_config = {
     "app": {
