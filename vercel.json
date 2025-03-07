@@ -3,7 +3,11 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "pip": ["cryptography==41.0.3"],
+        "maxLambdaSize": "15mb"
+      }
     },
     {
       "src": "frontend/**",
