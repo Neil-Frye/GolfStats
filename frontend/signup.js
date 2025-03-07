@@ -1,8 +1,8 @@
-// GolfStats Login Script
+// GolfStats Signup Script
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize login page functionality
-    console.log('Login page initialized');
+    // Initialize signup page functionality
+    console.log('Signup page initialized');
     
     // Handle Google OAuth login
     const googleLoginBtn = document.getElementById('google-login');
@@ -12,26 +12,34 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Handle email/password login
-    const emailLoginForm = document.getElementById('email-login-form');
-    if (emailLoginForm) {
-        emailLoginForm.addEventListener('submit', function(e) {
+    // Handle signup form submission
+    const signupForm = document.getElementById('signup-form');
+    if (signupForm) {
+        signupForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            const fullname = document.getElementById('fullname').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
             
-            if (email && password) {
-                loginWithEmailPassword(email, password);
+            // Basic validation
+            if (!fullname || !email || !password || !confirmPassword) {
+                showSignupError('All fields are required');
+                return;
             }
-        });
-    }
-    
-    // Handle signup link
-    const signupLink = document.getElementById('signup-link');
-    if (signupLink) {
-        signupLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            window.location.href = '/signup.html';
+            
+            if (password !== confirmPassword) {
+                showSignupError('Passwords do not match');
+                return;
+            }
+            
+            if (password.length < 8) {
+                showSignupError('Password must be at least 8 characters');
+                return;
+            }
+            
+            // All validation passed, proceed with signup
+            signupWithEmailPassword(fullname, email, password);
         });
     }
     
@@ -53,40 +61,44 @@ function initiateGoogleLogin() {
     window.location.href = '/api/auth/google/login';
 }
 
-// Function to login with email and password
-async function loginWithEmailPassword(email, password) {
-    console.log('Attempting login with email...');
+// Function to signup with email and password
+async function signupWithEmailPassword(name, email, password) {
+    console.log('Attempting signup with email...');
     
     // Show loading state
     const submitBtn = document.querySelector('.login-btn');
     const originalText = submitBtn.textContent;
-    submitBtn.innerHTML = '<div class="loading-spinner small"></div> Signing In...';
+    submitBtn.innerHTML = '<div class="loading-spinner small"></div> Creating Account...';
     submitBtn.disabled = true;
     
     try {
-        const response = await fetch('/api/auth/login', {
+        const response = await fetch('/api/auth/signup', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             credentials: 'include', // Important for session cookies
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ 
+                name, 
+                email, 
+                password 
+            })
         });
         
         const data = await response.json();
         
-        if (response.ok && data.success) {
-            // Login successful
-            console.log('Login successful');
+        if (response.ok && data.user) {
+            // Signup successful
+            console.log('Signup successful');
             window.location.href = '/';
         } else {
-            // Login failed
-            console.error('Login failed:', data.message || 'Unknown error');
-            showLoginError(data.message || 'Invalid email or password');
+            // Signup failed
+            console.error('Signup failed:', data.error || 'Unknown error');
+            showSignupError(data.error || 'Could not create account. Please try again.');
         }
     } catch (error) {
-        console.error('Login error:', error);
-        showLoginError('Could not connect to server. Please try again.');
+        console.error('Signup error:', error);
+        showSignupError('Could not connect to server. Please try again.');
     } finally {
         // Reset button state
         submitBtn.textContent = originalText;
@@ -94,12 +106,12 @@ async function loginWithEmailPassword(email, password) {
     }
 }
 
-// Show login error message
-function showLoginError(message) {
+// Show signup error message
+function showSignupError(message) {
     const errorElement = document.querySelector('.form-error');
     const errorMessage = errorElement.querySelector('span');
     
-    errorMessage.textContent = message || 'Invalid email or password';
+    errorMessage.textContent = message || 'An error occurred';
     errorElement.style.display = 'flex';
     
     // Hide the error message after 5 seconds
@@ -126,6 +138,6 @@ async function checkLoginStatus() {
         }
     } catch (error) {
         console.error('Error checking login status:', error);
-        // If there's an error, stay on the login page
+        // If there's an error, stay on the signup page
     }
 }

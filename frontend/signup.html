@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GolfStats | Sign Up</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="logo">
+                    <i class="fas fa-golf-ball"></i>
+                    <span>GolfStats</span>
+                </div>
+                <h1>Create Account</h1>
+                <p>Start tracking your golf performance today</p>
+            </div>
+            
+            <div class="login-methods">
+                <button id="google-login" class="oauth-button google">
+                    <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google logo">
+                    <span>Continue with Google</span>
+                </button>
+                
+                <div class="divider">
+                    <span>or</span>
+                </div>
+                
+                <form id="signup-form" class="login-form">
+                    <div class="form-group">
+                        <label for="fullname">Full Name</label>
+                        <input type="text" id="fullname" name="fullname" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required minlength="8">
+                        <small class="password-hint">Must be at least 8 characters</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirm-password">Confirm Password</label>
+                        <input type="password" id="confirm-password" name="confirm-password" required minlength="8">
+                    </div>
+                    
+                    <div class="form-error" style="display: none;">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>Error message will appear here</span>
+                    </div>
+                    
+                    <button type="submit" class="login-btn">Create Account</button>
+                </form>
+            </div>
+            
+            <div class="login-footer">
+                <p>Already have an account? <a href="login.html" id="login-link">Sign in</a></p>
+            </div>
+        </div>
+        
+        <div class="login-image">
+            <img src="https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Golf course">
+            <div class="image-overlay">
+                <h2>Elevate Your Game</h2>
+                <p>Track stats, analyze performance, and set goals to improve your golf game.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="signup.js"></script>
+</body>
+</html>
