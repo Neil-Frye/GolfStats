@@ -12,18 +12,45 @@ GolfStats is a comprehensive golf statistics tracking application that integrate
 - Data isolation with Row Level Security (RLS)
 
 ## Setup
+
+### Local Development (Test Environment)
 1. Clone the repository.
-2. Install dependencies: `pip install -r requirements.txt`
-3. Configure the application in `config/config.py`.
-4. Setup the Supabase database (see `SUPABASE_DATABASE_SETUP.md`):
-   - Configure your Supabase credentials in `start_with_supabase.sh`
-   - Run the SQL scripts to create tables in your Supabase project
-   - Create a user profile entry for your account
+2. Install dependencies: `pip install -r backend/requirements.txt`
+3. Create a `.env.test` file with your Supabase test credentials:
+   ```
+   APP_ENVIRONMENT=test
+   SUPABASE_URL=https://qfuvwfghevxhnkfrwmwk.supabase.co
+   SUPABASE_API_KEY=your-test-api-key
+   ```
+4. Setup the Supabase database:
+   ```
+   python backend/database/supabase_tables.py
+   ```
 5. Start the application with Supabase integration:
-   - `./start_with_supabase.sh` (for web app only)
-   - `./start_with_supabase.sh --scheduler` (with ETL scheduler)
-   - `./start_with_supabase.sh --etl` (run one-time ETL process)
-6. Open `frontend/index.html` in your browser.
+   - `python run.py` (for web app only)
+   - `python run.py --scheduler` (with ETL scheduler)
+   - `python run.py --etl` (run one-time ETL process)
+6. Open `http://localhost:8000` in your browser.
+
+### Production Environment
+1. Create a `.env.production` file with your production credentials (use `.env.production.example` as a template):
+   ```
+   APP_ENVIRONMENT=production
+   SUPABASE_URL=https://rrrniscrqsrbtfahgguo.supabase.co
+   SUPABASE_API_KEY=your-production-api-key
+   ```
+2. Setup the production database:
+   ```
+   python backend/database/setup_production.py
+   ```
+3. Test the production environment:
+   ```
+   APP_ENVIRONMENT=production python backend/database/check_clean_prod.py
+   ```
+4. For local testing of the production environment:
+   ```
+   APP_ENVIRONMENT=production python run.py
+   ```
 
 ## Deployment
 
@@ -34,17 +61,40 @@ This project is configured for deployment on Vercel with the following features:
 - Serverless API functions
 - Automatic builds on GitHub push
 - Environment variable management through Vercel dashboard
+- Separate production and preview environments
 
-To deploy on Vercel:
+#### Test Environment Deployment
+For preview and development branches:
 
-1. Push to GitHub
-2. Connect repository to Vercel
-3. Set the following environment variables in Vercel dashboard:
-   - `SUPABASE_URL`
-   - `SUPABASE_API_KEY`
-   - `APP_SECRET_KEY`
+1. Connect repository to Vercel
+2. Create a preview environment with the following variables:
+   - `APP_ENVIRONMENT=test`
+   - `SUPABASE_URL=https://qfuvwfghevxhnkfrwmwk.supabase.co`
+   - `SUPABASE_API_KEY=your-test-api-key`
+   - `APP_SECRET_KEY=your-test-secret-key`
    - Other scraper-specific credentials
-4. Deploy!
+
+#### Production Environment Deployment
+For production branch (main):
+
+1. Push to the main branch of your GitHub repository
+2. Set the following environment variables in Vercel production environment:
+   - `APP_ENVIRONMENT=production`
+   - `SUPABASE_URL=https://rrrniscrqsrbtfahgguo.supabase.co`
+   - `SUPABASE_API_KEY=your-production-api-key`
+   - `APP_SECRET_KEY=your-production-secret-key`
+   - `GOOGLE_CLIENT_ID=your-google-client-id`
+   - `GOOGLE_CLIENT_SECRET=your-google-client-secret`
+   - Other scraper-specific credentials
+3. Deploy!
+
+#### Environment Configuration
+The application automatically detects the environment based on `APP_ENVIRONMENT`:
+
+- `test`: Uses test database and credentials
+- `production`: Uses production database and credentials
+
+Each environment uses its own Supabase project to ensure complete separation of data.
 
 ## GitHub Actions
 This project uses GitHub Actions to automate the daily ETL process:

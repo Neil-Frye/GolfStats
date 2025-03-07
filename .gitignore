@@ -24,6 +24,9 @@ var/
 venv/
 ENV/
 .env
+.env.*
+!.env.example
+!.env.production.example
 
 # Database
 *.db
