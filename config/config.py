@@ -91,7 +91,7 @@ default_config = {
         "oauth": {
             "client_id": os.environ.get("GOOGLE_CLIENT_ID", ""),
             "client_secret": os.environ.get("GOOGLE_CLIENT_SECRET", ""),
-            "redirect_uri": "http://localhost:8000/auth/google/callback"
+            "redirect_uri": os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/auth/google/callback")
         },
         "sheets": {
             "api_key": os.environ.get("GOOGLE_SHEETS_API_KEY", ""),

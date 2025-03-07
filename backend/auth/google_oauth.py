@@ -234,7 +234,7 @@ def callback():
     logger.info(f"User authenticated via Google: {user_info.get('email')}")
     
     # Return to the main page
-    return redirect(url_for('index'))
+    return redirect('/')
 
 @google_auth.route('/logout')
 def logout():
@@ -251,8 +251,8 @@ def logout():
     
     logger.info("User logged out from Google authentication")
     
-    # Return to the main page
-    return redirect(url_for('index'))
+    # Return to the login page
+    return redirect('/login.html')
 
 def is_authenticated() -> bool:
     """
