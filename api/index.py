@@ -6,6 +6,7 @@ import os
 import sys
 from http.server import BaseHTTPRequestHandler
 import logging
+import importlib.util
 from typing import Dict, Any
 
 # Add the project root directory to Python path
@@ -19,8 +20,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Use mock scrapers instead of selenium-based scrapers in the serverless environment
+# This reduces the deployment size significantly
+logger.info("Setting up mock scrapers for serverless environment")
+sys.modules['backend.scrapers.arccos_scraper'] = importlib.import_module('api.mock_scrapers')
+sys.modules['backend.scrapers.trackman_scraper'] = importlib.import_module('api.mock_scrapers')
+sys.modules['backend.scrapers.skytrak_scraper'] = importlib.import_module('api.mock_scrapers')
+
 # Import Flask application
 from backend.app import app as flask_app
+
+logger.info("Vercel serverless function initialized")
 
 # Create handler for Vercel serverless function
 def handler(request, response):
@@ -31,6 +41,8 @@ def handler(request, response):
     # Get request path and method
     path = request['path']
     method = request['method']
+    
+    logger.info(f"Processing {method} request for path: {path}")
     
     # Create a WSGI environment
     environ = {
@@ -48,6 +60,7 @@ def handler(request, response):
         'SERVER_NAME': 'vercel-serverless',
         'SERVER_PORT': '443',
         'HTTP_HOST': request.get('headers', {}).get('host', ''),
+        'SERVERLESS_CONTEXT': 'true',  # Indicate we're in a serverless environment
     }
     
     # Add all headers to the environment
@@ -75,11 +88,14 @@ def handler(request, response):
         else:
             body.append(data)
     
+    response_body = ''.join(body)
+    logger.info(f"Response status: {status_code}, body length: {len(response_body)} chars")
+    
     # Return the response
     return {
         'statusCode': status_code,
         'headers': dict(headers),
-        'body': ''.join(body)
+        'body': response_body
     }
 
 # Vercel serverless function entry point
