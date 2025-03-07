@@ -21,9 +21,9 @@ This guide explains how to set up Google OAuth for both test and production envi
    - `https://golf-stats-chi.vercel.app` (for test environment)
    - `https://golfstats-prod.vercel.app` (for production environment)
 8. Add authorized redirect URIs:
-   - `http://localhost:8000/auth/google/callback` (for local development)
-   - `https://golf-stats-chi.vercel.app/auth/google/callback` (for test environment)
-   - `https://golfstats-prod.vercel.app/auth/google/callback` (for production environment)
+   - `http://localhost:8000/api/auth/google/callback` (for local development)
+   - `https://golf-stats-chi.vercel.app/api/auth/google/callback` (for test environment)
+   - `https://golfstats-prod.vercel.app/api/auth/google/callback` (for production environment)
 9. Click "Create"
 10. Note the Client ID and Client Secret for both environments
 
@@ -39,9 +39,9 @@ This guide explains how to set up Google OAuth for both test and production envi
    - `https://golf-stats-chi.vercel.app`
 5. Add the following Redirect URLs:
    - `http://localhost:8000/auth/callback`
-   - `http://localhost:8000/auth/google/callback`
+   - `http://localhost:8000/api/auth/google/callback`
    - `https://golf-stats-chi.vercel.app/auth/callback`
-   - `https://golf-stats-chi.vercel.app/auth/google/callback`
+   - `https://golf-stats-chi.vercel.app/api/auth/google/callback`
 6. Save the changes
 
 ### For Production Environment
@@ -53,7 +53,7 @@ This guide explains how to set up Google OAuth for both test and production envi
    - `https://golfstats-prod.vercel.app`
 5. Add the following Redirect URLs:
    - `https://golfstats-prod.vercel.app/auth/callback`
-   - `https://golfstats-prod.vercel.app/auth/google/callback`
+   - `https://golfstats-prod.vercel.app/api/auth/google/callback`
 6. Save the changes
 
 ## Step 3: Configure Environment Variables
@@ -65,6 +65,7 @@ Add the following to your `.env.test` file:
 ```
 GOOGLE_CLIENT_ID=your-test-google-client-id
 GOOGLE_CLIENT_SECRET=your-test-google-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
 ```
 
 ### For Vercel Test Environment
@@ -74,6 +75,7 @@ Add the following environment variables in Vercel for preview deployments:
 ```
 GOOGLE_CLIENT_ID=your-test-google-client-id
 GOOGLE_CLIENT_SECRET=your-test-google-client-secret
+GOOGLE_REDIRECT_URI=https://golf-stats-chi.vercel.app/api/auth/google/callback
 ```
 
 ### For Vercel Production Environment
@@ -83,6 +85,7 @@ Add the following environment variables in Vercel for production:
 ```
 GOOGLE_CLIENT_ID=your-production-google-client-id
 GOOGLE_CLIENT_SECRET=your-production-google-client-secret
+GOOGLE_REDIRECT_URI=https://golfstats-prod.vercel.app/api/auth/google/callback
 ```
 
 ## Step 4: Initialize User Profiles
@@ -104,7 +107,7 @@ APP_ENVIRONMENT=production python backend/database/init_user_profiles.py
    python run.py
    ```
 
-2. Navigate to `http://localhost:8000/auth/google/login`
+2. Navigate to `http://localhost:8000/login.html` and click "Continue with Google"
 3. You should be redirected to Google's login page
 4. After successful authentication, you should be redirected back to your application
 

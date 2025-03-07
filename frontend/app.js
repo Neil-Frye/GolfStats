@@ -4,10 +4,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the application
     console.log('GolfStats frontend initialized');
     
+    // Check authentication first
+    checkAuthentication();
+    
     // Initialize navigation and event listeners
     initNavigation();
     initNewRoundModal();
     setupEventListeners();
+    initLogoutHandler();
     
     // Load data for the active view
     const hash = window.location.hash.substring(1);
@@ -44,6 +48,65 @@ document.addEventListener('DOMContentLoaded', function() {
         loadDashboardData();
     }
 });
+
+// Check if user is authenticated
+async function checkAuthentication() {
+    // Don't check on login page to avoid redirect loops
+    if (window.location.pathname.includes('login.html')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/auth/me', {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            // If not authenticated, redirect to login page
+            window.location.href = '/login.html';
+            return;
+        }
+        
+        const data = await response.json();
+        if (!data.user) {
+            window.location.href = '/login.html';
+            return;
+        }
+        
+        // Update user info if available
+        updateUserInfo(data.user);
+    } catch (error) {
+        console.error('Error checking authentication:', error);
+        window.location.href = '/login.html';
+    }
+}
+
+// Initialize logout handler
+function initLogoutHandler() {
+    const logoutButton = document.getElementById('logout-button');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async function(e) {
+            e.preventDefault();
+            
+            try {
+                // Call logout endpoint
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    // Redirect to login page
+                    window.location.href = '/login.html';
+                } else {
+                    console.error('Logout failed');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+            }
+        });
+    }
+}
 
 // Navigation handling
 function initNavigation() {
@@ -1893,7 +1956,8 @@ const ApiService = {
                 // Special handling for different status codes
                 if (response.status === 401) {
                     console.error('Authentication error - user not logged in');
-                    // Redirect to login page in a real app
+                    // Redirect to login page
+                    window.location.href = '/login.html';
                     return { error: 'Authentication required' };
                 }
                 

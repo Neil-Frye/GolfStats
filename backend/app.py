@@ -50,8 +50,36 @@ from backend.auth import require_auth
 
 @app.route('/')
 def index():
-    """Home page route."""
-    return "Welcome to GolfStats! Backend running with Supabase integration."
+    """Home page route - serve index.html or redirect to login."""
+    from flask import send_from_directory, redirect
+    from backend.auth import is_authenticated
+    
+    # If user isn't authenticated, redirect to login page
+    if not is_authenticated():
+        return redirect('/login.html')
+    
+    # Otherwise serve the index.html file
+    return send_from_directory('../frontend', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    """Serve static files from the frontend directory."""
+    from flask import send_from_directory
+    
+    # Special case for login page - always accessible
+    if path == 'login.html':
+        return send_from_directory('../frontend', path)
+    
+    # Special case for login.js and login.css
+    if path in ['login.js', 'login.css']:
+        return send_from_directory('../frontend', path)
+    
+    # For all other static files, check authentication
+    from backend.auth import is_authenticated
+    if not is_authenticated() and path != 'styles.css':
+        return redirect('/login.html')
+    
+    return send_from_directory('../frontend', path)
 
 @app.route('/health')
 def health():
