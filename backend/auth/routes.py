@@ -46,9 +46,11 @@ def signup():
     success, user = sign_up(data['email'], data['password'], user_data)
     
     if success:
+        # Automatically log the user in after successful signup
+        session['user'] = user
         return jsonify({"message": "Signup successful", "user": user}), 201
     else:
-        return jsonify({"error": "Registration failed"}), 400
+        return jsonify({"error": "Registration failed. Email may already be in use."}), 400
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout_route():

@@ -66,12 +66,12 @@ def serve_static(path):
     """Serve static files from the frontend directory."""
     from flask import send_from_directory
     
-    # Special case for login page - always accessible
-    if path == 'login.html':
+    # Special case for login/signup pages - always accessible
+    if path in ['login.html', 'signup.html']:
         return send_from_directory('../frontend', path)
     
-    # Special case for login.js and login.css
-    if path in ['login.js', 'login.css']:
+    # Special case for login/signup related JS and CSS
+    if path in ['login.js', 'login.css', 'signup.js']:
         return send_from_directory('../frontend', path)
     
     # For all other static files, check authentication
