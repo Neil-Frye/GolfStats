@@ -272,15 +272,25 @@ def run_migrations():
     logger.info("Starting database migrations")
     
     try:
-        # Recreate database from models (preferred method for development)
-        if recreate_database():
-            logger.info("Database schema recreated from models")
-        else:
-            # Fall back to adding columns manually if recreation fails
-            logger.warning("Database recreation failed, attempting manual column addition")
-            add_tracker_credentials_columns()
+        # Check if we're in production environment to skip database recreation
+        app_environment = os.environ.get('APP_ENVIRONMENT', 'test')
+        is_production = app_environment == 'production'
         
-        # Apply RLS policies
+        if is_production:
+            logger.info("Production environment detected - skipping database recreation")
+            # Just add columns if needed, don't recreate entire database
+            add_tracker_credentials_columns()
+        else:
+            # Development/test environment - recreate database from models
+            logger.info("Development/test environment - recreating database")
+            if recreate_database():
+                logger.info("Database schema recreated from models")
+            else:
+                # Fall back to adding columns manually if recreation fails
+                logger.warning("Database recreation failed, attempting manual column addition")
+                add_tracker_credentials_columns()
+        
+        # Apply RLS policies (this is safe to do in all environments)
         logger.info("Applying Row Level Security (RLS) policies...")
         if apply_rls_policies():
             logger.info("RLS policies applied successfully")
