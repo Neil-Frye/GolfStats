@@ -19,11 +19,19 @@ logger = logging.getLogger(__name__)
 # Create Flask application
 app = Flask(__name__)
 
+# Detect if we're running in Vercel serverless environment
+is_serverless = os.environ.get('VERCEL') == '1' or 'SERVERLESS_CONTEXT' in os.environ
+
+if is_serverless:
+    logger.info("Detected serverless environment - applying optimizations")
+    # In serverless, disable some features to reduce size and dependencies
+    app.config['SERVERLESS'] = True
+
 # Load configuration
 from config.config import config
 app.config.update(
     SECRET_KEY=config["app"]["secret_key"],
-    DEBUG=config["app"]["debug"]
+    DEBUG=config["app"]["debug"] and not is_serverless
 )
 
 # Initialize authentication modules - this will also set up the before_first_request handler
@@ -88,7 +96,9 @@ def health():
         "status": "healthy",
         "version": "1.0.0",
         "supabase": True,
-        "rls_enabled": True
+        "rls_enabled": True,
+        "environment": "serverless" if app.config.get('SERVERLESS') else "standard",
+        "vercel": os.environ.get('VERCEL') == '1'
     })
 
 @api_bp.route('/user')

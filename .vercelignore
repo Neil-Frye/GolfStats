@@ -1,0 +1,39 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Data and log files
+data/
+logs/
+
+# Development files
+tests/
+.git/
+.github/
+.vscode/
+.idea/
+
+# Screenshots and large binary files
+**/screenshots/
+**/*.png
+**/*.jpg
+**/*.jpeg
+
+# Documentation
+docs/
+
+# Selenium drivers
+**/drivers/
+**/webdriver/
+**/selenium/
+chromedriver*
+
+# Development config
+.env.test
