@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
+      APP_ENVIRONMENT: production
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       TRACKMAN_USERNAME: ${{ secrets.TRACKMAN_USERNAME }}
@@ -35,7 +36,7 @@ jobs:
         pip install -r backend/requirements.txt
         
     - name: Run ETL job
-      run: python backend/etl/daily_etl.py
+      run: python run.py --etl
       
     - name: Upload logs as artifacts
       uses: actions/upload-artifact@v3
