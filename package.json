@@ -1,0 +1,12 @@
+{
+  "name": "golfstats",
+  "version": "1.0.0",
+  "description": "Golf statistics tracking application",
+  "scripts": {
+    "vercel-build": "bash ./vercel-build.sh",
+    "build": "echo 'Build completed'"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
