@@ -295,19 +295,16 @@ def admin_apply_rls():
     """
     Admin endpoint to manually apply RLS policies.
     Only accessible to superusers.
-    """
-    from backend.database.migrations import apply_rls_policies
-    success = apply_rls_policies()
     
-    if success:
-        return jsonify({
-            "success": True, 
-            "message": "RLS policies applied successfully"
-        })
-    else:
-        return jsonify({
-            "error": "Failed to apply RLS policies"
-        }), 500
+    Note: This endpoint is currently disabled due to issues with
+    Supabase RPC execution. RLS policies should be applied manually
+    via the Supabase SQL editor instead.
+    """
+    # Return a message instructing to use Supabase SQL editor
+    return jsonify({
+        "success": False,
+        "message": "Automatic RLS policy application is disabled. Please apply RLS policies manually using the Supabase SQL Editor with the contents of database/migrations/rls_policies.sql"
+    }), 501  # 501 Not Implemented
 
 # Register the API blueprint
 app.register_blueprint(api_bp)

@@ -182,14 +182,24 @@ def setup_rpc_for_sql_execution() -> bool:
     Set up an RPC function in Supabase to execute SQL statements.
     This allows executing SQL from the client securely.
     
+    NOTE: This function is disabled in the current version due to
+    compatibility issues with Supabase's free/anonymous tier.
+    RLS policies should be applied manually via the Supabase SQL editor.
+    
     Returns:
-        True if successful, False otherwise
+        False to indicate the feature is disabled
+    """
+    logger.warning("RPC SQL execution setup is disabled - RLS policies must be applied manually")
+    return False
+    
+    # The code below is commented out as it causes errors with Supabase
+    # trying to access a non-existent '_rpc' table.
     """
     try:
         supabase = get_supabase()
         
         # SQL to create the RPC function for executing SQL
-        rpc_function_sql = """
+        rpc_function_sql = ""
         CREATE OR REPLACE FUNCTION exec_sql(sql text)
         RETURNS void
         LANGUAGE plpgsql
@@ -199,7 +209,7 @@ def setup_rpc_for_sql_execution() -> bool:
           EXECUTE sql;
         END;
         $$;
-        """
+        ""
         
         # Execute the RPC function creation directly using supabase-py's raw SQL execution
         # This requires appropriate permissions
@@ -225,14 +235,31 @@ def setup_rpc_for_sql_execution() -> bool:
     except Exception as e:
         logger.error(f"Error setting up RPC for SQL execution: {str(e)}")
         return False
+    """
 
 def apply_rls_policies() -> bool:
     """
     Apply RLS policies for data security.
     These policies ensure users can only access their own data.
     
+    NOTE: This function is disabled in the current version due to
+    compatibility issues with Supabase's free/anonymous tier.
+    RLS policies should be applied manually via the Supabase SQL editor.
+    
     Returns:
-        True if successful, False otherwise
+        False to indicate the feature is disabled
+    """
+    logger.warning("Automatic RLS policy application is disabled")
+    logger.info("To apply RLS policies, please use the Supabase SQL Editor with the contents of database/migrations/rls_policies.sql")
+    
+    # Path to RLS policies SQL file for reference
+    sql_file_path = os.path.join(project_root, 'database', 'migrations', 'rls_policies.sql')
+    logger.info(f"RLS policies SQL file path: {sql_file_path}")
+    
+    return False
+    
+    # The function code below is commented out as it depends on RPC execution
+    # which is not available in the current Supabase setup
     """
     try:
         # First check if we can execute SQL via RPC
@@ -278,6 +305,7 @@ def apply_rls_policies() -> bool:
     except Exception as e:
         logger.error(f"Error applying RLS policies: {str(e)}")
         return False
+    """
 
 def run_migrations():
     """
@@ -304,12 +332,14 @@ def run_migrations():
                 logger.warning("Database recreation failed, attempting manual column addition")
                 add_tracker_credentials_columns()
         
-        # Apply RLS policies (this is safe to do in all environments)
-        logger.info("Applying Row Level Security (RLS) policies...")
-        if apply_rls_policies():
-            logger.info("RLS policies applied successfully")
-        else:
-            logger.warning("Failed to apply some or all RLS policies")
+        # Temporarily disable automatic RLS policy application
+        # RLS policies should be applied manually via Supabase SQL editor
+        logger.info("Skipping automatic RLS policy application in migrations")
+        # Commented out due to _rpc table error in Supabase
+        # if apply_rls_policies():
+        #     logger.info("RLS policies applied successfully")
+        # else:
+        #     logger.warning("Failed to apply some or all RLS policies")
         
         logger.info("Database migrations completed successfully")
     except Exception as e:
