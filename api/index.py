@@ -4,7 +4,6 @@ This module provides serverless function integration for Vercel.
 """
 import os
 import sys
-from http.server import BaseHTTPRequestHandler
 import logging
 import importlib.util
 from typing import Dict, Any
@@ -19,6 +18,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Log Python version
+logger.info(f"Python version: {sys.version}")
 
 # Use mock scrapers instead of selenium-based scrapers in the serverless environment
 # This reduces the deployment size significantly
@@ -54,128 +56,92 @@ except Exception as e:
 logger.info("Vercel serverless function initialized")
 
 # Create handler for Vercel serverless function
-def handler(request, response):
+def handler(event, context):
     """
-    Process the Vercel serverless function request with Flask.
+    Process the serverless function request with Flask.
     This adapts the Flask app to work within a serverless context.
+    
+    This is the main entry point used by Vercel's Python runtime.
     """
-    # Get request path and method
-    path = request['path']
-    method = request['method']
+    logger.info(f"Processing request: {event}")
     
-    logger.info(f"Processing {method} request for path: {path}")
+    # Extract request details
+    path = event.get('path', '/')
+    http_method = event.get('httpMethod', 'GET')
+    headers = event.get('headers', {})
+    query_params = event.get('queryStringParameters', {}) or {}
+    body = event.get('body', '')
     
-    # Create a WSGI environment
+    logger.info(f"Processing {http_method} request for path: {path}")
+    
+    # Create WSGI environment
     environ = {
-        'wsgi.input': request.get('body', ''),
+        'wsgi.input': body,
         'wsgi.errors': sys.stderr,
         'wsgi.version': (1, 0),
         'wsgi.multithread': False,
         'wsgi.multiprocess': False,
         'wsgi.run_once': False,
-        'REQUEST_METHOD': method,
+        'REQUEST_METHOD': http_method,
         'PATH_INFO': path,
-        'QUERY_STRING': request.get('query', ''),
-        'CONTENT_TYPE': request.get('headers', {}).get('content-type', ''),
-        'CONTENT_LENGTH': request.get('headers', {}).get('content-length', ''),
+        'QUERY_STRING': '&'.join([f"{k}={v}" for k, v in query_params.items()]),
         'SERVER_NAME': 'vercel-serverless',
         'SERVER_PORT': '443',
-        'HTTP_HOST': request.get('headers', {}).get('host', ''),
         'SERVERLESS_CONTEXT': 'true',  # Indicate we're in a serverless environment
     }
     
-    # Add all headers to the environment
-    for header, value in request.get('headers', {}).items():
+    # Add content type and length if present
+    if 'content-type' in headers:
+        environ['CONTENT_TYPE'] = headers['content-type']
+    if 'content-length' in headers:
+        environ['CONTENT_LENGTH'] = headers['content-length']
+    
+    # Add headers to environment
+    for header, value in headers.items():
         key = 'HTTP_' + header.upper().replace('-', '_')
         environ[key] = value
     
-    # Build the response
+    # Response builder
     status_code = 200
-    headers = []
-    body = []
+    response_headers = []
+    response_body = []
     
-    def start_response(status, response_headers):
-        nonlocal status_code, headers
+    def start_response(status, headers):
+        nonlocal status_code, response_headers
         status_code = int(status.split(' ')[0])
-        headers = response_headers
+        response_headers = headers
     
-    # Process the request through Flask
-    resp = flask_app(environ, start_response)
-    
-    # Combine response body
-    for data in resp:
-        if isinstance(data, bytes):
-            body.append(data.decode('utf-8'))
-        else:
-            body.append(data)
-    
-    response_body = ''.join(body)
-    logger.info(f"Response status: {status_code}, body length: {len(response_body)} chars")
-    
-    # Return the response
-    return {
-        'statusCode': status_code,
-        'headers': dict(headers),
-        'body': response_body
-    }
-
-# Vercel serverless function entry point
-class VercelHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.handle_request('GET')
-    
-    def do_POST(self):
-        self.handle_request('POST')
-    
-    def do_PUT(self):
-        self.handle_request('PUT')
-    
-    def do_DELETE(self):
-        self.handle_request('DELETE')
-    
-    def handle_request(self, method):
-        # Build request object
-        content_length = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(content_length) if content_length > 0 else b''
+    # Call the Flask application
+    try:
+        output = flask_app(environ, start_response)
         
-        request = {
-            'method': method,
-            'path': self.path,
-            'query': self.path.split('?')[1] if '?' in self.path else '',
-            'headers': dict(self.headers),
-            'body': body
+        # Gather response body
+        for data in output:
+            if isinstance(data, bytes):
+                response_body.append(data.decode('utf-8'))
+            else:
+                response_body.append(data)
+        
+        # Close the application response if it's a file-like object
+        if hasattr(output, 'close'):
+            output.close()
+            
+        body_content = ''.join(response_body)
+        logger.info(f"Response status: {status_code}, headers: {response_headers}")
+        
+        # Build response dictionary
+        response = {
+            'statusCode': status_code,
+            'headers': dict(response_headers),
+            'body': body_content
         }
         
-        # Process request
-        try:
-            response = handler(request, None)
-            
-            # Send response
-            self.send_response(response['statusCode'])
-            
-            # Send headers
-            for name, value in response['headers'].items():
-                self.send_header(name, value)
-            self.end_headers()
-            
-            # Send body
-            self.wfile.write(response['body'].encode('utf-8'))
-        
-        except Exception as e:
-            logger.error(f"Error processing request: {e}")
-            self.send_response(500)
-            self.end_headers()
-            self.wfile.write(b'Internal Server Error')
-
-# Flask application is imported and configured above
-# The app object is already initialized with all routes and blueprints
-# Vercel will automatically use this handler function
-def lambda_handler(event, context):
-    """AWS Lambda compatible handler for Vercel."""
-    return handler({
-        'method': event.get('httpMethod', 'GET'),
-        'path': event.get('path', '/'),
-        'query': event.get('queryStringParameters', {}),
-        'headers': event.get('headers', {}),
-        'body': event.get('body', '')
-    }, None)
+        return response
+    
+    except Exception as e:
+        logger.error(f"Error processing request: {str(e)}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'text/plain'},
+            'body': 'Internal Server Error'
+        }
