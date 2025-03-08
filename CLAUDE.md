@@ -73,3 +73,28 @@
 - Vercel’s Production environment uses APP_ENVIRONMENT=production plus production Supabase credentials.
 - Preview deployments or other branches can use APP_ENVIRONMENT=test with test credentials.
 - No separate repo needed: branching and environment variables keep test vs. production separate.
+
+## Environment Awareness
+- **Respect dev/test/prod**: Always ensure changes consider the unique requirements of each environment. Do not introduce code or data that pollutes production or disrupts test/development workflows.
+
+## Scope & Minimalism
+- **Focus on requested changes**: Only modify or add code for issues/features you understand well. Avoid "drive-by" changes that are unrelated to the task at hand.
+- **Avoid introducing new patterns/technologies** unless you've first attempted to refine or extend existing approaches. If a new approach is adopted, remove any legacy logic so the code doesn't contain duplicates.
+
+## Keeping Code Manageable
+- **Limit file size**: If a file approaches 300 lines, consider refactoring or splitting into smaller modules.
+- **Single-use scripts**: If a script is truly one-off, keep it separate or ephemeral—don't embed large, rarely-used chunks of logic in core code.
+- **Mock/stub data**: Only mock data when running automated tests. Don't introduce fakes into dev or production environments.
+
+## Maintaining Clean Configuration
+- **Never overwrite `.env`**: Don't automatically overwrite an existing `.env` file without explicit confirmation.
+- **Protect existing config**: When adding or updating environment variables, confirm with the team (or the repository owner) to avoid inadvertently breaking dev or production environments.
+- **Security**: Never upload `.env` files to GitHub to ensure security.
+
+## Optimize Vercel deployment to stay under 250MB limit
+- Add `.vercelignore` to exclude unnecessary files
+- Create lightweight mock scraper implementations for serverless
+- Reduce dependencies in api/requirements.txt
+- Update vercel.json with optimized build configuration
+- Add serverless mode detection in Flask app
+- Document deployment process and optimizations
