@@ -1,14 +1,5 @@
-# Core dependencies only (minimal runtime requirements)
+# Minimal dependencies for test deployment
 Flask==2.3.2
 requests==2.31.0
-sqlalchemy==2.0.20
-google-auth==2.23.0
-google-auth-oauthlib==1.0.0
-python-dotenv==1.0.0
-email-validator==2.0.0
 Werkzeug==2.3.7
-psycopg2-binary==2.9.9
-sqlalchemy-utils==0.41.1
-supabase==1.0.3
-cryptography==41.0.3
-APScheduler==3.10.1
+python-dotenv==1.0.0
