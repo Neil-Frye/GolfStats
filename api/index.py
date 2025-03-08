@@ -1,16 +1,12 @@
 """
-GolfStats API Entry Point for Vercel
-This module provides serverless function integration for Vercel.
+GolfStats API Entry Point for Vercel - Test Deployment
+This module provides a simple test endpoint to verify Python runtime.
 """
 import os
 import sys
+import json
 import logging
-import importlib.util
-from typing import Dict, Any
-
-# Add the project root directory to Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, project_root)
+from flask import Flask, jsonify
 
 # Configure logging for serverless environment
 logging.basicConfig(
@@ -22,126 +18,114 @@ logger = logging.getLogger(__name__)
 # Log Python version
 logger.info(f"Python version: {sys.version}")
 
-# Use mock scrapers instead of selenium-based scrapers in the serverless environment
-# This reduces the deployment size significantly
-logger.info("Setting up mock scrapers for serverless environment")
-sys.modules['backend.scrapers.arccos_scraper'] = importlib.import_module('api.mock_scrapers')
-sys.modules['backend.scrapers.trackman_scraper'] = importlib.import_module('api.mock_scrapers')
-sys.modules['backend.scrapers.skytrak_scraper'] = importlib.import_module('api.mock_scrapers')
+# Create a simple Flask application for testing
+test_app = Flask(__name__)
 
-# Log environment variables
-logger.info("==== ENVIRONMENT VARIABLES ====")
-logger.info(f"APP_ENVIRONMENT: {os.environ.get('APP_ENVIRONMENT')}")
-logger.info(f"SUPABASE_URL set: {bool(os.environ.get('SUPABASE_URL'))}")
-logger.info(f"SUPABASE_KEY set: {bool(os.environ.get('SUPABASE_KEY'))}")
-logger.info(f"SUPABASE_API_KEY set: {bool(os.environ.get('SUPABASE_API_KEY'))}")
-logger.info(f"GOOGLE_CLIENT_ID set: {bool(os.environ.get('GOOGLE_CLIENT_ID'))}")
-logger.info(f"GOOGLE_CLIENT_SECRET set: {bool(os.environ.get('GOOGLE_CLIENT_SECRET'))}")
-logger.info("==============================")
+@test_app.route('/', methods=['GET'])
+def hello():
+    return jsonify({
+        "message": "Hello from GolfStats test deployment!",
+        "python_version": sys.version,
+        "environment": os.environ.get('APP_ENVIRONMENT', 'unknown')
+    })
 
-logger.info("Importing database modules...")
-# First import database modules
-from backend.database.db_connection import get_db
-from backend.database.supabase_client import get_supabase
+@test_app.route('/env', methods=['GET'])
+def environment():
+    """Return environment information for debugging."""
+    env_info = {
+        "python_version": sys.version,
+        "app_environment": os.environ.get('APP_ENVIRONMENT'),
+        "vercel": os.environ.get('VERCEL') == '1',
+        "supabase_url_set": bool(os.environ.get('SUPABASE_URL')),
+        "supabase_key_set": bool(os.environ.get('SUPABASE_KEY') or os.environ.get('SUPABASE_API_KEY'))
+    }
+    return jsonify(env_info)
 
-logger.info("Importing Flask application...")
-# Import Flask application
-try:
-    from backend.app import app as flask_app
-    logger.info("Flask application imported successfully")
-except Exception as e:
-    logger.error(f"Error importing Flask application: {str(e)}")
-    raise
-
-logger.info("Vercel serverless function initialized")
-
-# Create handler for Vercel serverless function
+# Handler for Vercel serverless function
 def handler(event, context):
     """
-    Process the serverless function request with Flask.
-    This adapts the Flask app to work within a serverless context.
-    
-    This is the main entry point used by Vercel's Python runtime.
+    Simple handler function for Vercel.
+    This returns a minimal HTTP response for testing.
     """
-    logger.info(f"Processing request: {event}")
+    logger.info(f"Test handler received event: {event}")
     
-    # Extract request details
-    path = event.get('path', '/')
-    http_method = event.get('httpMethod', 'GET')
-    headers = event.get('headers', {})
-    query_params = event.get('queryStringParameters', {}) or {}
-    body = event.get('body', '')
-    
-    logger.info(f"Processing {http_method} request for path: {path}")
-    
-    # Create WSGI environment
-    environ = {
-        'wsgi.input': body,
-        'wsgi.errors': sys.stderr,
-        'wsgi.version': (1, 0),
-        'wsgi.multithread': False,
-        'wsgi.multiprocess': False,
-        'wsgi.run_once': False,
-        'REQUEST_METHOD': http_method,
-        'PATH_INFO': path,
-        'QUERY_STRING': '&'.join([f"{k}={v}" for k, v in query_params.items()]),
-        'SERVER_NAME': 'vercel-serverless',
-        'SERVER_PORT': '443',
-        'SERVERLESS_CONTEXT': 'true',  # Indicate we're in a serverless environment
-    }
-    
-    # Add content type and length if present
-    if 'content-type' in headers:
-        environ['CONTENT_TYPE'] = headers['content-type']
-    if 'content-length' in headers:
-        environ['CONTENT_LENGTH'] = headers['content-length']
-    
-    # Add headers to environment
-    for header, value in headers.items():
-        key = 'HTTP_' + header.upper().replace('-', '_')
-        environ[key] = value
-    
-    # Response builder
-    status_code = 200
-    response_headers = []
-    response_body = []
-    
-    def start_response(status, headers):
-        nonlocal status_code, response_headers
-        status_code = int(status.split(' ')[0])
-        response_headers = headers
-    
-    # Call the Flask application
     try:
-        output = flask_app(environ, start_response)
+        # Extract request path
+        path = event.get('path', '/')
+        http_method = event.get('httpMethod', 'GET')
         
-        # Gather response body
-        for data in output:
+        logger.info(f"Processing {http_method} request for path: {path}")
+        
+        # Create a minimal WSGI environment
+        environ = {
+            'REQUEST_METHOD': http_method,
+            'PATH_INFO': path,
+            'QUERY_STRING': '',
+            'SERVER_NAME': 'vercel',
+            'SERVER_PORT': '443',
+            'wsgi.version': (1, 0),
+            'wsgi.input': '',
+            'wsgi.errors': sys.stderr,
+            'wsgi.multithread': False,
+            'wsgi.multiprocess': False,
+            'wsgi.run_once': False,
+        }
+        
+        # Process query string parameters
+        query_params = event.get('queryStringParameters') or {}
+        if query_params:
+            environ['QUERY_STRING'] = '&'.join([f"{k}={v}" for k, v in query_params.items()])
+            
+        # Add headers to environment
+        headers = event.get('headers') or {}
+        for key, value in headers.items():
+            header_key = f"HTTP_{key.replace('-', '_').upper()}"
+            environ[header_key] = value
+            
+        # Prepare response handling
+        response_body = []
+        status_info = [200, 'OK']
+        response_headers = []
+        
+        def start_response(status, headers):
+            status_code = int(status.split(' ')[0])
+            status_info[0] = status_code
+            status_info[1] = status.split(' ', 1)[1] if ' ' in status else ''
+            response_headers.extend(headers)
+            
+        # Call Flask app
+        result = test_app(environ, start_response)
+        
+        # Process response body
+        for data in result:
             if isinstance(data, bytes):
                 response_body.append(data.decode('utf-8'))
             else:
                 response_body.append(data)
-        
-        # Close the application response if it's a file-like object
-        if hasattr(output, 'close'):
-            output.close()
+                
+        if hasattr(result, 'close'):
+            result.close()
             
-        body_content = ''.join(response_body)
-        logger.info(f"Response status: {status_code}, headers: {response_headers}")
+        body = ''.join(response_body)
         
-        # Build response dictionary
+        # Build Vercel response
         response = {
-            'statusCode': status_code,
-            'headers': dict(response_headers),
-            'body': body_content
+            'statusCode': status_info[0],
+            'headers': {k: v for k, v in response_headers},
+            'body': body
         }
         
+        logger.info(f"Returning response with status {status_info[0]}")
         return response
-    
+        
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}", exc_info=True)
+        logger.error(f"Error in test handler: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'text/plain'},
-            'body': 'Internal Server Error'
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({
+                'error': 'Internal Server Error',
+                'message': str(e),
+                'python_version': sys.version
+            })
         }
