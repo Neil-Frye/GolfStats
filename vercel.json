@@ -1,40 +1,12 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.py": {
-      "runtime": "python3.9",
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python@2.0.1",
+      "use": "@vercel/python@1.4.0",
       "config": {
         "runtime": "python3.9",
-        "maxLambdaSize": "50mb",
-        "includeFiles": [
-          "api/**",
-          "backend/**/*.py",
-          "backend/auth/**",
-          "backend/database/**",
-          "backend/models/**",
-          "config/**"
-        ],
-        "excludeFiles": [
-          "**/__pycache__/**",
-          "**/*.pyc",
-          "**/*.pyo",
-          "**/*.pyd",
-          "**/.pytest_cache/**",
-          "**/tests/**",
-          "**/selenium/**",
-          "**/webdriver/**",
-          "**/data/**",
-          "**/logs/**",
-          "**/docs/**"
-        ]
+        "maxLambdaSize": "50mb"
       }
     },
     {
@@ -51,9 +23,5 @@
       "src": "/(.*)",
       "dest": "frontend/$1"
     }
-  ],
-  "env": {
-    "PYTHONPATH": ".",
-    "APP_ENVIRONMENT": "production"
-  }
+  ]
 }
