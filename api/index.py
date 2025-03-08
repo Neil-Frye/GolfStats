@@ -22,8 +22,10 @@ def handler(event, context):
     """
     Ultra-minimal handler designed to work with any Python version on Vercel.
     This avoids all the complexity and just returns a simple JSON response.
+    Specifically avoiding BaseHTTPRequestHandler and other classes that cause issubclass errors.
     """
     logger.info(f"Event received: {event}")
+    logger.info(f"Running on Python version: {sys.version}")
     
     # Create a very simple response
     response_data = {
