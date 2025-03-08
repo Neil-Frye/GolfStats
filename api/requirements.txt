@@ -1,5 +1,2 @@
-# Minimal dependencies for test deployment
-Flask==2.3.2
-requests==2.31.0
-Werkzeug==2.3.7
-python-dotenv==1.0.0
+# Ultra-minimal dependencies for Python 3.9 compatibility test
+# No external dependencies required for this test

@@ -1,9 +1,16 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.9",
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python",
+      "use": "@vercel/python@3.0.11",
       "config": {
         "runtime": "python3.9",
         "maxLambdaSize": "50mb",
