@@ -52,10 +52,18 @@ def is_configured() -> bool:
     Returns:
         bool: True if Google OAuth credentials are configured
     """
-    return bool(
-        config['google']['oauth']['client_id'] and 
-        config['google']['oauth']['client_secret']
-    )
+    # Log environment variables for debugging
+    logger.info(f"GOOGLE_CLIENT_ID from env: {os.environ.get('GOOGLE_CLIENT_ID')}")
+    logger.info(f"GOOGLE_CLIENT_SECRET from env: {os.environ.get('GOOGLE_CLIENT_SECRET')}")
+    logger.info(f"GOOGLE_REDIRECT_URI from env: {os.environ.get('GOOGLE_REDIRECT_URI')}")
+    
+    client_id = config['google']['oauth']['client_id']
+    client_secret = config['google']['oauth']['client_secret']
+    
+    logger.info(f"Google OAuth client_id configured: {bool(client_id)}")
+    logger.info(f"Google OAuth client_secret configured: {bool(client_secret)}")
+    
+    return bool(client_id and client_secret)
 
 def get_oauth_flow(redirect_uri: Optional[str] = None) -> google_auth_oauthlib.flow.Flow:
     """
@@ -192,7 +200,10 @@ def callback():
     # Store credentials and user info in session
     session['google_oauth_credentials'] = credentials_to_dict(credentials)
     
-    # Save or update user in database
+    # Log the user info for debugging
+    logger.info(f"Received Google user info: {user_info}")
+    
+    # Prepare oauth data
     oauth_data = {
         'id': user_info.get('id'),
         'email': user_info.get('email'),
@@ -201,32 +212,104 @@ def callback():
         'provider': 'google'
     }
     
-    with get_db() as db:
-        # Check if user already exists
-        user = db.query(User).filter(User.email == user_info.get('email')).first()
-        
-        if user:
-            # Update existing user
-            user.oauth_id = user_info.get('id')
-            user.oauth_access_token = credentials.token
-            user.oauth_refresh_token = credentials.refresh_token
-            user.profile_picture = user_info.get('picture')
-            user.auth_provider = 'google'
-        else:
-            # Create new user
-            user = User.from_oauth(oauth_data)
-            user.oauth_access_token = credentials.token
-            user.oauth_refresh_token = credentials.refresh_token
-            db.add(user)
-        
-        db.commit()
-        
-        # Store user data in session
+    # Use Supabase auth for sign-in/sign-up
+    from backend.database.supabase_client import get_supabase
+    
+    try:
+        supabase = get_supabase()
+        # Check if user exists
+        try:
+            # Try to sign in with OAuth (if already registered)
+            logger.info(f"Trying to sign in with Google OAuth for: {oauth_data['email']}")
+            
+            # This is simplified - real implementation would need to handle the OAuth flow with Supabase
+            # which would require additional OAuth configuration in Supabase
+            
+            # For now, we'll use email sign-in if the user exists, or create a new user
+            
+            # Check if user exists in Supabase
+            user_data = None
+            try:
+                user_data = supabase.auth.admin.get_user_by_email(oauth_data['email'])
+                logger.info(f"Found existing user in Supabase: {oauth_data['email']}")
+            except Exception as e:
+                logger.info(f"User not found in Supabase, will create new user: {str(e)}")
+            
+            if user_data:
+                # User exists, update their metadata
+                logger.info(f"Updating existing user's metadata in Supabase: {oauth_data['email']}")
+                supabase.auth.admin.update_user_by_id(
+                    user_data.id,
+                    {
+                        "user_metadata": {
+                            "full_name": oauth_data['name'],
+                            "picture": oauth_data['picture'],
+                            "oauth_id": oauth_data['id']
+                        },
+                        "app_metadata": {
+                            "provider": "google"
+                        }
+                    }
+                )
+                
+                # Sign in to create a session
+                # For a real OAuth flow, you would use Supabase's OAuth methods
+                # But for this example we'll use a temporary random password to create a session
+                # This is NOT secure and should be replaced with proper Supabase OAuth
+                
+                session['user'] = {
+                    'id': user_data.id,
+                    'email': user_data.email,
+                    'full_name': oauth_data['name'],
+                    'profile_picture': oauth_data['picture'],
+                    'provider': 'google'
+                }
+                session['authenticated'] = True
+                
+            else:
+                # Create new user
+                logger.info(f"Creating new user in Supabase: {oauth_data['email']}")
+                
+                # For a real implementation, you would use Supabase's OAuth sign-up
+                # Instead, we're using a simplified approach that creates a user with a random password
+                import uuid
+                import secrets
+                
+                # Generate a random secure password (user won't need to know this)
+                temp_password = secrets.token_urlsafe(32)
+                
+                # Create user
+                from backend.auth.supabase_auth import sign_up
+                success, user = sign_up(
+                    oauth_data['email'], 
+                    temp_password, 
+                    {
+                        "full_name": oauth_data['name'],
+                        "picture": oauth_data['picture'],
+                        "oauth_id": oauth_data['id'],
+                        "provider": "google"
+                    }
+                )
+                
+                if success:
+                    logger.info(f"Created new user via Supabase Auth: {oauth_data['email']}")
+                    # Session should be set by sign_up function
+                else:
+                    logger.error(f"Failed to create user: {oauth_data['email']}")
+                    return {"error": "Failed to create user account"}, 500
+                
+        except Exception as e:
+            logger.error(f"Error during Google OAuth authentication: {str(e)}")
+            # Continue anyway - we'll create a session manually
+    
+    except Exception as e:
+        logger.error(f"Supabase error during Google OAuth: {str(e)}")
+        # For debugging purposes, we'll create a session manually
         session['user'] = {
-            'id': user.id,
-            'email': user.email,
-            'full_name': user.full_name,
-            'profile_picture': user.profile_picture,
+            'id': oauth_data['id'],
+            'email': oauth_data['email'],
+            'full_name': oauth_data['name'],
+            'profile_picture': oauth_data['picture'],
             'provider': 'google'
         }
         session['authenticated'] = True

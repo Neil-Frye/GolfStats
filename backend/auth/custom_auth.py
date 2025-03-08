@@ -86,7 +86,7 @@ def validate_password(password: str) -> Tuple[bool, Optional[str]]:
 @custom_auth.route('/register', methods=['POST'])
 def register():
     """
-    Register a new user with email and password.
+    Register a new user with email and password (using Supabase Auth).
     
     Expected JSON payload:
     {
@@ -126,55 +126,37 @@ def register():
     if not is_valid:
         return jsonify({"error": password_error}), 400
     
+    # Import needed modules here to avoid circular imports
+    from backend.auth.supabase_auth import sign_up
+    
     try:
-        with get_db() as db:
-            # Check if email already exists
-            if db.query(User).filter(User.email == email).first():
-                return jsonify({"error": "Email already registered"}), 400
-            
-            # Check if username already exists
-            if db.query(User).filter(User.username == username).first():
-                return jsonify({"error": "Username already taken"}), 400
-            
-            # Create new user
-            new_user = User(
-                email=email,
-                username=username,
-                hashed_password=generate_password_hash(password),
-                full_name=full_name,
-                auth_provider='custom',
-                created_at=datetime.datetime.utcnow(),
-                is_active=True
-            )
-            
-            db.add(new_user)
-            db.commit()
-            db.refresh(new_user)
+        # Sign up using Supabase Auth
+        user_data = {
+            "username": username,
+            "full_name": full_name
+        }
+        
+        success, user = sign_up(email, password, user_data)
+        
+        if success:
+            # Log successful signup
+            logger.info(f"New user registered via Supabase Auth: {email}")
             
             # Set user session
-            session['user'] = {
-                'id': new_user.id,
-                'email': new_user.email,
-                'username': new_user.username,
-                'full_name': new_user.full_name,
-                'provider': 'custom'
-            }
+            session['user'] = user
             session['authenticated'] = True
-            
-            logger.info(f"New user registered: {email}")
             
             return jsonify({
                 "message": "Registration successful",
                 "user": {
-                    "id": new_user.id,
-                    "email": new_user.email,
-                    "username": new_user.username
+                    "id": user.get("id"),
+                    "email": user.get("email"),
+                    "username": username
                 }
             }), 201
+        else:
+            return jsonify({"error": "Registration failed. Email may already be in use."}), 400
             
-    except SQLAlchemyError as e:
-        logger.error(f"Database error during registration: {str(e)}")
-        return jsonify({"error": "Registration failed due to a database error"}), 500
     except Exception as e:
         logger.error(f"Unexpected error during registration: {str(e)}")
         return jsonify({"error": "Registration failed"}), 500
@@ -205,55 +187,55 @@ def login():
     if not login or not password:
         return jsonify({"error": "Login and password are required"}), 400
     
+    # Import needed modules here to avoid circular imports
+    from backend.auth.supabase_auth import login_with_email
+    
     try:
-        with get_db() as db:
-            # Try to find user by email or username
-            user = db.query(User).filter(
-                (User.email == login) | (User.username == login)
-            ).first()
+        # First assume login is an email
+        email = login
+        
+        # If it looks like a username, try to find the email via Supabase
+        if '@' not in login:
+            logger.info(f"Login attempted with username: {login} - Converting to email format")
+            # Note: We'd need to implement a function to look up email by username
+            # This is a placeholder - you'd need to implement a way to find the email
+            # For now, we'll just return an error
+            return jsonify({"error": "Please log in with your email address"}), 400
+        
+        # Try to login with Supabase Auth
+        success, user = login_with_email(email, password)
+        
+        if success:
+            logger.info(f"User logged in via Supabase Auth: {email}")
             
-            if not user:
-                return jsonify({"error": "Invalid login credentials"}), 401
-            
-            # Check if this is a Google OAuth user without a password
-            if user.auth_provider == 'google' and not user.hashed_password:
-                return jsonify({
-                    "error": "This account uses Google Sign-In", 
-                    "provider": "google"
-                }), 401
-            
-            # Verify password
-            if not user.hashed_password or not check_password_hash(user.hashed_password, password):
-                return jsonify({"error": "Invalid login credentials"}), 401
-            
-            # Check if account is active
-            if not user.is_active:
-                return jsonify({"error": "Account is deactivated"}), 401
-            
-            # Set user session
-            session['user'] = {
-                'id': user.id,
-                'email': user.email,
-                'username': user.username,
-                'full_name': user.full_name,
-                'provider': 'custom'
-            }
-            session['authenticated'] = True
-            
-            logger.info(f"User logged in: {user.email}")
+            # User session is already set by login_with_email function
             
             return jsonify({
                 "message": "Login successful",
                 "user": {
-                    "id": user.id,
-                    "email": user.email,
-                    "username": user.username
+                    "id": user.get("id"),
+                    "email": user.get("email"),
+                    "username": user.get("username", "")
                 }
             }), 200
+        else:
+            # Check if this might be a Google OAuth user
+            from backend.database.supabase_client import get_supabase
+            try:
+                # This is just a simple check - might need adjustment based on your Supabase setup
+                supabase = get_supabase()
+                user_data = supabase.auth.admin.get_user_by_email(email)
+                if user_data and user_data.app_metadata.get('provider') == 'google':
+                    return jsonify({
+                        "error": "This account uses Google Sign-In", 
+                        "provider": "google"
+                    }), 401
+            except Exception:
+                # If we can't determine provider, just show invalid credentials
+                pass
+                
+            return jsonify({"error": "Invalid login credentials"}), 401
             
-    except SQLAlchemyError as e:
-        logger.error(f"Database error during login: {str(e)}")
-        return jsonify({"error": "Login failed due to a database error"}), 500
     except Exception as e:
         logger.error(f"Unexpected error during login: {str(e)}")
         return jsonify({"error": "Login failed"}), 500

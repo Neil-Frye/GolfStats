@@ -27,8 +27,29 @@ sys.modules['backend.scrapers.arccos_scraper'] = importlib.import_module('api.mo
 sys.modules['backend.scrapers.trackman_scraper'] = importlib.import_module('api.mock_scrapers')
 sys.modules['backend.scrapers.skytrak_scraper'] = importlib.import_module('api.mock_scrapers')
 
+# Log environment variables
+logger.info("==== ENVIRONMENT VARIABLES ====")
+logger.info(f"APP_ENVIRONMENT: {os.environ.get('APP_ENVIRONMENT')}")
+logger.info(f"SUPABASE_URL set: {bool(os.environ.get('SUPABASE_URL'))}")
+logger.info(f"SUPABASE_KEY set: {bool(os.environ.get('SUPABASE_KEY'))}")
+logger.info(f"SUPABASE_API_KEY set: {bool(os.environ.get('SUPABASE_API_KEY'))}")
+logger.info(f"GOOGLE_CLIENT_ID set: {bool(os.environ.get('GOOGLE_CLIENT_ID'))}")
+logger.info(f"GOOGLE_CLIENT_SECRET set: {bool(os.environ.get('GOOGLE_CLIENT_SECRET'))}")
+logger.info("==============================")
+
+logger.info("Importing database modules...")
+# First import database modules
+from backend.database.db_connection import get_db
+from backend.database.supabase_client import get_supabase
+
+logger.info("Importing Flask application...")
 # Import Flask application
-from backend.app import app as flask_app
+try:
+    from backend.app import app as flask_app
+    logger.info("Flask application imported successfully")
+except Exception as e:
+    logger.error(f"Error importing Flask application: {str(e)}")
+    raise
 
 logger.info("Vercel serverless function initialized")
 

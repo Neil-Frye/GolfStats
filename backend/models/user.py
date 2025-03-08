@@ -59,32 +59,60 @@ class UserPreference(Base):
             "has_skytrak": bool(self.skytrak_username and self.skytrak_password)
         }
 
-class User(Base):
-    """User model for authentication and profile information."""
+# NOTE: This User model has been commented out to use Supabase Auth directly
+# We're keeping it as a reference for functions that still rely on it
+# but no longer using it to manage users in a local database table.
+
+# class User(Base):
+#     """User model for authentication and profile information."""
+#     
+#     __tablename__ = "users"
+#     
+#     id = Column(Integer, primary_key=True, index=True)
+#     email = Column(String(255), unique=True, index=True, nullable=False)
+#     username = Column(String(50), unique=True, index=True, nullable=True)
+#     hashed_password = Column(String(255), nullable=True)
+#     full_name = Column(String(100), nullable=True)
+#     is_active = Column(Boolean, default=True)
+#     is_superuser = Column(Boolean, default=False)
+#     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+#     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+#     
+#     # OAuth related fields
+#     auth_provider = Column(String(20), nullable=True)  # 'google', 'custom', etc.
+#     oauth_id = Column(String(255), nullable=True)
+#     oauth_access_token = Column(Text, nullable=True)
+#     oauth_refresh_token = Column(Text, nullable=True)
+#     oauth_token_expires = Column(DateTime, nullable=True)
+#     profile_picture = Column(String(255), nullable=True)
+#     
+#     # Define relationships to other models
+#     golf_rounds = relationship("GolfRound", back_populates="user")
+#     clubs = relationship("Club", back_populates="user")
+
+# Replacement User class that mimics the interface but uses Supabase Auth
+class User:
+    """User model that wraps Supabase Auth User."""
     
-    __tablename__ = "users"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    username = Column(String(50), unique=True, index=True, nullable=True)
-    hashed_password = Column(String(255), nullable=True)
-    full_name = Column(String(100), nullable=True)
-    is_active = Column(Boolean, default=True)
-    is_superuser = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-    
-    # OAuth related fields
-    auth_provider = Column(String(20), nullable=True)  # 'google', 'custom', etc.
-    oauth_id = Column(String(255), nullable=True)
-    oauth_access_token = Column(Text, nullable=True)
-    oauth_refresh_token = Column(Text, nullable=True)
-    oauth_token_expires = Column(DateTime, nullable=True)
-    profile_picture = Column(String(255), nullable=True)
-    
-    # Define relationships to other models
-    golf_rounds = relationship("GolfRound", back_populates="user")
-    clubs = relationship("Club", back_populates="user")
+    def __init__(self, user_data: Dict[str, Any]):
+        """
+        Initialize from Supabase user data.
+        
+        Args:
+            user_data: Dictionary containing user data from Supabase Auth
+        """
+        self.id = user_data.get('id')
+        self.email = user_data.get('email')
+        self.username = user_data.get('user_metadata', {}).get('username')
+        self.full_name = user_data.get('user_metadata', {}).get('full_name')
+        self.is_active = True
+        self.is_superuser = user_data.get('app_metadata', {}).get('is_superuser', False)
+        self.created_at = user_data.get('created_at')
+        self.updated_at = user_data.get('updated_at')
+        self.auth_provider = user_data.get('app_metadata', {}).get('provider', 'custom')
+        self.oauth_id = user_data.get('user_metadata', {}).get('oauth_id')
+        self.profile_picture = user_data.get('user_metadata', {}).get('picture')
+        self._preferences_cache = None
     
     def get_preferences(self) -> Dict[str, Any]:
         """
@@ -94,7 +122,7 @@ class User(Base):
             Dictionary of user preferences
         """
         # Use supabase_data function to get preferences
-        if hasattr(self, '_preferences_cache'):
+        if hasattr(self, '_preferences_cache') and self._preferences_cache:
             return self._preferences_cache
             
         # Convert ID appropriately for Supabase
@@ -119,7 +147,7 @@ class User(Base):
             "full_name": self.full_name,
             "is_active": self.is_active,
             "is_superuser": self.is_superuser,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": self.created_at,
             "auth_provider": self.auth_provider,
             "profile_picture": self.profile_picture,
             "handicap": prefs.get("handicap"),
@@ -251,11 +279,16 @@ class User(Base):
         Returns:
             User instance
         """
-        return cls(
-            email=oauth_data.get("email"),
-            full_name=oauth_data.get("name"),
-            auth_provider=oauth_data.get("provider"),
-            oauth_id=oauth_data.get("id"),
-            profile_picture=oauth_data.get("picture"),
-            is_active=True
-        )
+        return cls({
+            'id': oauth_data.get('id'),
+            'email': oauth_data.get('email'),
+            'user_metadata': {
+                'full_name': oauth_data.get('name'),
+                'picture': oauth_data.get('picture'),
+                'oauth_id': oauth_data.get('id')
+            },
+            'app_metadata': {
+                'provider': oauth_data.get('provider'),
+                'is_superuser': False
+            }
+        })
