@@ -1,14 +1,16 @@
 """
 User model for GolfStats application.
 
-This module defines the User model for authentication and user management.
+This module defines the User model for authentication and user management,
+and the UserPreference model for user preferences and tracker credentials.
 """
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import os
 import sys
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
 
 # Add the project root directory to Python path if not already added
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
@@ -17,6 +19,45 @@ if project_root not in sys.path:
 
 from backend.database.db_connection import Base
 from config.config import config
+from backend.database.supabase_data import get_user_preferences
+
+class UserPreference(Base):
+    """User preferences model for storing preferences and tracker credentials."""
+    
+    __tablename__ = "user_preferences"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), index=True, nullable=False)
+    preferred_units = Column(String(10), default="yards")  # 'yards' or 'meters'
+    handicap = Column(String(10), nullable=True)
+    
+    # Tracker credentials
+    trackman_username = Column(String(255), nullable=True)
+    trackman_password = Column(String(255), nullable=True)
+    arccos_email = Column(String(255), nullable=True)  
+    arccos_password = Column(String(255), nullable=True)
+    skytrak_username = Column(String(255), nullable=True)
+    skytrak_password = Column(String(255), nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert preferences to dictionary.
+        
+        Returns:
+            Dictionary representation of preferences
+        """
+        return {
+            "id": self.id,
+            "user_id": str(self.user_id) if self.user_id else None,
+            "preferred_units": self.preferred_units,
+            "handicap": self.handicap,
+            "has_trackman": bool(self.trackman_username and self.trackman_password),
+            "has_arccos": bool(self.arccos_email and self.arccos_password),
+            "has_skytrak": bool(self.skytrak_username and self.skytrak_password)
+        }
 
 class User(Base):
     """User model for authentication and profile information."""
@@ -41,21 +82,26 @@ class User(Base):
     oauth_token_expires = Column(DateTime, nullable=True)
     profile_picture = Column(String(255), nullable=True)
     
-    # User preferences and golf-related data
-    handicap = Column(String(10), nullable=True)
-    preferred_units = Column(String(10), default="yards")  # 'yards' or 'meters'
-    
-    # Tracker credentials
-    trackman_username = Column(String(255), nullable=True)
-    trackman_password = Column(String(255), nullable=True)
-    arccos_email = Column(String(255), nullable=True)  
-    arccos_password = Column(String(255), nullable=True)
-    skytrak_username = Column(String(255), nullable=True)
-    skytrak_password = Column(String(255), nullable=True)
-    
     # Define relationships to other models
     golf_rounds = relationship("GolfRound", back_populates="user")
     clubs = relationship("Club", back_populates="user")
+    
+    def get_preferences(self) -> Dict[str, Any]:
+        """
+        Get user preferences from Supabase user_preferences table.
+        
+        Returns:
+            Dictionary of user preferences
+        """
+        # Use supabase_data function to get preferences
+        if hasattr(self, '_preferences_cache'):
+            return self._preferences_cache
+            
+        # Convert ID appropriately for Supabase
+        supabase_user_id = str(self.id)
+        preferences = get_user_preferences(supabase_user_id)
+        self._preferences_cache = preferences
+        return preferences
     
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -64,6 +110,8 @@ class User(Base):
         Returns:
             Dictionary representation of the user
         """
+        prefs = self.get_preferences()
+        
         return {
             "id": self.id,
             "email": self.email,
@@ -74,8 +122,8 @@ class User(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "auth_provider": self.auth_provider,
             "profile_picture": self.profile_picture,
-            "handicap": self.handicap,
-            "preferred_units": self.preferred_units,
+            "handicap": prefs.get("handicap"),
+            "preferred_units": prefs.get("preferred_units", "yards"),
             "has_trackman": self.trackman_credentials_valid(),
             "has_arccos": self.arccos_credentials_valid(),
             "has_skytrak": self.skytrak_credentials_valid()
@@ -88,8 +136,9 @@ class User(Base):
         Returns:
             bool: True if has valid credentials
         """
-        # First check user-specific credentials
-        if self.trackman_username and self.trackman_password:
+        # First check user-specific credentials from preferences
+        prefs = self.get_preferences()
+        if prefs.get("trackman_username") and prefs.get("trackman_password"):
             return True
         
         # Then check global credentials from config
@@ -105,8 +154,9 @@ class User(Base):
         Returns:
             bool: True if has valid credentials
         """
-        # First check user-specific credentials
-        if self.arccos_email and self.arccos_password:
+        # First check user-specific credentials from preferences
+        prefs = self.get_preferences()
+        if prefs.get("arccos_email") and prefs.get("arccos_password"):
             return True
         
         # Then check global credentials from config
@@ -122,8 +172,9 @@ class User(Base):
         Returns:
             bool: True if has valid credentials
         """
-        # First check user-specific credentials
-        if self.skytrak_username and self.skytrak_password:
+        # First check user-specific credentials from preferences
+        prefs = self.get_preferences()
+        if prefs.get("skytrak_username") and prefs.get("skytrak_password"):
             return True
         
         # Then check global credentials from config
@@ -139,10 +190,11 @@ class User(Base):
         Returns:
             Dictionary with username and password
         """
-        if self.trackman_username and self.trackman_password:
+        prefs = self.get_preferences()
+        if prefs.get("trackman_username") and prefs.get("trackman_password"):
             return {
-                "username": self.trackman_username,
-                "password": self.trackman_password
+                "username": prefs["trackman_username"],
+                "password": prefs["trackman_password"]
             }
         else:
             return {
@@ -157,10 +209,11 @@ class User(Base):
         Returns:
             Dictionary with email and password
         """
-        if self.arccos_email and self.arccos_password:
+        prefs = self.get_preferences()
+        if prefs.get("arccos_email") and prefs.get("arccos_password"):
             return {
-                "email": self.arccos_email,
-                "password": self.arccos_password
+                "email": prefs["arccos_email"],
+                "password": prefs["arccos_password"]
             }
         else:
             return {
@@ -175,10 +228,11 @@ class User(Base):
         Returns:
             Dictionary with username and password
         """
-        if self.skytrak_username and self.skytrak_password:
+        prefs = self.get_preferences()
+        if prefs.get("skytrak_username") and prefs.get("skytrak_password"):
             return {
-                "username": self.skytrak_username,
-                "password": self.skytrak_password
+                "username": prefs["skytrak_username"],
+                "password": prefs["skytrak_password"]
             }
         else:
             return {

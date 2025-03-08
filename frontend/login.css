@@ -26,6 +26,7 @@ body {
     padding: 30px 40px;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
 }
 
 .login-header {
@@ -240,9 +241,11 @@ body {
         width: 90%;
         max-width: 450px;
         height: auto;
+        max-height: 95vh;
     }
     
     .login-card {
         padding: 25px;
+        max-height: 95vh;
     }
 }
