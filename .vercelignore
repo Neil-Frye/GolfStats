@@ -3,37 +3,70 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.mypy_cache/
 
 # Virtual environments
 venv/
 env/
 ENV/
+.venv/
 
 # Data and log files
 data/
 logs/
+**/*.log
+**/*.csv
+**/*.json
 
-# Development files
+# Development and test files
 tests/
+run_tests.py
 .git/
 .github/
 .vscode/
 .idea/
+*.md
+**/test_*.py
+**/conftest.py
+**/fixtures/
+pytest.ini
 
 # Screenshots and large binary files
 **/screenshots/
 **/*.png
 **/*.jpg
 **/*.jpeg
+**/*.gif
+**/*.ico
+**/*.woff
+**/*.woff2
+**/*.eot
+**/*.ttf
 
 # Documentation
 docs/
 
-# Selenium drivers
+# Browser automation dependencies - exclude these entire directories
 **/drivers/
 **/webdriver/
 **/selenium/
 chromedriver*
+**/node_modules/
 
-# Development config
+# Heavyweight scraper implementations that are mocked in production
+backend/scrapers/arccos_scraper.py
+backend/scrapers/trackman_scraper.py
+backend/scrapers/skytrak_scraper.py
+
+# ETL and scheduler (not needed in serverless)
+backend/etl/
+backend/scheduler.py
+
+# Development configs
 .env.test
+.env.development
+
+# Redundant frontend build artifacts
+**/dist/
+**/build/
+**/.cache/

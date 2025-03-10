@@ -1,6 +1,12 @@
 {
   "version": 2,
   "buildCommand": "bash vercel-build.sh",
+  "functions": {
+    "api/index.py": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "routes": [
     {
       "src": "/api/(.*)",
@@ -10,5 +16,10 @@
       "src": "/(.*)",
       "dest": "frontend/$1"
     }
-  ]
+  ],
+  "env": {
+    "PYTHONPATH": ".",
+    "APP_ENVIRONMENT": "production",
+    "SERVERLESS_MODE": "true"
+  }
 }
