@@ -35,6 +35,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Handle forgot password link
+    const forgotPasswordLink = document.querySelector('.forgot-password');
+    if (forgotPasswordLink) {
+        forgotPasswordLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = '/reset-password.html';
+        });
+    }
+    
     // Check if user is already logged in
     checkLoginStatus();
 });

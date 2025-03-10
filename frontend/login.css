@@ -140,6 +140,13 @@ body {
     border-color: #2c8c58;
 }
 
+.helper-text {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #666;
+}
+
 .forgot-password {
     display: block;
     margin-top: 8px;
@@ -149,16 +156,26 @@ body {
     text-decoration: none;
 }
 
-.form-error {
+.form-error, .form-message {
+    display: flex;
+    align-items: center;
     margin-bottom: 15px;
     padding: 8px 12px;
     border-radius: 6px;
-    background-color: #ffebee;
-    color: #d32f2f;
     font-size: 12px;
 }
 
-.form-error i {
+.form-error {
+    background-color: #ffebee;
+    color: #d32f2f;
+}
+
+.form-message.success {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.form-error i, .form-message i {
     margin-right: 5px;
 }
 

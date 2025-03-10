@@ -81,6 +81,347 @@ async function checkAuthentication() {
     }
 }
 
+// Update user info in UI with data from API
+function updateUserInfo(user) {
+    if (!user) return;
+    
+    // Update sidebar user info
+    const userNameElement = document.querySelector('.user-name');
+    const userHandicapElement = document.querySelector('.user-handicap');
+    const userAvatarImg = document.querySelector('.user-avatar img');
+    
+    if (userNameElement) {
+        userNameElement.textContent = user.name || user.full_name || user.email.split('@')[0];
+    }
+    
+    if (userHandicapElement && user.preferences) {
+        userHandicapElement.textContent = `Handicap: ${user.preferences.handicap || 'N/A'}`;
+    }
+    
+    // Update avatar in sidebar if available
+    if (userAvatarImg && (user.avatar_url || user.profile_picture)) {
+        userAvatarImg.src = user.avatar_url || user.profile_picture;
+    }
+    
+    // Update profile form fields
+    const fullnameInput = document.getElementById('fullname');
+    const emailInput = document.getElementById('email');
+    const handicapInput = document.getElementById('handicap');
+    const phoneInput = document.getElementById('phone');
+    const homeCourseInput = document.getElementById('home-course');
+    const profileImagePreview = document.getElementById('profile-image-preview');
+    
+    if (fullnameInput) {
+        fullnameInput.value = user.name || user.full_name || '';
+    }
+    
+    if (emailInput) {
+        emailInput.value = user.email || '';
+    }
+    
+    if (phoneInput && user.preferences) {
+        phoneInput.value = user.preferences.phone || '';
+    }
+    
+    if (handicapInput && user.preferences) {
+        handicapInput.value = user.preferences.handicap || '';
+    }
+    
+    if (homeCourseInput && user.preferences) {
+        homeCourseInput.value = user.preferences.home_course || '';
+    }
+    
+    // Update profile image preview if available
+    if (profileImagePreview && (user.avatar_url || user.profile_picture)) {
+        profileImagePreview.src = user.avatar_url || user.profile_picture;
+    }
+    
+    // Update profile completion indicator
+    updateProfileCompletion(user);
+}
+
+// Update profile completion indicator based on completeness
+function updateProfileCompletion(user) {
+    if (!user) return;
+    
+    // Calculate profile completion percentage
+    const totalFields = 5; // name, email, handicap, home course, profile image
+    let completedFields = 0;
+    
+    if (user.name || user.full_name) completedFields++;
+    if (user.email) completedFields++;
+    if (user.avatar_url) completedFields++;
+    
+    // Check preferences
+    if (user.preferences) {
+        if (user.preferences.handicap) completedFields++;
+        if (user.preferences.home_course) completedFields++;
+    }
+    
+    const completionPercentage = Math.round((completedFields / totalFields) * 100);
+    
+    // Update sidebar profile completion indicator
+    const profileCompletionElement = document.querySelector('.profile-completion');
+    if (profileCompletionElement) {
+        profileCompletionElement.style.display = 'block';
+        profileCompletionElement.innerHTML = `
+            <div class="completion-bar">
+                <div class="completion-progress" style="width: ${completionPercentage}%"></div>
+            </div>
+            <p>Profile ${completionPercentage}% complete</p>
+        `;
+        
+        // Add click event to go to profile settings if not complete
+        if (completionPercentage < 100) {
+            profileCompletionElement.style.cursor = 'pointer';
+            profileCompletionElement.addEventListener('click', () => {
+                navigateToProfileSettings();
+            });
+        }
+    }
+    
+    // Update dashboard alert if profile is incomplete
+    updateProfileAlert(completionPercentage);
+    
+    return completionPercentage;
+}
+
+// Update profile alert on dashboard
+function updateProfileAlert(completionPercentage) {
+    const profileAlert = document.getElementById('profile-completion-alert');
+    if (!profileAlert) return;
+    
+    // Only show alert if profile is incomplete
+    if (completionPercentage < 100) {
+        // Update progress bar
+        const progressBar = profileAlert.querySelector('.progress-value');
+        if (progressBar) {
+            progressBar.style.width = `${completionPercentage}%`;
+        }
+        
+        // Update progress text
+        const progressText = profileAlert.querySelector('.progress-text');
+        if (progressText) {
+            progressText.textContent = `${completionPercentage}% Complete`;
+        }
+        
+        // Only show in dashboard view
+        const dashboardView = document.getElementById('dashboard-view');
+        if (dashboardView && dashboardView.classList.contains('active')) {
+            profileAlert.style.display = 'flex';
+        }
+        
+        // Setup close button
+        const closeBtn = profileAlert.querySelector('.close-alert');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                profileAlert.style.display = 'none';
+                
+                // Remember that the user closed it for this session
+                sessionStorage.setItem('profile_alert_closed', 'true');
+            });
+        }
+        
+        // Setup complete profile button
+        const completeProfileBtn = document.getElementById('complete-profile-btn');
+        if (completeProfileBtn) {
+            completeProfileBtn.addEventListener('click', () => {
+                navigateToProfileSettings();
+            });
+        }
+    } else {
+        profileAlert.style.display = 'none';
+    }
+}
+
+// Navigate to profile settings
+function navigateToProfileSettings() {
+    // Navigate to settings view
+    const settingsLink = document.querySelector('.sidebar-nav a[href="#settings"]');
+    if (settingsLink) {
+        settingsLink.click();
+        
+        // Select profile tab in settings
+        const profileTab = document.querySelector('.settings-nav li[data-section="profile"]');
+        if (profileTab) {
+            profileTab.click();
+        }
+    }
+}
+
+// Load dashboard data
+async function loadDashboardData() {
+    console.log('Loading dashboard data...');
+    
+    try {
+        // Show loading states if needed
+        const scoreTrendChartContainer = document.getElementById('score-trend-chart');
+        if (scoreTrendChartContainer) {
+            const placeholder = scoreTrendChartContainer.querySelector('.chart-placeholder');
+            if (placeholder) {
+                placeholder.innerHTML = `
+                    <div class="loading-container">
+                        <div class="spinner"></div>
+                        <p>Loading chart data...</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // In a real app, you would fetch dashboard data from the API
+        // For now, we'll use mock data and initialize charts
+        
+        // Initialize dashboard charts
+        initDashboardCharts();
+        
+        // Initialize the recent rounds section (with mock data for now)
+        // In a real app, you would load this from the API
+        
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        // Show error state
+    }
+}
+
+// Initialize all dashboard charts
+function initDashboardCharts() {
+    // Initialize score trend chart
+    initScoreTrendChart();
+    
+    // Initialize other dashboard charts as needed
+}
+
+// Initialize score trend chart
+function initScoreTrendChart() {
+    // Get chart container
+    const chartContainer = document.getElementById('score-trend-chart');
+    if (!chartContainer) return;
+    
+    // Clear any existing content
+    chartContainer.innerHTML = '';
+    
+    // Create canvas for Chart.js
+    const canvas = document.createElement('canvas');
+    chartContainer.appendChild(canvas);
+    
+    // Destroy existing chart if it exists
+    if (window.scoreTrendChart) {
+        window.scoreTrendChart.destroy();
+        window.scoreTrendChart = null;
+    }
+    
+    // Sample data - in a real app, this would come from the API
+    const labels = ['Apr 2', 'Apr 16', 'May 1', 'May 14', 'May 28', 'Jun 12'];
+    const scores = [93, 92, 90, 91, 89, 85];
+    const pars = [72, 72, 72, 72, 72, 72];
+    const scoresToPar = scores.map((score, i) => score - pars[i]);
+    
+    // Create chart
+    window.scoreTrendChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Score',
+                    data: scores,
+                    borderColor: 'rgba(44, 140, 88, 1)',
+                    backgroundColor: 'rgba(44, 140, 88, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'To Par',
+                    data: scoresToPar,
+                    borderColor: 'rgba(52, 152, 219, 1)',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    yAxisID: 'y1',
+                    hidden: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Score'
+                    },
+                    min: Math.min(...scores) - 5,
+                    max: Math.max(...scores) + 5,
+                    reverse: true // Lower scores are better in golf
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Score to Par'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return `Round: ${context[0].label}`;
+                        },
+                        label: function(context) {
+                            if (context.datasetIndex === 0) {
+                                return `Score: ${context.raw}`;
+                            } else {
+                                const value = context.raw;
+                                return `To Par: ${value > 0 ? '+' + value : value}`;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Set up chart controls
+    const chartControls = document.querySelectorAll('.chart-control');
+    chartControls.forEach(control => {
+        control.addEventListener('click', function() {
+            chartControls.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // In a real app, you would update the chart data based on the period
+            const period = this.dataset.period;
+            console.log(`Changing chart period to: ${period}`);
+            
+            if (period === 'round') {
+                window.scoreTrendChart.data.labels = ['Apr 2', 'Apr 16', 'May 1', 'May 14', 'May 28', 'Jun 12'];
+                window.scoreTrendChart.data.datasets[0].data = [93, 92, 90, 91, 89, 85];
+                window.scoreTrendChart.data.datasets[1].data = [21, 20, 18, 19, 17, 13];
+            } else if (period === 'month') {
+                window.scoreTrendChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                window.scoreTrendChart.data.datasets[0].data = [94, 93, 92, 91, 89, 87];
+                window.scoreTrendChart.data.datasets[1].data = [22, 21, 20, 19, 17, 15];
+            }
+            
+            window.scoreTrendChart.update();
+        });
+    });
+}
+
 // Initialize logout handler
 function initLogoutHandler() {
     const logoutButton = document.getElementById('logout-button');
@@ -115,6 +456,11 @@ function initNavigation() {
     const pageTitle = document.getElementById('page-title');
     const mobileToggle = document.getElementById('mobile-toggle');
     const sidebar = document.querySelector('.sidebar');
+    
+    // Initialize settings tabs
+    initSettingsTabs();
+    // Initialize profile form submission
+    initProfileFormSubmission();
     
     // Handle navigation clicks
     navLinks.forEach(link => {
@@ -189,6 +535,150 @@ function initNavigation() {
     });
 }
 
+// Initialize settings tabs functionality
+function initSettingsTabs() {
+    const settingsNavItems = document.querySelectorAll('.settings-nav li');
+    const settingsSections = document.querySelectorAll('.settings-section');
+    
+    if (!settingsNavItems.length) return;
+    
+    settingsNavItems.forEach(item => {
+        item.addEventListener('click', function() {
+            // Update active tab
+            settingsNavItems.forEach(item => item.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show corresponding section
+            const sectionId = this.getAttribute('data-section');
+            settingsSections.forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            const targetSection = document.getElementById(`${sectionId}-settings`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+        });
+    });
+}
+
+// Initialize profile form submission
+function initProfileFormSubmission() {
+    const profileForm = document.querySelector('#profile-settings form');
+    
+    if (!profileForm) return;
+    
+    // Initialize profile image upload
+    initProfileImageUpload();
+    
+    profileForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        const submitBtn = profileForm.querySelector('.btn-primary');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
+        try {
+            // Get image file if selected
+            const imageFile = document.getElementById('profile-image-upload').files[0];
+            
+            // Create FormData object for multipart form submission (for file upload)
+            const formData = new FormData();
+            
+            // Add profile fields
+            formData.append('name', document.getElementById('fullname').value);
+            formData.append('email', document.getElementById('email').value);
+            formData.append('handicap', document.getElementById('handicap').value);
+            formData.append('phone', document.getElementById('phone').value);
+            formData.append('home_course', document.getElementById('home-course').value);
+            
+            // Add image if available
+            if (imageFile) {
+                formData.append('profile_image', imageFile);
+            }
+            
+            // Send update to API with multipart form data
+            const response = await fetch('/api/auth/profile', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to update profile');
+            }
+            
+            // Get updated user data
+            const result = await response.json();
+            
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.className = 'success-message';
+            successMsg.textContent = 'Profile saved successfully!';
+            profileForm.appendChild(successMsg);
+            
+            // Update user info in the UI
+            if (result.user) {
+                updateUserInfo(result.user);
+            }
+            
+            // Reset form state
+            setTimeout(() => {
+                if (profileForm.contains(successMsg)) {
+                    profileForm.removeChild(successMsg);
+                }
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }, 3000);
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            
+            // Show error message
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'error-message';
+            errorMsg.textContent = error.message || 'An error occurred while saving your profile';
+            profileForm.appendChild(errorMsg);
+            
+            // Reset button
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            
+            // Remove error after delay
+            setTimeout(() => {
+                if (profileForm.contains(errorMsg)) {
+                    profileForm.removeChild(errorMsg);
+                }
+            }, 5000);
+        }
+    });
+}
+
+// Initialize profile image upload
+function initProfileImageUpload() {
+    const imageInput = document.getElementById('profile-image-upload');
+    const imagePreview = document.getElementById('profile-image-preview');
+    
+    if (!imageInput || !imagePreview) return;
+    
+    // Handle image selection
+    imageInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const reader = new FileReader();
+            
+            // When file is loaded, update the preview
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+            };
+            
+            // Read the selected file
+            reader.readAsDataURL(this.files[0]);
+        }
+    });
+}
+}
+
 // Modal handling
 function initNewRoundModal() {
     const modal = document.getElementById('new-round-modal');
@@ -251,17 +741,18 @@ function initNewRoundModal() {
             // Format data correctly for API
             const apiRoundData = {
                 date: roundData.round_date,
-                course: roundData.course_name,
+                course_name: roundData.course_name,
                 tee_color: roundData.tee_color,
                 total_score: roundData.total_score,
+                total_par: 72, // Default par value
                 notes: roundData.round_notes || '',
-                course_par: 72, // Default par value
+                course_location: '',
+                source_system: 'web',
                 stats: {
                     fairways_hit: roundData.fairways_hit || 0,
                     fairways_total: 14, // Default for 18 holes
-                    greens_hit: roundData.greens_hit || 0,
-                    greens_total: 18,
-                    total_putts: roundData.total_putts || 0
+                    greens_in_regulation: roundData.greens_hit || 0,
+                    putts_total: roundData.total_putts || 0
                 }
             };
             
