@@ -3,7 +3,7 @@ import os
 import sys
 import logging
 from typing import Dict, Any
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, redirect
 
 # Add the project root directory to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -58,7 +58,7 @@ from backend.auth import require_auth
 @app.route('/')
 def index():
     """Home page route - serve index.html or redirect to login."""
-    from flask import send_from_directory, redirect
+    from flask import send_from_directory
     from backend.auth import is_authenticated
     
     # If user isn't authenticated, redirect to login page

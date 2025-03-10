@@ -15,7 +15,7 @@ from .crypto_utils import encrypt_value, decrypt_value
 logger = logging.getLogger(__name__)
 
 # Create blueprint
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/login', methods=['POST'])
 def login():

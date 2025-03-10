@@ -31,19 +31,20 @@
 # Environment Setup (Test & Production)
 - We maintain two Supabase projects:
 - Supabase Test: Used locally for development and testing (.env.test). APP_ENVIRONMENT=test URL: `https://qfuvwfghevxhnkfrwmwk.supabase.co` URL: `https://rrrniscrqsrbtfahgguo.supabase.co`
-- Supabase Production: Used for real user data (.env.production or environment variables in Vercel). APP_ENVIRONMENT=production URL: `https://rrrniscrqsrbtfahgguo.supabase.co`
+- Supabase Production: Used for real user data (.env.production or environment variables in Render). APP_ENVIRONMENT=production URL: `https://rrrniscrqsrbtfahgguo.supabase.co`
 - We maintain two Vercel projects:
-- Vercel Prod=golfstats-prod URL: `https://golfstats-prod.vercel.app/` file name .env.production
-- Vercel Test=golfstats-test URL: `https://golf-stats-chi.vercel.app/` file name .env.test
+- Render Prod=golfstats-prod URL: `https://golfstats-jzfs.onrender.com` file name .env.production
+- Render Test=golfstats-test URL: `https://golf-stats-chi.vercel.app/` file name .env.test
 
 ## Running Locally vs. Production
 - Locally: You’ll typically load .env.test (test credentials).
 - APP_ENVIRONMENT=test python run.py
-- Production: On Vercel or another host, set APP_ENVIRONMENT=production and supply your production Supabase credentials via environment variables (Vercel dashboard).
+- Production: On Vercel or another host, set APP_ENVIRONMENT=production and supply your production Supabase credentials via environment variables (Render dashboard).
 
 ## Version Control
 - Make small, frequent commits with descriptive messages once a task is complete no need to ask
 - Use the pattern: `git add . && git commit -m "Description" && git push origin main`
+- Please do not say or add the words 'claude code' in the git descriptions when doing any commits
 
 ## Web Scraping
 - Use Selenium or Pyppeteer for screen scraping Trackman, Arccos, SkyTrak
@@ -68,9 +69,9 @@
 - Explain only when asked for details
 - Don't use long preambles or summaries
 
-## Deployment with Vercel
-- Import this same GitHub repo into Vercel.
-- Vercel’s Production environment uses APP_ENVIRONMENT=production plus production Supabase credentials.
+## Deployment with Render
+- We have already import this GitHub repo into render.
+- Render's Production environment uses APP_ENVIRONMENT=production plus production Supabase credentials.
 - Preview deployments or other branches can use APP_ENVIRONMENT=test with test credentials.
 - No separate repo needed: branching and environment variables keep test vs. production separate.
 
@@ -91,10 +92,8 @@
 - **Protect existing config**: When adding or updating environment variables, confirm with the team (or the repository owner) to avoid inadvertently breaking dev or production environments.
 - **Security**: Never upload `.env` files to GitHub to ensure security.
 
-## Optimize Vercel deployment to stay under 250MB limit
-- Add `.vercelignore` to exclude unnecessary files
-- Create lightweight mock scraper implementations for serverless
+## Optimize Render deployment 
+- Create lighter weight scrapers
 - Reduce dependencies in api/requirements.txt
-- Update vercel.json with optimized build configuration
-- Add serverless mode detection in Flask app
+- Update render.yaml with optimized  configuration
 - Document deployment process and optimizations
