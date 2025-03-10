@@ -1644,14 +1644,505 @@ function createClubCard(club) {
 
 // Show modal to add a new club
 function showAddClubModal() {
-    // Implementation will be added in a later update
-    alert('Add club functionality will be implemented in a future update.');
+    // Create the modal HTML
+    const modalHtml = `
+        <div class="modal" id="add-club-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add New Club</h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-club-form">
+                        <div class="form-group">
+                            <label for="club-name">Club Name <span class="required">*</span></label>
+                            <input type="text" id="club-name" required placeholder="e.g., Driver, 7 Iron, SW">
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="club-type">Club Type <span class="required">*</span></label>
+                                <select id="club-type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="driver">Driver</option>
+                                    <option value="wood">Wood</option>
+                                    <option value="hybrid">Hybrid</option>
+                                    <option value="iron">Iron</option>
+                                    <option value="wedge">Wedge</option>
+                                    <option value="putter">Putter</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="club-loft">Loft (degrees)</label>
+                                <input type="number" id="club-loft" min="0" max="72" step="0.5" placeholder="e.g., 10.5">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="club-brand">Brand</label>
+                                <input type="text" id="club-brand" placeholder="e.g., TaylorMade">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="club-model">Model</label>
+                                <input type="text" id="club-model" placeholder="e.g., Stealth">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="club-avg-distance">Average Distance (yards)</label>
+                                <input type="number" id="club-avg-distance" min="0" placeholder="e.g., 250">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="club-max-distance">Max Distance (yards)</label>
+                                <input type="number" id="club-max-distance" min="0" placeholder="e.g., 270">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="club-notes">Notes</label>
+                            <textarea id="club-notes" rows="3" placeholder="Any additional notes about this club..."></textarea>
+                        </div>
+                        
+                        <div class="form-buttons">
+                            <button type="button" class="btn-secondary cancel-modal">Cancel</button>
+                            <button type="submit" class="btn-primary">Save Club</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to the document
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer.firstElementChild);
+    
+    // Get the modal element
+    const modal = document.getElementById('add-club-modal');
+    
+    // Show the modal
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+    
+    // Add event listeners
+    const closeBtn = modal.querySelector('.close-modal');
+    const cancelBtn = modal.querySelector('.cancel-modal');
+    const form = document.getElementById('add-club-form');
+    
+    // Close modal events
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    });
+    
+    cancelBtn.addEventListener('click', () => {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    });
+    
+    // Form submission
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Get form values
+        const clubData = {
+            name: document.getElementById('club-name').value,
+            club_type: document.getElementById('club-type').value,
+            loft: document.getElementById('club-loft').value || null,
+            brand: document.getElementById('club-brand').value || null,
+            model: document.getElementById('club-model').value || null,
+            avg_distance_yards: document.getElementById('club-avg-distance').value || null,
+            max_distance_yards: document.getElementById('club-max-distance').value || null,
+            notes: document.getElementById('club-notes').value || null,
+            is_active: true
+        };
+        
+        try {
+            // Show loading state
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loading-spinner small"></div> Saving...';
+            
+            // Submit to API
+            const result = await ApiService.saveClub(clubData);
+            
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            // Close modal
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.remove();
+            }, 300);
+            
+            // Show success message
+            // Show success toast
+            showToast('Club added successfully!', 'success');
+            
+            // Reload clubs data
+            loadClubsData();
+        } catch (error) {
+            console.error('Error adding club:', error);
+            showToast('Failed to add club. Please try again.', 'error');
+            
+            // Reset submit button
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    });
 }
 
 // Show modal to edit an existing club
 function showEditClubModal(club) {
-    // Implementation will be added in a later update
-    alert('Edit club functionality will be implemented in a future update.');
+    // First fetch the club data if only ID was provided
+    if (typeof club === 'number' || typeof club === 'string') {
+        const clubId = club;
+        ApiService.getClub(clubId)
+            .then(response => {
+                if (response && response.club) {
+                    showEditClubModalWithData(response.club);
+                } else {
+                    showToast('Error loading club data', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching club data:', error);
+                showToast('Error loading club data', 'error');
+            });
+    } else {
+        // Club data was already provided
+        showEditClubModalWithData(club);
+    }
+}
+
+// Show edit club modal with populated data
+function showEditClubModalWithData(club) {
+    // Create the modal HTML
+    const modalHtml = `
+        <div class="modal" id="edit-club-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Edit Club</h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-club-form">
+                        <input type="hidden" id="edit-club-id" value="${club.id}">
+                        
+                        <div class="form-group">
+                            <label for="edit-club-name">Club Name <span class="required">*</span></label>
+                            <input type="text" id="edit-club-name" required value="${club.name || ''}">
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="edit-club-type">Club Type <span class="required">*</span></label>
+                                <select id="edit-club-type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="driver" ${club.club_type === 'driver' ? 'selected' : ''}>Driver</option>
+                                    <option value="wood" ${club.club_type === 'wood' ? 'selected' : ''}>Wood</option>
+                                    <option value="hybrid" ${club.club_type === 'hybrid' ? 'selected' : ''}>Hybrid</option>
+                                    <option value="iron" ${club.club_type === 'iron' ? 'selected' : ''}>Iron</option>
+                                    <option value="wedge" ${club.club_type === 'wedge' ? 'selected' : ''}>Wedge</option>
+                                    <option value="putter" ${club.club_type === 'putter' ? 'selected' : ''}>Putter</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="edit-club-loft">Loft (degrees)</label>
+                                <input type="number" id="edit-club-loft" min="0" max="72" step="0.5" value="${club.loft || ''}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="edit-club-brand">Brand</label>
+                                <input type="text" id="edit-club-brand" value="${club.brand || ''}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="edit-club-model">Model</label>
+                                <input type="text" id="edit-club-model" value="${club.model || ''}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="edit-club-avg-distance">Average Distance (yards)</label>
+                                <input type="number" id="edit-club-avg-distance" min="0" value="${club.avg_distance_yards || ''}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="edit-club-max-distance">Max Distance (yards)</label>
+                                <input type="number" id="edit-club-max-distance" min="0" value="${club.max_distance_yards || ''}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="edit-club-notes">Notes</label>
+                            <textarea id="edit-club-notes" rows="3">${club.notes || ''}</textarea>
+                        </div>
+                        
+                        <div class="form-buttons">
+                            <button type="button" class="btn-danger delete-club-btn">Delete Club</button>
+                            <div class="save-buttons">
+                                <button type="button" class="btn-secondary cancel-modal">Cancel</button>
+                                <button type="submit" class="btn-primary">Update Club</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to the document
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer.firstElementChild);
+    
+    // Get the modal element
+    const modal = document.getElementById('edit-club-modal');
+    
+    // Show the modal
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+    
+    // Add event listeners
+    const closeBtn = modal.querySelector('.close-modal');
+    const cancelBtn = modal.querySelector('.cancel-modal');
+    const deleteBtn = modal.querySelector('.delete-club-btn');
+    const form = document.getElementById('edit-club-form');
+    
+    // Close modal events
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    });
+    
+    cancelBtn.addEventListener('click', () => {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    });
+    
+    // Delete button event
+    deleteBtn.addEventListener('click', () => {
+        // Close the edit modal first
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+            
+            // Show confirmation modal
+            confirmDeleteClub(club.id, club.name);
+        }, 300);
+    });
+    
+    // Form submission
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const clubId = document.getElementById('edit-club-id').value;
+        
+        // Get form values
+        const clubData = {
+            name: document.getElementById('edit-club-name').value,
+            club_type: document.getElementById('edit-club-type').value,
+            loft: document.getElementById('edit-club-loft').value || null,
+            brand: document.getElementById('edit-club-brand').value || null,
+            model: document.getElementById('edit-club-model').value || null,
+            avg_distance_yards: document.getElementById('edit-club-avg-distance').value || null,
+            max_distance_yards: document.getElementById('edit-club-max-distance').value || null,
+            notes: document.getElementById('edit-club-notes').value || null,
+            is_active: true
+        };
+        
+        try {
+            // Show loading state
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loading-spinner small"></div> Updating...';
+            
+            // Submit to API
+            const result = await ApiService.updateClub(clubId, clubData);
+            
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            // Close modal
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.remove();
+            }, 300);
+            
+            // Show success message
+            showToast('Club updated successfully!', 'success');
+            
+            // Reload clubs data
+            loadClubsData();
+        } catch (error) {
+            console.error('Error updating club:', error);
+            showToast('Failed to update club. Please try again.', 'error');
+            
+            // Reset submit button
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    });
+}
+
+// Confirm club deletion
+function confirmDeleteClub(clubId, clubName) {
+    // Create confirmation modal
+    const modalHtml = `
+        <div class="modal" id="delete-club-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Delete Club</h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <strong>${clubName}</strong>?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                    
+                    <div class="form-buttons">
+                        <button type="button" class="btn-secondary cancel-modal">Cancel</button>
+                        <button type="button" class="btn-danger confirm-delete-btn">Delete Club</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to the document
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer.firstElementChild);
+    
+    // Get the modal element
+    const modal = document.getElementById('delete-club-modal');
+    
+    // Show the modal
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+    
+    // Add event listeners
+    const closeBtn = modal.querySelector('.close-modal');
+    const cancelBtn = modal.querySelector('.cancel-modal');
+    const confirmBtn = modal.querySelector('.confirm-delete-btn');
+    
+    // Close modal events
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    });
+    
+    cancelBtn.addEventListener('click', () => {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    });
+    
+    // Confirm delete action
+    confirmBtn.addEventListener('click', async () => {
+        try {
+            // Show loading state
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<div class="loading-spinner small"></div> Deleting...';
+            
+            // Submit to API
+            const result = await ApiService.deleteClub(clubId);
+            
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            // Close modal
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.remove();
+            }, 300);
+            
+            // Show success message
+            showToast('Club deleted successfully!', 'success');
+            
+            // Reload clubs data
+            loadClubsData();
+        } catch (error) {
+            console.error('Error deleting club:', error);
+            showToast('Failed to delete club. Please try again.', 'error');
+            
+            // Reset button
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Delete Club';
+        }
+    });
+}
+
+// Show a toast notification
+function showToast(message, type = 'info') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="toast-icon fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+            <span class="toast-message">${message}</span>
+        </div>
+        <button class="toast-close">&times;</button>
+    `;
+    
+    // Add to document
+    document.body.appendChild(toast);
+    
+    // Show toast
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // Auto hide after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 3000);
+    
+    // Close button handler
+    const closeBtn = toast.querySelector('.toast-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        });
+    }
 }
 
 // Initialize clubs distance chart
