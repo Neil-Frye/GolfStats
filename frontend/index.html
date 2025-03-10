@@ -81,6 +81,7 @@
                         <p class="user-handicap">Handicap: 12.4</p>
                     </div>
                 </div>
+                <div class="profile-completion" style="display: none;"></div>
                 <a href="#" id="logout-button" class="logout-button">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
@@ -595,6 +596,24 @@
                     <div class="section-actions">
                         <button class="add-btn">
                             <i class="fas fa-plus"></i> Add Club
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Loading indicator for clubs -->
+                <div id="clubs-loading" class="loading-container">
+                    <div class="spinner"></div>
+                    <p>Loading your clubs...</p>
+                </div>
+                
+                <!-- Empty state for clubs -->
+                <div class="clubs-empty-state" style="display: none;">
+                    <div class="empty-state-content">
+                        <i class="fas fa-golf-ball empty-icon"></i>
+                        <h3>No Clubs Added Yet</h3>
+                        <p>Track your club distances, specs, and stats by adding your clubs to your bag.</p>
+                        <button class="btn primary-btn add-first-club-btn">
+                            <i class="fas fa-plus"></i> Add Your First Club
                         </button>
                     </div>
                 </div>

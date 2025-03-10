@@ -49,7 +49,8 @@ from backend.database.supabase_data import (
     get_golf_rounds, get_golf_round, create_golf_round, 
     update_golf_round, delete_golf_round, get_shots_for_round,
     add_shot, get_user_preferences, update_user_preferences,
-    get_user_rounds_stats
+    get_user_rounds_stats, get_user_clubs, get_club, create_club,
+    update_club, delete_club
 )
 
 # Import auth decorators
@@ -286,6 +287,96 @@ def get_stats():
     
     return jsonify({
         "stats": stats
+    })
+
+# Club management routes
+@api_bp.route('/clubs')
+@require_auth
+def get_clubs():
+    """Get clubs for current user."""
+    from backend.auth import get_current_user
+    
+    user = get_current_user()
+    clubs = get_user_clubs(user['id'])
+    
+    return jsonify({
+        "clubs": clubs
+    })
+
+@api_bp.route('/clubs/<int:club_id>')
+@require_auth
+def get_club_by_id(club_id):
+    """Get a specific club."""
+    club_data = get_club(club_id)
+    if not club_data:
+        return jsonify({"error": "Club not found"}), 404
+        
+    return jsonify({
+        "club": club_data
+    })
+
+@api_bp.route('/clubs', methods=['POST'])
+@require_auth
+def add_club():
+    """Create a new club."""
+    from backend.auth import get_current_user
+    
+    user = get_current_user()
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+        
+    club_data = create_club(user['id'], data)
+    
+    if not club_data:
+        return jsonify({"error": "Failed to create club"}), 500
+        
+    return jsonify({
+        "message": "Club created successfully",
+        "club": club_data
+    }), 201
+
+@api_bp.route('/clubs/<int:club_id>', methods=['PUT'])
+@require_auth
+def update_club_by_id(club_id):
+    """Update a club."""
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+        
+    # Check if club exists
+    existing = get_club(club_id)
+    if not existing:
+        return jsonify({"error": "Club not found"}), 404
+        
+    club_data = update_club(club_id, data)
+    
+    if not club_data:
+        return jsonify({"error": "Failed to update club"}), 500
+        
+    return jsonify({
+        "message": "Club updated successfully",
+        "club": club_data
+    })
+
+@api_bp.route('/clubs/<int:club_id>', methods=['DELETE'])
+@require_auth
+def delete_club_by_id(club_id):
+    """Delete a club."""
+    # Check if club exists
+    existing = get_club(club_id)
+    if not existing:
+        return jsonify({"error": "Club not found"}), 404
+        
+    success = delete_club(club_id)
+    
+    if not success:
+        return jsonify({"error": "Failed to delete club"}), 500
+        
+    return jsonify({
+        "message": "Club deleted successfully"
     })
 
 @api_bp.route('/admin/apply-rls', methods=['POST'])

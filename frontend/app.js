@@ -492,11 +492,19 @@ function setupEventListeners() {
     // Add club button
     const addClubButton = document.querySelector('.club-card.add-club');
     if (addClubButton) {
-        addClubButton.addEventListener('click', function() {
-            console.log('Add club clicked');
-            // In a real app, this would open a form to add a new club
-            alert('Add club functionality will be implemented in a future update.');
-        });
+        addClubButton.addEventListener('click', showAddClubModal);
+    }
+    
+    // Add first club button (in empty state)
+    const addFirstClubBtn = document.querySelector('.add-first-club-btn');
+    if (addFirstClubBtn) {
+        addFirstClubBtn.addEventListener('click', showAddClubModal);
+    }
+    
+    // Add club button in section header
+    const addClubHeaderBtn = document.querySelector('#clubs-view .add-btn');
+    if (addClubHeaderBtn) {
+        addClubHeaderBtn.addEventListener('click', showAddClubModal);
     }
     
     // Add goal button
@@ -627,7 +635,7 @@ function setupEventListeners() {
                         initInsightsCharts();
                         break;
                     case 'clubs':
-                        initClubsChart();
+                        loadClubsData();
                         break;
                     case 'goals':
                         initGoalsChart();
@@ -1035,50 +1043,192 @@ function initInsightsCharts() {
     }
 }
 
+// Load clubs data and populate UI
+async function loadClubsData() {
+    // Show loading state
+    const clubsContainer = document.querySelector('.clubs-container');
+    const clubsEmptyState = document.querySelector('.clubs-empty-state');
+    const loadingIndicator = document.getElementById('clubs-loading');
+    
+    if (loadingIndicator) loadingIndicator.style.display = 'block';
+    if (clubsContainer) clubsContainer.style.display = 'none';
+    if (clubsEmptyState) clubsEmptyState.style.display = 'none';
+    
+    try {
+        // Fetch clubs from API
+        const result = await ApiService.getClubs();
+        const clubs = result.clubs || [];
+        
+        // Hide loading indicator
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        
+        // Check if we have clubs or need to show empty state
+        if (clubs.length === 0) {
+            // Show empty state
+            if (clubsEmptyState) {
+                clubsEmptyState.style.display = 'flex';
+            }
+        } else {
+            // Show clubs container
+            if (clubsContainer) {
+                clubsContainer.style.display = 'grid';
+                
+                // Clear existing club cards
+                clubsContainer.innerHTML = '';
+                
+                // Create a card for each club
+                clubs.forEach(club => {
+                    const clubCard = createClubCard(club);
+                    clubsContainer.appendChild(clubCard);
+                });
+                
+                // Add the "Add Club" card at the end
+                const addClubCard = document.createElement('div');
+                addClubCard.className = 'club-card add-club';
+                addClubCard.innerHTML = `
+                    <div class="card-icon">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <h3>Add Club</h3>
+                    <p>Add a new club to your bag</p>
+                `;
+                addClubCard.addEventListener('click', showAddClubModal);
+                clubsContainer.appendChild(addClubCard);
+            }
+        }
+        
+        // Initialize chart with real data
+        initClubsChart(clubs);
+    } catch (error) {
+        console.error('Error loading clubs data:', error);
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        if (clubsEmptyState) clubsEmptyState.style.display = 'flex';
+    }
+}
+
+// Create a club card element from club data
+function createClubCard(club) {
+    const card = document.createElement('div');
+    card.className = 'club-card';
+    card.setAttribute('data-club-id', club.id);
+    
+    let distanceDisplay = '';
+    if (club.avg_distance_yards) {
+        distanceDisplay = `<p class="club-stat">Avg: ${club.avg_distance_yards} yards</p>`;
+    }
+    
+    let maxDistanceDisplay = '';
+    if (club.max_distance_yards) {
+        maxDistanceDisplay = `<p class="club-stat">Max: ${club.max_distance_yards} yards</p>`;
+    }
+    
+    card.innerHTML = `
+        <div class="card-header">
+            <h3>${club.name}</h3>
+            <div class="card-actions">
+                <button class="edit-button" data-club-id="${club.id}">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+        </div>
+        <div class="club-details">
+            ${club.brand && club.model ? `<p>${club.brand} ${club.model}</p>` : ''}
+            ${club.loft ? `<p class="club-stat">Loft: ${club.loft}°</p>` : ''}
+            ${distanceDisplay}
+            ${maxDistanceDisplay}
+        </div>
+    `;
+    
+    // Add event listener for edit button
+    const editButton = card.querySelector('.edit-button');
+    if (editButton) {
+        editButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showEditClubModal(club);
+        });
+    }
+    
+    return card;
+}
+
+// Show modal to add a new club
+function showAddClubModal() {
+    // Implementation will be added in a later update
+    alert('Add club functionality will be implemented in a future update.');
+}
+
+// Show modal to edit an existing club
+function showEditClubModal(club) {
+    // Implementation will be added in a later update
+    alert('Edit club functionality will be implemented in a future update.');
+}
+
 // Initialize clubs distance chart
-function initClubsChart() {
-    // Check if chart is already initialized
-    if (window.clubDistancesChart) return;
+function initClubsChart(clubs = []) {
+    // Destroy existing chart if it exists
+    if (window.clubDistancesChart) {
+        window.clubDistancesChart.destroy();
+        window.clubDistancesChart = null;
+    }
     
     const clubDistancesCanvas = document.getElementById('club-distances-chart');
-    if (clubDistancesCanvas) {
-        window.clubDistancesChart = new Chart(clubDistancesCanvas, {
-            type: 'bar',
-            data: {
-                labels: ['Driver', '3 Wood', '5 Wood', '4 Iron', '5 Iron', '6 Iron', '7 Iron', '8 Iron', '9 Iron', 'PW', 'GW', 'SW', 'LW'],
-                datasets: [{
-                    label: 'Average Distance (yards)',
-                    data: [265, 240, 225, 210, 195, 185, 170, 160, 150, 135, 120, 105, 90],
-                    backgroundColor: 'rgba(44, 140, 88, 0.7)',
-                    borderColor: 'rgba(44, 140, 88, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        min: 80,
-                        title: {
-                            display: true,
-                            text: 'Distance (yards)'
-                        }
+    if (!clubDistancesCanvas) return;
+    
+    let labels = [];
+    let distances = [];
+    
+    // If we have clubs, use their real data
+    if (clubs.length > 0) {
+        // Sort clubs by distance (descending)
+        const sortedClubs = [...clubs].sort((a, b) => 
+            (b.avg_distance_yards || 0) - (a.avg_distance_yards || 0)
+        );
+        
+        // Extract labels and distances from clubs
+        labels = sortedClubs.map(club => club.name);
+        distances = sortedClubs.map(club => club.avg_distance_yards || 0);
+    } else {
+        // Use example data if no clubs exist
+        labels = ['Driver', '3 Wood', '5 Wood', '4 Iron', '5 Iron', '6 Iron', '7 Iron', '8 Iron', '9 Iron', 'PW', 'GW', 'SW', 'LW'];
+        distances = [265, 240, 225, 210, 195, 185, 170, 160, 150, 135, 120, 105, 90];
+    }
+    
+    window.clubDistancesChart = new Chart(clubDistancesCanvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Average Distance (yards)',
+                data: distances,
+                backgroundColor: 'rgba(44, 140, 88, 0.7)',
+                borderColor: 'rgba(44, 140, 88, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: Math.max(0, Math.min(...distances) - 10),
+                    title: {
+                        display: true,
+                        text: 'Distance (yards)'
                     }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.raw} yards`;
-                            }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.raw} yards`;
                         }
                     }
                 }
             }
-        });
-    }
+        }
+    });
 }
 
 // Initialize goals tracking chart
@@ -1291,13 +1441,62 @@ function checkIntegrationOnboarding() {
 function updateUserInfo(user) {
     const nameElement = document.querySelector('.user-name');
     const handicapElement = document.querySelector('.user-handicap');
+    const profileCompletionElement = document.querySelector('.profile-completion');
     
-    if (nameElement && user.full_name) {
-        nameElement.textContent = user.full_name;
+    // Update name with default if empty
+    if (nameElement) {
+        nameElement.textContent = user.full_name || 'Golf Enthusiast';
+        
+        // Add a class if name is default to style differently
+        if (!user.full_name) {
+            nameElement.classList.add('incomplete-profile');
+        } else {
+            nameElement.classList.remove('incomplete-profile');
+        }
     }
     
-    if (handicapElement && user.handicap) {
-        handicapElement.textContent = `Handicap: ${user.handicap}`;
+    // Update handicap with a prompt if empty
+    if (handicapElement) {
+        if (user.handicap) {
+            handicapElement.textContent = `Handicap: ${user.handicap}`;
+            handicapElement.classList.remove('incomplete-profile');
+        } else {
+            handicapElement.textContent = 'Set your handicap';
+            handicapElement.classList.add('incomplete-profile');
+        }
+    }
+    
+    // Show profile completion indicator if needed
+    if (profileCompletionElement) {
+        // Calculate profile completion percentage
+        const fields = ['full_name', 'handicap', 'preferred_units'];
+        const completedFields = fields.filter(field => user[field]).length;
+        const completionPercentage = Math.round((completedFields / fields.length) * 100);
+        
+        if (completionPercentage < 100) {
+            profileCompletionElement.style.display = 'block';
+            profileCompletionElement.innerHTML = `
+                <div class="completion-bar">
+                    <div class="completion-progress" style="width: ${completionPercentage}%"></div>
+                </div>
+                <p>Profile ${completionPercentage}% complete</p>
+                <button class="complete-profile-btn">Complete Profile</button>
+            `;
+            
+            // Add click handler for complete profile button
+            const completeProfileBtn = profileCompletionElement.querySelector('.complete-profile-btn');
+            if (completeProfileBtn) {
+                completeProfileBtn.addEventListener('click', () => {
+                    // Navigate to settings tab
+                    const settingsLink = document.querySelector('.sidebar-nav a[href="#settings"]');
+                    if (settingsLink) {
+                        settingsLink.click();
+                    }
+                });
+            }
+        } else {
+            profileCompletionElement.style.display = 'none';
+        }
     }
 }
 
@@ -2140,6 +2339,94 @@ const ApiService = {
         } catch (error) {
             console.error('Error fetching stats:', error);
             return { stats: {} };
+        }
+    },
+    
+    // Get clubs for current user
+    async getClubs() {
+        try {
+            const result = await this.fetchWithRetry(`${this.baseUrl}/clubs`, {
+                credentials: 'include'
+            });
+            
+            // If result contains an error property, handle it
+            if (result.error) {
+                console.warn('Error getting clubs:', result.error);
+                return { clubs: [] };
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('Error fetching clubs:', error);
+            return { clubs: [] };
+        }
+    },
+    
+    // Get a specific club
+    async getClub(clubId) {
+        try {
+            const result = await this.fetchWithRetry(`${this.baseUrl}/clubs/${clubId}`, {
+                credentials: 'include'
+            });
+            
+            if (result.error) {
+                console.warn(`Error getting club ${clubId}:`, result.error);
+                return { club: null };
+            }
+            
+            return result;
+        } catch (error) {
+            console.error(`Error fetching club ${clubId}:`, error);
+            return { club: null };
+        }
+    },
+    
+    // Create a new club
+    async saveClub(clubData) {
+        try {
+            const result = await this.fetchWithRetry(`${this.baseUrl}/clubs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(clubData)
+            });
+            
+            return result;
+        } catch (error) {
+            console.error('Error saving club:', error);
+            return { error: 'Failed to save club' };
+        }
+    },
+    
+    // Update an existing club
+    async updateClub(clubId, clubData) {
+        try {
+            const result = await this.fetchWithRetry(`${this.baseUrl}/clubs/${clubId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(clubData)
+            });
+            
+            return result;
+        } catch (error) {
+            console.error(`Error updating club ${clubId}:`, error);
+            return { error: 'Failed to update club' };
+        }
+    },
+    
+    // Delete a club
+    async deleteClub(clubId) {
+        try {
+            const result = await this.fetchWithRetry(`${this.baseUrl}/clubs/${clubId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            return result;
+        } catch (error) {
+            console.error(`Error deleting club ${clubId}:`, error);
+            return { error: 'Failed to delete club' };
         }
     }
 };
