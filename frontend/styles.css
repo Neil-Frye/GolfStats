@@ -199,6 +199,118 @@ button {
     text-overflow: ellipsis;
 }
 
+/* Profile completion indicator */
+.profile-completion {
+    margin: 10px 0;
+    padding: 5px;
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-completion:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.profile-completion p {
+    font-size: 0.75rem;
+    margin: 4px 0;
+    color: #ecf0f1;
+}
+
+.completion-bar {
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.completion-progress {
+    height: 100%;
+    background-color: #2ecc71;
+    border-radius: 2px;
+}
+
+/* Profile alert banner */
+.profile-alert {
+    display: flex;
+    align-items: center;
+    background-color: var(--primary-light);
+    border-left: 4px solid var(--primary-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+    box-shadow: var(--card-shadow);
+}
+
+.alert-icon {
+    font-size: 2rem;
+    color: var(--primary-color);
+    margin-right: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-content h3 {
+    margin: 0 0 var(--spacing-xs) 0;
+    color: var(--text-color);
+}
+
+.alert-content p {
+    margin: 0 0 var(--spacing-sm) 0;
+    color: var(--text-light);
+}
+
+.profile-completion-progress {
+    display: flex;
+    align-items: center;
+    margin-top: var(--spacing-xs);
+}
+
+.progress-bar {
+    height: 8px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    flex: 1;
+    margin-right: var(--spacing-md);
+}
+
+.progress-value {
+    height: 100%;
+    background-color: var(--primary-color);
+}
+
+.progress-text {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+.alert-actions {
+    margin-left: var(--spacing-md);
+}
+
+.close-alert {
+    position: absolute;
+    top: var(--spacing-xs);
+    right: var(--spacing-xs);
+    background: transparent;
+    border: none;
+    color: var(--text-light);
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+}
+
 .user-handicap {
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.7);

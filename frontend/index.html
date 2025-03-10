@@ -117,6 +117,27 @@
 
             <!-- Dashboard Content -->
             <section id="dashboard-view" class="content-section active">
+                <!-- Profile Completion Alert -->
+                <div id="profile-completion-alert" class="profile-alert" style="display: none;">
+                    <div class="alert-icon">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div class="alert-content">
+                        <h3>Complete Your Profile</h3>
+                        <p>Add your profile picture and complete your information to get personalized insights.</p>
+                        <div class="profile-completion-progress">
+                            <div class="progress-bar">
+                                <div class="progress-value" style="width: 50%;"></div>
+                            </div>
+                            <span class="progress-text">50% Complete</span>
+                        </div>
+                    </div>
+                    <div class="alert-actions">
+                        <button id="complete-profile-btn" class="btn-primary">Complete Profile</button>
+                    </div>
+                    <button class="close-alert">&times;</button>
+                </div>
+                
                 <div class="dashboard-overview">
                     <div class="stats-card-container">
                         <div class="stats-card">
@@ -959,8 +980,11 @@
                             
                             <form class="settings-form">
                                 <div class="profile-avatar">
-                                    <img src="https://via.placeholder.com/100" alt="Profile picture">
-                                    <button type="button" class="change-avatar">Change Photo</button>
+                                    <img id="profile-image-preview" src="https://via.placeholder.com/100" alt="Profile picture">
+                                    <div class="avatar-upload">
+                                        <label for="profile-image-upload" class="change-avatar">Change Photo</label>
+                                        <input type="file" id="profile-image-upload" name="profile_image" accept="image/*" style="display: none;">
+                                    </div>
                                 </div>
                                 
                                 <div class="form-group">

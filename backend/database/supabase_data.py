@@ -92,6 +92,9 @@ def create_golf_round(user_id: str, round_data: Dict[str, Any]) -> Optional[Dict
         Created golf round data or None if failed
     """
     try:
+        # Extract stats if present
+        stats_data = round_data.pop('stats', None)
+        
         # Ensure user_id is set
         round_data['user_id'] = user_id
         
@@ -100,9 +103,46 @@ def create_golf_round(user_id: str, round_data: Dict[str, Any]) -> Optional[Dict
             .insert(round_data) \
             .execute()
             
-        return response.data[0] if response.data else None
+        round_result = response.data[0] if response.data else None
+        
+        # If round was created and stats data exists, create stats record
+        if round_result and stats_data:
+            create_round_stats(round_result['id'], stats_data)
+            
+        return round_result
     except Exception as e:
         logger.error(f"Error creating golf round: {str(e)}")
+        return None
+
+def create_round_stats(round_id: int, stats_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Create stats for a golf round.
+    
+    Args:
+        round_id: Golf round ID
+        stats_data: Golf round stats
+        
+    Returns:
+        Created stats data or None if failed
+    """
+    try:
+        # Prepare stats data
+        stats_record = {
+            'round_id': round_id,
+            'fairways_hit': stats_data.get('fairways_hit', 0),
+            'fairways_total': stats_data.get('fairways_total', 14),
+            'greens_in_regulation': stats_data.get('greens_in_regulation', 0),
+            'putts_total': stats_data.get('putts_total', 0),
+        }
+        
+        supabase = get_supabase()
+        response = supabase.table('round_stats') \
+            .insert(stats_record) \
+            .execute()
+            
+        return response.data[0] if response.data else None
+    except Exception as e:
+        logger.error(f"Error creating round stats: {str(e)}")
         return None
 
 def update_golf_round(round_id: int, round_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

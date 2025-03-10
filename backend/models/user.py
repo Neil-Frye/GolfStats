@@ -138,18 +138,24 @@ class User:
         Returns:
             Dictionary representation of the user
         """
-        prefs = self.get_preferences()
+        prefs = self.get_preferences() or {}
+        
+        # Get avatar URL from preferences or use profile picture from auth
+        avatar_url = prefs.get("avatar_url") or self.profile_picture
         
         return {
             "id": self.id,
             "email": self.email,
             "username": self.username,
             "full_name": self.full_name,
+            "name": self.full_name,  # Added for compatibility
             "is_active": self.is_active,
             "is_superuser": self.is_superuser,
             "created_at": self.created_at,
             "auth_provider": self.auth_provider,
             "profile_picture": self.profile_picture,
+            "avatar_url": avatar_url,
+            "preferences": prefs,  # Include all preferences
             "handicap": prefs.get("handicap"),
             "preferred_units": prefs.get("preferred_units", "yards"),
             "has_trackman": self.trackman_credentials_valid(),

@@ -256,3 +256,50 @@ def require_admin(f):
         return f(*args, **kwargs)
     decorated.__name__ = f.__name__
     return decorated
+    
+def request_password_reset(email: str) -> bool:
+    """
+    Request a password reset email to be sent to the user.
+    
+    Args:
+        email: User email address
+        
+    Returns:
+        True if password reset email sent successfully, False otherwise
+    """
+    try:
+        supabase = get_supabase()
+        
+        # Use Supabase's password reset functionality
+        response = supabase.auth.reset_password_email(email)
+        
+        logger.info(f"Password reset email sent to {email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send password reset email to {email}: {str(e)}")
+        return False
+        
+def update_user_password(token: str, new_password: str) -> bool:
+    """
+    Update a user's password with a reset token.
+    
+    Args:
+        token: The recovery token from the reset email
+        new_password: The new password to set
+        
+    Returns:
+        True if password was updated successfully, False otherwise
+    """
+    try:
+        supabase = get_supabase()
+        
+        # Update the user's password
+        response = supabase.auth.update_user({
+            "password": new_password
+        }, token)
+        
+        logger.info("Password updated successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update password: {str(e)}")
+        return False
