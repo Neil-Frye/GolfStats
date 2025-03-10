@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "buildCommand": "bash vercel-build.sh",
   "builds": [
     {
       "src": "api/index.py",
