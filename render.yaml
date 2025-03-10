@@ -1,0 +1,27 @@
+# render.yaml
+services:
+  - type: web
+    name: golfstats-prod
+    env: python
+    plan: free
+
+    buildCommand: |
+      # (1) Upgrade pip
+      pip install --upgrade pip
+      # (2) Install everything from your main requirements
+      pip install -r requirements.txt
+
+    startCommand: |
+      # Start the server
+      python run.py
+
+    envVars:
+      - key: APP_ENVIRONMENT
+        value: production
+      - key: PYTHONPATH
+        value: .
+      # Define other environment variables in Render dashboard
+      # - key: SUPABASE_URL
+      #   sync: false # Use Render dashboard to set this
+      # - key: SUPABASE_API_KEY
+      #   sync: false # Use Render dashboard to set this
