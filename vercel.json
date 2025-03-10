@@ -1,10 +1,21 @@
 {
   "version": 2,
   "buildCommand": "bash vercel-build.sh",
+  "installCommand": "pip install -r api/requirements.txt",
+  "framework": null,
+  "outputDirectory": ".vercel/output",
   "functions": {
     "api/index.py": {
       "memory": 1024,
-      "maxDuration": 10
+      "maxDuration": 10,
+      "runtime": "python3.9",
+      "includeFiles": [
+        "api/index.py",
+        "api/requirements.txt"
+      ],
+      "excludeFiles": [
+        "**"
+      ]
     }
   },
   "routes": [
