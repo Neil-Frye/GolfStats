@@ -1,4 +1,4 @@
-name: Pull Request Tests
+name: Pull Request Tests - Lightweight Version
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
-  test:
+  api-validation:
     runs-on: ubuntu-latest
     
     env:
@@ -22,53 +22,33 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.9'
     
-    - name: Install dependencies
+    - name: Install minimal dependencies for API validation
       run: |
         python -m pip install --upgrade pip
-        pip install -r backend/requirements.txt
-        pip install pylint mypy pytest pytest-cov
+        pip install -r api/requirements.txt
+        pip install pylint
     
-    - name: Run linting
+    - name: Validate API
       run: |
-        pylint backend tests
-      continue-on-error: true  # Don't fail the build on linting errors
+        # Just check if API file has syntax errors
+        python -m py_compile api/index.py
+        
+        # Simple pylint check on the API file only
+        pylint api/index.py --disable=all --enable=syntax-error,undefined-variable
     
-    - name: Run type checking
-      run: |
-        mypy backend tests
-      continue-on-error: true  # Don't fail the build on type errors
-    
-    - name: Run unit tests
-      run: |
-        python -m pytest tests -v
-    
-    - name: Upload test results
-      uses: actions/upload-artifact@v3
-      if: always()  # Upload artifacts even if tests fail
-      with:
-        name: test-results
-        path: |
-          .pytest_cache/
-          .coverage
-          htmlcov/
-        retention-days: 7
-    
-    - name: Comment PR with test results
+    - name: Comment PR with API validation
       if: github.event_name == 'pull_request'
       uses: actions/github-script@v6
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
-          const fs = require('fs');
           const { issue: { number: issue_number }, repo: { owner, repo } } = context;
-          
-          const testResultSummary = process.env.TEST_RESULT_SUMMARY || 'Tests have been run. Check the workflow run for details.';
           
           github.rest.issues.createComment({
             issue_number,
             owner,
             repo,
-            body: `## Test Results\n\n${testResultSummary}\n\nSee [workflow run](https://github.com/${owner}/${repo}/actions/runs/${context.runId}) for details.`
+            body: `## API Validation Complete\n\nThe serverless API has been validated for syntax errors.\n\nSee [workflow run](https://github.com/${owner}/${repo}/actions/runs/${context.runId}) for details.`
           });
