@@ -1,7 +1,6 @@
 """
-GolfStats Vercel Handler - Standalone implementation for serverless deployment.
-This file is completely independent from the main backend code,
-avoiding all heavy dependencies for a minimal Vercel deployment.
+GolfStats API Handler - Standalone implementation for Render deployment.
+This file is completely independent from the main backend code.
 
 IMPORTANT: This file should NOT import anything from the backend/ directory!
 All functionality should be self-contained or use mock_scrapers.py.
@@ -15,12 +14,11 @@ from supabase import create_client, Client
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("api.serverless")
+logger = logging.getLogger("api")
 
-# Load environment variables (from Vercel or local .env)
+# Load environment variables (from Render or local .env)
 load_dotenv()
 logger.info(f"Running in environment: {os.environ.get('APP_ENVIRONMENT', 'production')}")
-logger.info(f"Serverless mode: {os.environ.get('SERVERLESS_MODE', 'true')}")
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -44,8 +42,7 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'version': '1.0.0',
-        'environment': os.environ.get('APP_ENVIRONMENT', 'production'),
-        'serverless': True
+        'environment': os.environ.get('APP_ENVIRONMENT', 'production')
     })
 
 @app.route('/api/auth/me', methods=['GET'])
@@ -89,56 +86,76 @@ def get_user_rounds(user_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/scraper/<source>', methods=['GET'])
-def mock_scraper_endpoint(source):
-    """Mock implementation of scraper endpoints.
+def scraper_endpoint(source):
+    """Implementation of scraper endpoints.
     
-    In serverless mode, we never run real scrapers which require browser automation.
-    Instead, we return standardized mock responses that the frontend can handle.
+    This endpoint can use real scrapers on Render, or fall back to mock implementation
+    if the real scraper dependencies are not available.
     """
-    logger.info(f"Mock scraper endpoint called for source: {source}")
+    logger.info(f"Scraper endpoint called for source: {source}")
     
-    # Import our lightweight mock scrapers
+    # Try to import real scrapers first
     try:
-        from api.mock_scrapers import MockArccosScraper, MockTrackmanScraper, MockSkytrakScraper
+        # Import from backend if available
+        from backend.scrapers import get_scraper_for_source
         
-        # Map source parameter to the appropriate mock class
-        scraper_map = {
-            'arccos': MockArccosScraper,
-            'trackman': MockTrackmanScraper,
-            'skytrak': MockSkytrakScraper,
-        }
-        
-        if source not in scraper_map:
+        scraper = get_scraper_for_source(source)
+        if not scraper:
             return jsonify({
                 'status': 'error',
-                'message': f'Unknown source: {source}',
-                'serverless': True
+                'message': f'Unknown source: {source}'
             }), 400
             
-        # Create a mock scraper instance
-        mock_scraper = scraper_map[source]()
+        # Get real data
+        data = scraper.get_data()
         
-        # Get mock data
-        mock_data = mock_scraper.get_data()
-        
-        # Return a standardized response
         return jsonify({
             'status': 'success',
-            'message': f'This is a mock implementation of the {source} scraper for serverless deployment',
-            'data': mock_data.get('data', []),
-            'source': source,
-            'serverless': True
+            'data': data.get('data', []),
+            'source': source
         })
         
-    except ImportError as e:
-        logger.error(f"Failed to import mock scrapers: {str(e)}")
-        return jsonify({
-            'status': 'error',
-            'message': 'Mock scraper implementation unavailable',
-            'error': str(e),
-            'serverless': True
-        }), 500
+    except ImportError:
+        logger.info("Real scrapers not available, falling back to mock implementation")
+        # Fall back to mock scrapers
+        try:
+            from api.mock_scrapers import MockArccosScraper, MockTrackmanScraper, MockSkytrakScraper
+            
+            # Map source parameter to the appropriate mock class
+            scraper_map = {
+                'arccos': MockArccosScraper,
+                'trackman': MockTrackmanScraper,
+                'skytrak': MockSkytrakScraper,
+            }
+            
+            if source not in scraper_map:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Unknown source: {source}'
+                }), 400
+                
+            # Create a mock scraper instance
+            mock_scraper = scraper_map[source]()
+            
+            # Get mock data
+            mock_data = mock_scraper.get_data()
+            
+            # Return a standardized response
+            return jsonify({
+                'status': 'success',
+                'message': f'This is a mock implementation of the {source} scraper',
+                'data': mock_data.get('data', []),
+                'source': source
+            })
+            
+        except ImportError as e:
+            logger.error(f"Failed to import mock scrapers: {str(e)}")
+            return jsonify({
+                'status': 'error',
+                'message': 'Scraper implementation unavailable',
+                'error': str(e)
+            }), 500
 
 if __name__ == '__main__':
-    # Only for local testing - Vercel uses the app variable directly
+    # Start the Flask server locally
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8000)))

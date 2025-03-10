@@ -45,8 +45,8 @@ logs/*.log
 *.swo
 .DS_Store
 
-# Vercel
-.vercel/
+# Deployment
+# Empty
 
 # Data files
 data/
