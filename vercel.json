@@ -4,20 +4,25 @@
   "installCommand": "pip install -r api/requirements.txt",
   "framework": null,
   "outputDirectory": ".vercel/output",
+  
   "functions": {
     "api/index.py": {
       "memory": 1024,
       "maxDuration": 10,
       "runtime": "python3.9",
+      
       "includeFiles": [
         "api/index.py",
-        "api/requirements.txt"
+        "api/requirements.txt",
+        "api/mock_scrapers.py"
       ],
+      
       "excludeFiles": [
-        "**"
+        "**" 
       ]
     }
   },
+  
   "routes": [
     {
       "src": "/api/(.*)",
@@ -28,9 +33,16 @@
       "dest": "frontend/$1"
     }
   ],
+  
   "env": {
     "PYTHONPATH": ".",
     "APP_ENVIRONMENT": "production",
-    "SERVERLESS_MODE": "true"
+    "SERVERLESS_MODE": "true",
+    "VERCEL_STRICT_BUILD": "true"
+  },
+  
+  "github": {
+    "silent": false,
+    "autoJobCancelation": true
   }
 }

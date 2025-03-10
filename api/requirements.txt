@@ -1,11 +1,15 @@
-# Ultra-minimal requirements for Vercel deployment
-# Removed all heavy and unnecessary dependencies
+# Ultra-minimal requirements for Vercel serverless function
+# ONLY include what's directly imported in api/index.py
 Flask==2.3.2
-requests==2.31.0
 python-dotenv==1.0.0
-email-validator==2.0.0
-Werkzeug==2.3.7
-psycopg2-binary==2.9.9
 supabase==1.0.3
-cryptography==41.0.3
-gunicorn==20.1.0
+
+# Dependencies that are EXPLICITLY NOT INCLUDED:
+# - selenium (heavy browser automation)
+# - webdriver-manager (heavy browser automation)
+# - pyppeteer (heavy browser automation)
+# - psycopg2-binary (supabase handles db connections)
+# - email-validator (not used in minimal API)
+# - gunicorn (Vercel handles server)
+# - cryptography (not directly imported)
+# - requests (already included by supabase)
