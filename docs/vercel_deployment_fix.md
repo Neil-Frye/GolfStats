@@ -1,65 +1,102 @@
-# Vercel Deployment Fix for Cryptography Module
+# Vercel Deployment Fix: Solving the 250MB Size Limit Issue
 
-## Issue Description
+This document outlines the specific measures taken to fix Vercel deployment issues related to the 250MB size limit, with a particular focus on ensuring that only minimal dependencies are included in the serverless function.
 
-The application is failing in the Vercel production environment with this error:
+## Core Issue
 
-```
-ModuleNotFoundError: No module named 'cryptography'
-```
+Vercel serverless functions have a 250MB size limit. Our original deployment was failing because:
 
-This occurs because the authentication system requires the `cryptography` Python package, which was missing from our requirements and deployment configuration.
+1. The entire codebase was being included, with all heavy dependencies
+2. Browser automation libraries (Selenium, Pyppeteer) were being pulled in 
+3. Configuration was not strict enough to prevent unwanted inclusions
 
-## Fixed Files
+## Critical Files and Their Roles
 
-1. Added `cryptography==41.0.3` to:
-   - `/backend/requirements.txt`
-   - `/api/requirements.txt`
+### 1. `.vercelignore`
 
-2. Updated Vercel deployment configuration:
-   - Added configuration in `vercel.json` to include cryptography explicitly
-   - Created `vercel-build.sh` for the build process
-   - Added `package.json` with build scripts
-   - Created `api/build.sh` script to install system dependencies
+- Uses a strict allowlist approach: block everything first with `*`, then allow only specific files
+- Only explicitly allows:
+  - `api/index.py`
+  - `api/requirements.txt`
+  - `api/mock_scrapers.py`
+  - `vercel.json`
+  - `vercel-build.sh`
+  - `frontend/**` (if needed)
+- Explicitly blocks heavy directories like `backend/`, `tests/`, etc.
 
-## Deployment Steps
+### 2. `vercel.json`
 
-To fix this issue in your Vercel production environment:
+- The `functions` section uses both `includeFiles` and `excludeFiles`:
+  ```json
+  "functions": {
+    "api/index.py": {
+      "memory": 1024,
+      "maxDuration": 10,
+      "runtime": "python3.9",
+      "includeFiles": [
+        "api/index.py",
+        "api/requirements.txt",
+        "api/mock_scrapers.py"
+      ],
+      "excludeFiles": [
+        "**"
+      ]
+    }
+  }
+  ```
+- `installCommand` is set to `pip install -r api/requirements.txt` (NOT the main requirements.txt)
+- `buildCommand` is set to `bash vercel-build.sh`
+- Sets `VERCEL_STRICT_BUILD=true` to enable additional safeguards
 
-1. Pull these changes to your local repository.
+### 3. `api/requirements.txt`
 
-2. Push the changes to your GitHub repository that's connected to Vercel.
+- Ultra-minimal requirements including only:
+  - Flask
+  - python-dotenv
+  - supabase
+- Explicitly excludes heavyweight dependencies like:
+  - selenium, webdriver-manager, pyppeteer
+  - psycopg2-binary, cryptography
+  - Any other non-essential packages
 
-3. Vercel should automatically trigger a new deployment with the updated configuration.
+### 4. `vercel-build.sh`
 
-4. Verify the build logs to ensure that the cryptography package is being installed correctly.
+- Contains multiple safeguards to prevent deployment failures:
+  - Checks for the presence of `backend/` directory and warns if found
+  - Creates a minimal build context when `VERCEL_STRICT_BUILD=true`
+  - Explicitly installs only from `api/requirements.txt`
+  - Warns if the main `requirements.txt` is found (but does not use it)
+  - Performs deep package checks for heavyweight dependencies
+  - Estimates deployment size and warns if it might exceed limits
 
-## Manual Configuration in Vercel (if needed)
+### 5. `api/index.py` and `api/mock_scrapers.py`
 
-If the automatic deployment doesn't resolve the issue, follow these steps in the Vercel dashboard:
+- Standalone implementation that doesn't import from the backend code
+- All dependencies are minimal and explicitly declared
+- Uses mock implementations instead of real scrapers
+- No accidental imports of backend modules
 
-1. Go to your Vercel project settings.
+## Deployment Process
 
-2. Navigate to the "Build & Development Settings" section.
+1. **Push code to GitHub**: Make sure `.vercelignore` and `vercel.json` are committed
+2. **Watch Vercel logs**: The build script will output detailed information
+3. **Check for warnings**: Address any warnings about size or dependencies
+4. **Verify API endpoints**: Make sure your API endpoints work as expected
 
-3. Make sure that the "Install Command" is set to `pip install -r api/requirements.txt`.
+## Troubleshooting
 
-4. Ensure that environment variables are properly configured, especially:
-   - `GOOGLE_CLIENT_ID`
-   - `GOOGLE_CLIENT_SECRET`
-   - `GOOGLE_REDIRECT_URI` (set to https://golfstats-prod.vercel.app/api/auth/google/callback)
-   - `SUPABASE_URL`
-   - `SUPABASE_API_KEY`
-   - `APP_ENVIRONMENT` (set to production)
+If you continue to see deployment failures:
 
-5. Trigger a manual redeployment from the "Deployments" tab.
+1. **Enable Strict Build Mode**: Set `VERCEL_STRICT_BUILD=true` in Vercel's environment variables
+2. **Check Vercel logs**: Look for mentions of problematic packages
+3. **Verify excludes are working**: The build logs should show minimal files being included
+4. **Check for transitive dependencies**: Some packages might pull in others indirectly
 
-## Monitoring & Verification
+## Long-term Strategy
 
-After redeployment:
+For the heavyweight parts of the application:
+- Consider running scrapers and ETL processes via GitHub Actions
+- Store results in your database
+- Let the lightweight Vercel API just read from the database
 
-1. Check the Vercel logs for any remaining errors.
-2. Test the Google OAuth login flow.
-3. Verify that the auth APIs (/api/auth/google/login, /api/auth/me) are working correctly.
-
-If you encounter persistent issues, you may need to add additional system dependencies through Vercel's Advanced Build Settings.
+This separation of concerns keeps your API endpoints fast and deployable while still maintaining full functionality.

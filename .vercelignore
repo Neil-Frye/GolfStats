@@ -1,17 +1,49 @@
-# INCLUDE ONLY NECESSARY FILES APPROACH
-# This is a "blocklist" - ignoring everything except what we specifically need
+# STRICT ALLOWLIST APPROACH - IGNORE EVERYTHING BY DEFAULT
 # Start by ignoring the entire project
 *
+
+# =========================================
+# EXPLICITLY INCLUDE ONLY WHAT WE NEED
+# =========================================
+
+# Only allow the minimal API files needed for serverless function
 !api/index.py
 !api/requirements.txt
-!frontend/**
-!vercel.json
+!api/mock_scrapers.py 
 
-# Add back only what we absolutely need
-!.vercel/
+# Build configuration
+!vercel.json
 !vercel-build.sh
 
-# Ignore all Python cache
+# Frontend files (if needed)
+!frontend/**
+
+# =========================================
+# EXPLICITLY EXCLUDE HEAVY DEPENDENCIES
+# =========================================
+
+# NEVER include backend/ directory with heavy dependencies
+backend/
+backend/**
+
+# NEVER include heavy library directories
+node_modules/
+venv/
+env/
+.venv/
+.env/
+__pycache__/
+
+# NEVER include test files
+tests/
+tests/**
+
+# NEVER include cache/bytecode files
 **/__pycache__/
 **/*.py[cod]
 **/*$py.class
+
+# NEVER include scraper implementations from backend
+**/scraper*/**
+**/selenium/**
+**/pyppeter/**

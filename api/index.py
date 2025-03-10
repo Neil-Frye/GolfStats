@@ -1,16 +1,26 @@
 """
-GolfStats Vercel Handler - Custom lightweight implementation for serverless deployment.
-This is a completely independent version that doesn't import the main backend code,
-avoiding all heavy dependencies.
+GolfStats Vercel Handler - Standalone implementation for serverless deployment.
+This file is completely independent from the main backend code,
+avoiding all heavy dependencies for a minimal Vercel deployment.
+
+IMPORTANT: This file should NOT import anything from the backend/ directory!
+All functionality should be self-contained or use mock_scrapers.py.
 """
 import os
 import json
+import logging
 from flask import Flask, jsonify, request, g
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# Load environment variables
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("api.serverless")
+
+# Load environment variables (from Vercel or local .env)
 load_dotenv()
+logger.info(f"Running in environment: {os.environ.get('APP_ENVIRONMENT', 'production')}")
+logger.info(f"Serverless mode: {os.environ.get('SERVERLESS_MODE', 'true')}")
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -18,6 +28,9 @@ app = Flask(__name__)
 # Configure Supabase client
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_API_KEY")
+
+if not supabase_url or not supabase_key:
+    logger.warning("Supabase credentials not found in environment variables!")
 
 def get_supabase() -> Client:
     """Get or create a Supabase client for the current request."""
@@ -77,14 +90,54 @@ def get_user_rounds(user_id):
 
 @app.route('/api/scraper/<source>', methods=['GET'])
 def mock_scraper_endpoint(source):
-    """Mock implementation of scraper endpoints."""
-    return jsonify({
-        'status': 'success',
-        'message': f'This is a mock implementation of the {source} scraper for serverless deployment',
-        'data': [],
-        'source': source,
-        'serverless': True
-    })
+    """Mock implementation of scraper endpoints.
+    
+    In serverless mode, we never run real scrapers which require browser automation.
+    Instead, we return standardized mock responses that the frontend can handle.
+    """
+    logger.info(f"Mock scraper endpoint called for source: {source}")
+    
+    # Import our lightweight mock scrapers
+    try:
+        from api.mock_scrapers import MockArccosScraper, MockTrackmanScraper, MockSkytrakScraper
+        
+        # Map source parameter to the appropriate mock class
+        scraper_map = {
+            'arccos': MockArccosScraper,
+            'trackman': MockTrackmanScraper,
+            'skytrak': MockSkytrakScraper,
+        }
+        
+        if source not in scraper_map:
+            return jsonify({
+                'status': 'error',
+                'message': f'Unknown source: {source}',
+                'serverless': True
+            }), 400
+            
+        # Create a mock scraper instance
+        mock_scraper = scraper_map[source]()
+        
+        # Get mock data
+        mock_data = mock_scraper.get_data()
+        
+        # Return a standardized response
+        return jsonify({
+            'status': 'success',
+            'message': f'This is a mock implementation of the {source} scraper for serverless deployment',
+            'data': mock_data.get('data', []),
+            'source': source,
+            'serverless': True
+        })
+        
+    except ImportError as e:
+        logger.error(f"Failed to import mock scrapers: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Mock scraper implementation unavailable',
+            'error': str(e),
+            'serverless': True
+        }), 500
 
 if __name__ == '__main__':
     # Only for local testing - Vercel uses the app variable directly
