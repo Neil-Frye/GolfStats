@@ -10,16 +10,20 @@ services:
       pip install --upgrade pip
       # (2) Install everything from your main requirements
       pip install -r requirements.txt
+      # (3) Make sure run.py is executable
+      chmod +x run.py
 
     startCommand: |
-      # Start the server
-      python run.py
+      # Start the server using gunicorn
+      gunicorn "api.index:app" --bind 0.0.0.0:$PORT --log-level info
 
     envVars:
       - key: APP_ENVIRONMENT
         value: production
       - key: PYTHONPATH
         value: .
+      - key: RENDER
+        value: "1"
       # Define other environment variables in Render dashboard
       # - key: SUPABASE_URL
       #   sync: false # Use Render dashboard to set this
