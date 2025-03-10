@@ -542,3 +542,119 @@ def get_user_rounds_stats(user_id: str, timeframe: str = 'all',
             'rounds_count': 0,
             'error': str(e)
         }
+        
+# Club management functions
+def get_user_clubs(user_id: str) -> List[Dict[str, Any]]:
+    """
+    Get clubs for a user.
+    
+    Args:
+        user_id: Supabase user ID
+        
+    Returns:
+        List of clubs
+    """
+    try:
+        supabase = get_supabase()
+        response = supabase.table('clubs') \
+            .select('*') \
+            .eq('user_id', user_id) \
+            .execute()
+            
+        return response.data
+    except Exception as e:
+        logger.error(f"Error getting clubs for user {user_id}: {str(e)}")
+        return []
+
+def get_club(club_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Get a specific club.
+    
+    Args:
+        club_id: Club ID
+        
+    Returns:
+        Club data or None if not found
+    """
+    try:
+        supabase = get_supabase()
+        response = supabase.table('clubs') \
+            .select('*') \
+            .eq('id', club_id) \
+            .single() \
+            .execute()
+            
+        return response.data
+    except Exception as e:
+        logger.error(f"Error getting club {club_id}: {str(e)}")
+        return None
+
+def create_club(user_id: str, club_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Create a new club.
+    
+    Args:
+        user_id: Supabase user ID
+        club_data: Club data
+        
+    Returns:
+        Created club data or None if failed
+    """
+    try:
+        # Ensure user_id is set
+        club_data['user_id'] = user_id
+        
+        supabase = get_supabase()
+        response = supabase.table('clubs') \
+            .insert(club_data) \
+            .execute()
+            
+        return response.data[0] if response.data else None
+    except Exception as e:
+        logger.error(f"Error creating club for user {user_id}: {str(e)}")
+        return None
+
+def update_club(club_id: int, club_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Update a club.
+    
+    Args:
+        club_id: Club ID
+        club_data: Updated club data
+        
+    Returns:
+        Updated club data or None if failed
+    """
+    try:
+        supabase = get_supabase()
+        response = supabase.table('clubs') \
+            .update(club_data) \
+            .eq('id', club_id) \
+            .execute()
+            
+        return response.data[0] if response.data else None
+    except Exception as e:
+        logger.error(f"Error updating club {club_id}: {str(e)}")
+        return None
+
+def delete_club(club_id: int) -> bool:
+    """
+    Delete a club.
+    
+    Args:
+        club_id: Club ID
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        supabase = get_supabase()
+        response = supabase.table('clubs') \
+            .delete() \
+            .eq('id', club_id) \
+            .execute()
+            
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting club {club_id}: {str(e)}")
+        return False
