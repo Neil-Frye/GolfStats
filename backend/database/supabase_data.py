@@ -72,7 +72,7 @@ def get_golf_round(round_id: int) -> Optional[Dict[str, Any]]:
         response = supabase.table('golf_rounds') \
             .select('*') \
             .eq('id', round_id) \
-            .single() \
+            .maybe_single() \
             .execute()
             
         return response.data
@@ -355,7 +355,7 @@ def get_user_preferences(user_id: str) -> Dict[str, Any]:
         response = supabase.table('user_preferences') \
             .select('*') \
             .eq('user_id', user_id) \
-            .single() \
+            .maybe_single() \
             .execute()
             
         return response.data or {}
@@ -630,7 +630,7 @@ def get_club(club_id: int) -> Optional[Dict[str, Any]]:
         response = supabase.table('clubs') \
             .select('*') \
             .eq('id', club_id) \
-            .single() \
+            .maybe_single() \
             .execute()
             
         return response.data

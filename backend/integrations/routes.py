@@ -55,27 +55,26 @@ def connect_integration():
     
     # Update user credentials in database
     try:
-        # Get database session
-        session = get_db_session()
-        
-        # Get user
-        user = session.query(User).filter(User.id == user_data['id']).first()
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-        
-        # Encrypt credentials and store them
-        if service == 'trackman':
-            user.trackman_username = username
-            user.trackman_password = encrypt_value(password)
-        elif service == 'arccos':
-            user.arccos_email = email
-            user.arccos_password = encrypt_value(password)
-        elif service == 'skytrak':
-            user.skytrak_username = username
-            user.skytrak_password = encrypt_value(password)
-        
-        # Save changes
-        session.commit()
+        # Get database session using context manager
+        with get_db() as session:
+            # Get user
+            user = session.query(User).filter(User.id == user_data['id']).first()
+            if not user:
+                return jsonify({"error": "User not found"}), 404
+            
+            # Encrypt credentials and store them
+            if service == 'trackman':
+                user.trackman_username = username
+                user.trackman_password = encrypt_value(password)
+            elif service == 'arccos':
+                user.arccos_email = email
+                user.arccos_password = encrypt_value(password)
+            elif service == 'skytrak':
+                user.skytrak_username = username
+                user.skytrak_password = encrypt_value(password)
+            
+            # Save changes
+            session.commit()
         
         # Return success
         return jsonify({
@@ -85,14 +84,7 @@ def connect_integration():
         
     except Exception as e:
         logger.error(f"Error connecting to {service}: {str(e)}")
-        # Rollback transaction
-        if 'session' in locals():
-            session.rollback()
         return jsonify({"error": f"Failed to connect to {service}: {str(e)}"}), 500
-    finally:
-        # Close session
-        if 'session' in locals():
-            session.close()
 
 @integrations_bp.route('/status', methods=['GET'])
 @require_auth
@@ -104,39 +96,34 @@ def get_integration_status():
         return jsonify({"error": "User not authenticated"}), 401
     
     try:
-        # Get database session
-        session = get_db_session()
-        
-        # Get user
-        user = session.query(User).filter(User.id == user_data['id']).first()
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-        
-        # Check integration status
-        integrations = {
-            "trackman": {
-                "connected": user.trackman_credentials_valid(),
-                "username": user.trackman_username if user.trackman_username else None
-            },
-            "arccos": {
-                "connected": user.arccos_credentials_valid(),
-                "email": user.arccos_email if user.arccos_email else None
-            },
-            "skytrak": {
-                "connected": user.skytrak_credentials_valid(),
-                "username": user.skytrak_username if user.skytrak_username else None
+        # Get database session using context manager
+        with get_db() as session:
+            # Get user
+            user = session.query(User).filter(User.id == user_data['id']).first()
+            if not user:
+                return jsonify({"error": "User not found"}), 404
+            
+            # Check integration status
+            integrations = {
+                "trackman": {
+                    "connected": user.trackman_credentials_valid(),
+                    "username": user.trackman_username if user.trackman_username else None
+                },
+                "arccos": {
+                    "connected": user.arccos_credentials_valid(),
+                    "email": user.arccos_email if user.arccos_email else None
+                },
+                "skytrak": {
+                    "connected": user.skytrak_credentials_valid(),
+                    "username": user.skytrak_username if user.skytrak_username else None
+                }
             }
-        }
-        
-        return jsonify({"integrations": integrations}), 200
+            
+            return jsonify({"integrations": integrations}), 200
         
     except Exception as e:
         logger.error(f"Error getting integration status: {str(e)}")
         return jsonify({"error": f"Failed to get integration status: {str(e)}"}), 500
-    finally:
-        # Close session
-        if 'session' in locals():
-            session.close()
 
 @integrations_bp.route('/test/<service>', methods=['POST'])
 @require_auth
@@ -151,44 +138,39 @@ def test_integration(service: str):
         return jsonify({"error": "User not authenticated"}), 401
     
     try:
-        # Get database session
-        session = get_db_session()
-        
-        # Get user
-        user = session.query(User).filter(User.id == user_data['id']).first()
-        if not user:
-            return jsonify({"error": "User not found"}), 404
+        # Get database session using context manager
+        with get_db() as session:
+            # Get user
+            user = session.query(User).filter(User.id == user_data['id']).first()
+            if not user:
+                return jsonify({"error": "User not found"}), 404
+                
+            # Check if credentials exist
+            has_credentials = False
+            if service == 'trackman':
+                has_credentials = bool(user.trackman_username and user.trackman_password)
+            elif service == 'arccos':
+                has_credentials = bool(user.arccos_email and user.arccos_password)
+            elif service == 'skytrak':
+                has_credentials = bool(user.skytrak_username and user.skytrak_password)
+                
+            if not has_credentials:
+                return jsonify({
+                    "success": False,
+                    "message": f"No {service.capitalize()} credentials found. Please connect first."
+                }), 400
+                
+            # In a real implementation, we would test the connection to the service here
+            # For now, we'll just return successful status since the credentials exist
             
-        # Check if credentials exist
-        has_credentials = False
-        if service == 'trackman':
-            has_credentials = bool(user.trackman_username and user.trackman_password)
-        elif service == 'arccos':
-            has_credentials = bool(user.arccos_email and user.arccos_password)
-        elif service == 'skytrak':
-            has_credentials = bool(user.skytrak_username and user.skytrak_password)
-            
-        if not has_credentials:
             return jsonify({
-                "success": False,
-                "message": f"No {service.capitalize()} credentials found. Please connect first."
-            }), 400
-            
-        # In a real implementation, we would test the connection to the service here
-        # For now, we'll just return successful status since the credentials exist
-        
-        return jsonify({
-            "success": True,
-            "message": f"Connection to {service.capitalize()} is working properly."
-        }), 200
+                "success": True,
+                "message": f"Connection to {service.capitalize()} is working properly."
+            }), 200
             
     except Exception as e:
         logger.error(f"Error testing {service} integration: {str(e)}")
         return jsonify({"error": f"Failed to test integration: {str(e)}"}), 500
-    finally:
-        # Close session
-        if 'session' in locals():
-            session.close()
 
 @integrations_bp.route('/disconnect/<service>', methods=['POST'])
 @require_auth
@@ -203,41 +185,33 @@ def disconnect_integration(service: str):
         return jsonify({"error": "User not authenticated"}), 401
     
     try:
-        # Get database session
-        session = get_db_session()
-        
-        # Get user
-        user = session.query(User).filter(User.id == user_data['id']).first()
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-        
-        # Remove credentials
-        if service == 'trackman':
-            user.trackman_username = None
-            user.trackman_password = None
-        elif service == 'arccos':
-            user.arccos_email = None
-            user.arccos_password = None
-        elif service == 'skytrak':
-            user.skytrak_username = None
-            user.skytrak_password = None
-        
-        # Save changes
-        session.commit()
-        
-        # Return success
-        return jsonify({
-            "success": True,
-            "message": f"Successfully disconnected from {service.capitalize()}"
-        }), 200
+        # Get database session using context manager
+        with get_db() as session:
+            # Get user
+            user = session.query(User).filter(User.id == user_data['id']).first()
+            if not user:
+                return jsonify({"error": "User not found"}), 404
+            
+            # Remove credentials
+            if service == 'trackman':
+                user.trackman_username = None
+                user.trackman_password = None
+            elif service == 'arccos':
+                user.arccos_email = None
+                user.arccos_password = None
+            elif service == 'skytrak':
+                user.skytrak_username = None
+                user.skytrak_password = None
+            
+            # Save changes
+            session.commit()
+            
+            # Return success
+            return jsonify({
+                "success": True,
+                "message": f"Successfully disconnected from {service.capitalize()}"
+            }), 200
         
     except Exception as e:
         logger.error(f"Error disconnecting from {service}: {str(e)}")
-        # Rollback transaction
-        if 'session' in locals():
-            session.rollback()
         return jsonify({"error": f"Failed to disconnect from {service}: {str(e)}"}), 500
-    finally:
-        # Close session
-        if 'session' in locals():
-            session.close()
