@@ -58,8 +58,8 @@ def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
             logger.warning("JWT token has expired")
             return None
             
-        # Verify with Supabase
-        supabase = get_supabase()
+        # Verify with Supabase - pass token to ensure RLS works properly
+        supabase = get_supabase(token)
         user = supabase.auth.get_user(token)
         
         if user:
@@ -96,7 +96,9 @@ def get_current_user() -> Optional[Dict[str, Any]]:
         token = auth_header.replace('Bearer ', '')
         try:
             # Verify token with Supabase
-            user_obj = get_supabase().auth.get_user(token)
+            # Pass the token to get_supabase to set it on the client for RLS
+            supabase = get_supabase(token)
+            user_obj = supabase.auth.get_user(token)
             if user_obj and hasattr(user_obj, 'user'):
                 user = {
                     'id': user_obj.user.id,

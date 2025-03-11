@@ -32,19 +32,21 @@ class DateTimeEncoder(json.JSONEncoder):
         return super().default(obj)
 
 # Golf round functions
-def get_golf_rounds(user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+def get_golf_rounds(user_id: str, limit: int = 100, token: str = None) -> List[Dict[str, Any]]:
     """
     Get golf rounds for a user.
     
     Args:
         user_id: Supabase user ID
         limit: Maximum number of rounds to retrieve
+        token: JWT token for authorization
         
     Returns:
         List of golf rounds
     """
     try:
-        supabase = get_supabase()
+        # Pass token to the client to ensure RLS policies are respected
+        supabase = get_supabase(token)
         response = supabase.table('golf_rounds') \
             .select('*') \
             .eq('user_id', user_id) \
@@ -80,13 +82,14 @@ def get_golf_round(round_id: int) -> Optional[Dict[str, Any]]:
         logger.error(f"Error getting golf round {round_id}: {str(e)}")
         return None
 
-def create_golf_round(user_id: str, round_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def create_golf_round(user_id: str, round_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
     """
     Create a new golf round.
     
     Args:
         user_id: Supabase user ID
         round_data: Golf round data
+        token: JWT token for authorization
         
     Returns:
         Created golf round data or None if failed
@@ -101,7 +104,8 @@ def create_golf_round(user_id: str, round_data: Dict[str, Any]) -> Optional[Dict
         # Log the user ID type and value for debugging
         logger.info(f"Creating golf round with user_id type: {type(user_id)}, value: {user_id}")
         
-        supabase = get_supabase()
+        # Pass token to get_supabase to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('golf_rounds') \
             .insert(round_data) \
             .execute()
@@ -115,7 +119,7 @@ def create_golf_round(user_id: str, round_data: Dict[str, Any]) -> Optional[Dict
         
         # If round was created and stats data exists, create stats record
         if round_result and stats_data:
-            create_round_stats(round_result['id'], stats_data)
+            create_round_stats(round_result['id'], stats_data, token)
             
         return round_result
     except Exception as e:
@@ -123,13 +127,14 @@ def create_golf_round(user_id: str, round_data: Dict[str, Any]) -> Optional[Dict
         logger.exception(e)  # Log full exception with traceback
         return None
 
-def create_round_stats(round_id: int, stats_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def create_round_stats(round_id: int, stats_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
     """
     Create stats for a golf round.
     
     Args:
         round_id: Golf round ID
         stats_data: Golf round stats
+        token: JWT token for authorization
         
     Returns:
         Created stats data or None if failed
@@ -144,7 +149,8 @@ def create_round_stats(round_id: int, stats_data: Dict[str, Any]) -> Optional[Di
             'putts_total': stats_data.get('putts_total', 0),
         }
         
-        supabase = get_supabase()
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('round_stats') \
             .insert(stats_record) \
             .execute()
@@ -154,19 +160,21 @@ def create_round_stats(round_id: int, stats_data: Dict[str, Any]) -> Optional[Di
         logger.error(f"Error creating round stats: {str(e)}")
         return None
 
-def update_golf_round(round_id: int, round_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def update_golf_round(round_id: int, round_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
     """
     Update a golf round.
     
     Args:
         round_id: Golf round ID
         round_data: Updated golf round data
+        token: JWT token for authorization
         
     Returns:
         Updated golf round data or None if failed
     """
     try:
-        supabase = get_supabase()
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('golf_rounds') \
             .update(round_data) \
             .eq('id', round_id) \
@@ -340,18 +348,20 @@ def add_round_stats(round_id: int, stats_data: Dict[str, Any]) -> Optional[Dict[
         return None
 
 # User preferences functions
-def get_user_preferences(user_id: str) -> Dict[str, Any]:
+def get_user_preferences(user_id: str, token: str = None) -> Dict[str, Any]:
     """
     Get user preferences.
     
     Args:
         user_id: Supabase user ID
+        token: JWT token for authorization
         
     Returns:
         User preferences data
     """
     try:
-        supabase = get_supabase()
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('user_preferences') \
             .select('*') \
             .eq('user_id', user_id) \
@@ -363,22 +373,24 @@ def get_user_preferences(user_id: str) -> Dict[str, Any]:
         logger.error(f"Error getting user preferences for {user_id}: {str(e)}")
         return {}
 
-def update_user_preferences(user_id: str, preferences: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def update_user_preferences(user_id: str, preferences: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
     """
     Update user preferences.
     
     Args:
         user_id: Supabase user ID
         preferences: User preferences data
+        token: JWT token for authorization
         
     Returns:
         Updated user preferences data or None if failed
     """
     try:
-        # Check if preferences exist first
-        existing = get_user_preferences(user_id)
+        # Check if preferences exist first - pass token for RLS
+        existing = get_user_preferences(user_id, token)
         
-        supabase = get_supabase()
+        # Pass token to get_supabase to satisfy RLS policies
+        supabase = get_supabase(token)
         
         if existing:
             # Update existing preferences
@@ -615,18 +627,20 @@ def get_user_clubs(user_id: str) -> List[Dict[str, Any]]:
         logger.error(f"Error getting clubs for user {user_id}: {str(e)}")
         return []
 
-def get_club(club_id: int) -> Optional[Dict[str, Any]]:
+def get_club(club_id: int, token: str = None) -> Optional[Dict[str, Any]]:
     """
     Get a specific club.
     
     Args:
         club_id: Club ID
+        token: JWT token for authorization
         
     Returns:
         Club data or None if not found
     """
     try:
-        supabase = get_supabase()
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('clubs') \
             .select('*') \
             .eq('id', club_id) \
