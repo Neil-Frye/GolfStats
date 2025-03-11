@@ -677,7 +677,6 @@ function initProfileImageUpload() {
         }
     });
 }
-}
 
 // Modal handling
 function initNewRoundModal() {
