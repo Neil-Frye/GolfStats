@@ -614,18 +614,20 @@ def get_user_rounds_stats(user_id: str, timeframe: str = 'all',
         }
         
 # Club management functions
-def get_user_clubs(user_id: str) -> List[Dict[str, Any]]:
+def get_user_clubs(user_id: str, token: str = None) -> List[Dict[str, Any]]:
     """
     Get clubs for a user.
     
     Args:
         user_id: Supabase user ID
+        token: JWT token for authorization
         
     Returns:
         List of clubs
     """
     try:
-        supabase = get_supabase()
+        # Pass token to get_supabase to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('clubs') \
             .select('*') \
             .eq('user_id', user_id) \
@@ -661,13 +663,14 @@ def get_club(club_id: int, token: str = None) -> Optional[Dict[str, Any]]:
         logger.error(f"Error getting club {club_id}: {str(e)}")
         return None
 
-def create_club(user_id: str, club_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def create_club(user_id: str, club_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
     """
     Create a new club.
     
     Args:
         user_id: Supabase user ID
         club_data: Club data
+        token: JWT token for authorization
         
     Returns:
         Created club data or None if failed
@@ -679,7 +682,8 @@ def create_club(user_id: str, club_data: Dict[str, Any]) -> Optional[Dict[str, A
         # Log the user ID type and value for debugging
         logger.info(f"Creating club with user_id type: {type(user_id)}, value: {user_id}")
         
-        supabase = get_supabase()
+        # Pass token to get_supabase to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('clubs') \
             .insert(club_data) \
             .execute()
@@ -695,19 +699,21 @@ def create_club(user_id: str, club_data: Dict[str, Any]) -> Optional[Dict[str, A
         logger.exception(e)  # Log full exception with traceback
         return None
 
-def update_club(club_id: int, club_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def update_club(club_id: int, club_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
     """
     Update a club.
     
     Args:
         club_id: Club ID
         club_data: Updated club data
+        token: JWT token for authorization
         
     Returns:
         Updated club data or None if failed
     """
     try:
-        supabase = get_supabase()
+        # Pass token to get_supabase to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('clubs') \
             .update(club_data) \
             .eq('id', club_id) \
@@ -718,18 +724,20 @@ def update_club(club_id: int, club_data: Dict[str, Any]) -> Optional[Dict[str, A
         logger.error(f"Error updating club {club_id}: {str(e)}")
         return None
 
-def delete_club(club_id: int) -> bool:
+def delete_club(club_id: int, token: str = None) -> bool:
     """
     Delete a club.
     
     Args:
         club_id: Club ID
+        token: JWT token for authorization
         
     Returns:
         True if successful, False otherwise
     """
     try:
-        supabase = get_supabase()
+        # Pass token to get_supabase to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('clubs') \
             .delete() \
             .eq('id', club_id) \

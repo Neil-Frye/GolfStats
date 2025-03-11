@@ -155,8 +155,15 @@ def add_round():
     
     if not data:
         return jsonify({"error": "No data provided"}), 400
-        
-    round_data = create_golf_round(user['id'], data)
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+    
+    round_data = create_golf_round(user['id'], data, token)
     
     if not round_data:
         return jsonify({"error": "Failed to create round"}), 500
@@ -297,7 +304,15 @@ def get_clubs():
     from backend.auth import get_current_user
     
     user = get_current_user()
-    clubs = get_user_clubs(user['id'])
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+    
+    clubs = get_user_clubs(user['id'], token)
     
     return jsonify({
         "clubs": clubs
@@ -307,7 +322,18 @@ def get_clubs():
 @require_auth
 def get_club_by_id(club_id):
     """Get a specific club."""
-    club_data = get_club(club_id)
+    from backend.auth import get_current_user
+    
+    user = get_current_user()
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+    
+    club_data = get_club(club_id, token)
     if not club_data:
         return jsonify({"error": "Club not found"}), 404
         
@@ -326,8 +352,15 @@ def add_club():
     
     if not data:
         return jsonify({"error": "No data provided"}), 400
-        
-    club_data = create_club(user['id'], data)
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+            
+    club_data = create_club(user['id'], data, token)
     
     if not club_data:
         return jsonify({"error": "Failed to create club"}), 500
@@ -341,6 +374,9 @@ def add_club():
 @require_auth
 def update_club_by_id(club_id):
     """Update a club."""
+    from backend.auth import get_current_user
+    
+    user = get_current_user()
     data = request.get_json()
     
     if not data:
@@ -350,8 +386,15 @@ def update_club_by_id(club_id):
     existing = get_club(club_id)
     if not existing:
         return jsonify({"error": "Club not found"}), 404
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
         
-    club_data = update_club(club_id, data)
+    club_data = update_club(club_id, data, token)
     
     if not club_data:
         return jsonify({"error": "Failed to update club"}), 500
@@ -365,12 +408,23 @@ def update_club_by_id(club_id):
 @require_auth
 def delete_club_by_id(club_id):
     """Delete a club."""
+    from backend.auth import get_current_user
+    
+    user = get_current_user()
+    
     # Check if club exists
     existing = get_club(club_id)
     if not existing:
         return jsonify({"error": "Club not found"}), 404
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
         
-    success = delete_club(club_id)
+    success = delete_club(club_id, token)
     
     if not success:
         return jsonify({"error": "Failed to delete club"}), 500

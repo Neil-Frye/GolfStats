@@ -60,11 +60,43 @@ def get_supabase(jwt_token: str = None) -> Client:
     Returns:
         Supabase client instance
     """
-    client = SupabaseClientSingleton.get_client()
+    # Get credentials from environment or config
+    supabase_url = os.environ.get("SUPABASE_URL") or config["supabase"]["url"]
+    supabase_key = os.environ.get("SUPABASE_API_KEY") or os.environ.get("SUPABASE_KEY") or config["supabase"]["anon_key"]
     
-    # If a JWT token is provided, set it on the client
+    # If a JWT token is provided, create a new client with the token
     if jwt_token:
-        client.auth.set_session(jwt_token)
-        logger.info("Set JWT token on Supabase client")
-        
-    return client
+        try:
+            # Log some JWT information for debugging
+            import base64
+            import json
+            parts = jwt_token.split('.')
+            if len(parts) == 3:
+                # Decode the payload part
+                payload_bytes = parts[1].encode('utf-8')
+                # Add padding if needed
+                payload_bytes += b'=' * (4 - len(payload_bytes) % 4) if len(payload_bytes) % 4 else b''
+                try:
+                    payload = json.loads(base64.urlsafe_b64decode(payload_bytes).decode('utf-8'))
+                    logger.info(f"JWT token role: {payload.get('role', 'unknown')}, sub: {payload.get('sub', 'unknown')}")
+                except Exception as e:
+                    logger.warning(f"Failed to decode JWT payload for logging: {str(e)}")
+            
+            # Create a client with the JWT token
+            from supabase import create_client
+            client = create_client(supabase_url, supabase_key)
+            
+            # This is the correct pattern for supabase-py to use a JWT
+            # Create a session with the provided token
+            refresh_token = ""  # Not needed for session management, just access token
+            client.auth.set_session(jwt_token, refresh_token)
+            
+            logger.info("Created Supabase client with JWT session")
+            return client
+            
+        except Exception as e:
+            logger.error(f"Error creating Supabase client with JWT: {str(e)}")
+            # Fall back to regular client if there's an error
+    
+    # Use the singleton client when no token is provided or on error
+    return SupabaseClientSingleton.get_client()
