@@ -50,11 +50,21 @@ class SupabaseClientSingleton:
         return cls._instance
 
 # Function to get Supabase client
-def get_supabase() -> Client:
+def get_supabase(jwt_token: str = None) -> Client:
     """
     Get Supabase client instance.
     
+    Args:
+        jwt_token: Optional JWT token to use for authorization
+        
     Returns:
         Supabase client instance
     """
-    return SupabaseClientSingleton.get_client()
+    client = SupabaseClientSingleton.get_client()
+    
+    # If a JWT token is provided, set it on the client
+    if jwt_token:
+        client.auth.set_session(jwt_token)
+        logger.info("Set JWT token on Supabase client")
+        
+    return client

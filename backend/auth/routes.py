@@ -8,7 +8,7 @@ import os
 from typing import Dict, Any
 from flask import Blueprint, request, jsonify, session, redirect, url_for
 
-from .supabase_auth import login_with_email, logout, sign_up, get_current_user, is_authenticated
+from .supabase_auth import login_with_email, logout, sign_up, get_current_user, is_authenticated, verify_jwt
 from .crypto_utils import encrypt_value, decrypt_value
 
 # Configure logging
@@ -121,11 +121,30 @@ def reset_password_confirm_route():
 @auth_bp.route('/me', methods=['GET'])
 def me():
     """Get current user information."""
+    # Get token from Authorization header
+    auth_header = request.headers.get('Authorization')
+    token = None
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.replace('Bearer ', '')
+        
+    # Verify the JWT token first to ensure RLS will work
+    if token:
+        jwt_payload = verify_jwt(token)
+        logger.info(f"JWT verification result: {bool(jwt_payload)}")
+        if not jwt_payload:
+            logger.warning("Invalid JWT token provided")
+            return jsonify({"authenticated": False, "error": "Invalid token"}), 401
+    
+    # Get current user with validated token
     user = get_current_user()
     if user:
         # Log the user ID for debugging
         logger.info(f"Current authenticated user ID: {user.get('id')}, type: {type(user.get('id'))}")
-        return jsonify({"authenticated": True, "user": user}), 200
+        return jsonify({
+            "authenticated": True, 
+            "user": user,
+            "token_valid": True if token else False
+        }), 200
     else:
         logger.warning("No authenticated user found")
         return jsonify({"authenticated": False}), 401
@@ -140,6 +159,12 @@ def update_profile():
     
     if not is_authenticated():
         return jsonify({"error": "Authentication required"}), 401
+    
+    # Get token from Authorization header for RLS
+    auth_header = request.headers.get('Authorization')
+    token = None
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.replace('Bearer ', '')
     
     user = get_current_user()
     user_id = user['id']
@@ -164,12 +189,12 @@ def update_profile():
             # Generate URL
             avatar_url = f"/uploads/profiles/{unique_filename}"
             
-            # Update user preferences with new avatar URL
-            current_prefs = get_user_preferences(user_id) or {}
+            # Update user preferences with new avatar URL - pass token for RLS
+            current_prefs = get_user_preferences(user_id, token) or {}
             current_prefs['avatar_url'] = avatar_url
             
-            # Update in database
-            success = update_user_preferences(user_id, current_prefs)
+            # Update in database - pass token for RLS
+            success = update_user_preferences(user_id, current_prefs, token)
             if not success:
                 return jsonify({"error": "Failed to update profile image"}), 500
     
@@ -184,14 +209,14 @@ def update_profile():
     
     # Update user preferences if we have data
     if preferences_data:
-        # Get existing preferences
-        current_prefs = get_user_preferences(user_id) or {}
+        # Get existing preferences - pass token for RLS
+        current_prefs = get_user_preferences(user_id, token) or {}
         
         # Merge with new preferences
         current_prefs.update(preferences_data)
         
-        # Update in database
-        success = update_user_preferences(user_id, current_prefs)
+        # Update in database - pass token for RLS
+        success = update_user_preferences(user_id, current_prefs, token)
         if not success:
             return jsonify({"error": "Failed to update preferences"}), 500
     
