@@ -599,10 +599,17 @@ function initProfileFormSubmission() {
                 formData.append('profile_image', imageFile);
             }
             
-            // Send update to API with multipart form data
+            // Get the current user session with token
+            const currentUser = await getSessionUser();
+            const token = currentUser?.token;
+            
+            // Send update to API with multipart form data and token in Authorization header
             const response = await fetch('/api/auth/profile', {
                 method: 'POST',
                 credentials: 'include',
+                headers: token ? {
+                    'Authorization': `Bearer ${token}`
+                } : {},
                 body: formData
             });
             
@@ -3118,6 +3125,25 @@ function showErrorState(error) {
     }
 }
 
+// Helper function to get the current user session
+async function getSessionUser() {
+    try {
+        const response = await fetch('/api/auth/me', {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            return null;
+        }
+        
+        const data = await response.json();
+        return data.user || null;
+    } catch (error) {
+        console.error('Error fetching user session:', error);
+        return null;
+    }
+}
+
 // API service
 const ApiService = {
     // Base URL for the backend API
@@ -3129,6 +3155,20 @@ const ApiService = {
     // Helper method to handle API requests with retry logic
     async fetchWithRetry(url, options = {}, retries = 0) {
         try {
+            // Add Authorization header with token if not already present
+            if (!options.headers || !options.headers['Authorization']) {
+                const currentUser = await getSessionUser();
+                const token = currentUser?.token;
+                
+                if (token) {
+                    // Create or update headers with Authorization
+                    options.headers = {
+                        ...options.headers,
+                        'Authorization': `Bearer ${token}`
+                    };
+                }
+            }
+            
             console.log(`Fetching ${url}, attempt ${retries + 1}`);
             const response = await fetch(url, options);
             

@@ -166,7 +166,20 @@ def update_profile():
     if auth_header and auth_header.startswith('Bearer '):
         token = auth_header.replace('Bearer ', '')
     
+    # Verify the JWT token first to ensure RLS will work
+    if token:
+        jwt_payload = verify_jwt(token)
+        logger.info(f"JWT verification result: {bool(jwt_payload)}")
+        if not jwt_payload:
+            logger.warning("Invalid JWT token provided")
+            return jsonify({"error": "Invalid token"}), 401
+    
+    # Get current user with validated token
     user = get_current_user()
+    if not user:
+        logger.warning("No authenticated user found")
+        return jsonify({"error": "Authentication required"}), 401
+        
     user_id = user['id']
     
     # Handle form data for file uploads
