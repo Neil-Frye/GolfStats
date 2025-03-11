@@ -84,7 +84,7 @@ async function loginWithEmailPassword(email, password) {
         
         const data = await response.json();
         
-        if (response.ok && data.success) {
+        if (response.ok && (data.success || data.message === "Login successful")) {
             // Login successful
             console.log('Login successful');
             window.location.href = '/';

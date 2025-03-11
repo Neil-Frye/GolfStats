@@ -7,6 +7,7 @@ import os
 import logging
 from typing import Dict, Any, Optional
 from flask import Blueprint, request, jsonify, current_app
+from backend.database.db_connection import get_db
 
 from backend.auth.supabase_auth import require_auth, get_current_user
 from backend.auth.crypto_utils import encrypt_value, decrypt_value
