@@ -95,13 +95,21 @@ def create_golf_round(user_id: str, round_data: Dict[str, Any]) -> Optional[Dict
         # Extract stats if present
         stats_data = round_data.pop('stats', None)
         
-        # Ensure user_id is set
-        round_data['user_id'] = user_id
+        # Ensure user_id is set and is a string
+        round_data['user_id'] = str(user_id)
+        
+        # Log the user ID type and value for debugging
+        logger.info(f"Creating golf round with user_id type: {type(user_id)}, value: {user_id}")
         
         supabase = get_supabase()
         response = supabase.table('golf_rounds') \
             .insert(round_data) \
             .execute()
+            
+        # Log the response for debugging
+        logger.info(f"Supabase insert response: {response.data}")
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase error: {response.error}")
             
         round_result = response.data[0] if response.data else None
         
@@ -112,6 +120,7 @@ def create_golf_round(user_id: str, round_data: Dict[str, Any]) -> Optional[Dict
         return round_result
     except Exception as e:
         logger.error(f"Error creating golf round: {str(e)}")
+        logger.exception(e)  # Log full exception with traceback
         return None
 
 def create_round_stats(round_id: int, stats_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -641,17 +650,26 @@ def create_club(user_id: str, club_data: Dict[str, Any]) -> Optional[Dict[str, A
         Created club data or None if failed
     """
     try:
-        # Ensure user_id is set
-        club_data['user_id'] = user_id
+        # Ensure user_id is set and is a string
+        club_data['user_id'] = str(user_id)
+        
+        # Log the user ID type and value for debugging
+        logger.info(f"Creating club with user_id type: {type(user_id)}, value: {user_id}")
         
         supabase = get_supabase()
         response = supabase.table('clubs') \
             .insert(club_data) \
             .execute()
             
+        # Log the response for debugging
+        logger.info(f"Supabase club insert response: {response.data}")
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase club error: {response.error}")
+            
         return response.data[0] if response.data else None
     except Exception as e:
         logger.error(f"Error creating club for user {user_id}: {str(e)}")
+        logger.exception(e)  # Log full exception with traceback
         return None
 
 def update_club(club_id: int, club_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

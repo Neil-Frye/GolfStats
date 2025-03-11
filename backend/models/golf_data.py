@@ -10,6 +10,7 @@ import datetime
 from typing import List, Optional
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
 
 # Add the project root directory to Python path if not already added
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
@@ -24,7 +25,7 @@ class GolfRound(Base):
     __tablename__ = "golf_rounds"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=False)
     date = Column(DateTime, nullable=False)
     course_name = Column(String(255), nullable=False)
     course_location = Column(String(255), nullable=True)
@@ -40,7 +41,7 @@ class GolfRound(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
     # Relationships
-    user = relationship("User", back_populates="golf_rounds")
+    # Note: User relationship removed as we're using Supabase Auth
     holes = relationship("GolfHole", back_populates="round", cascade="all, delete-orphan")
     stats = relationship("RoundStats", back_populates="round", uselist=False, cascade="all, delete-orphan")
     
@@ -143,7 +144,7 @@ class Club(Base):
     __tablename__ = "clubs"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=False)
     name = Column(String(100), nullable=False)
     club_type = Column(String(50), nullable=False)  # 'driver', 'wood', 'hybrid', 'iron', 'wedge', 'putter'
     brand = Column(String(100), nullable=True)
@@ -154,8 +155,7 @@ class Club(Base):
     is_active = Column(Boolean, default=True)
     notes = Column(Text, nullable=True)
     
-    # Relationships
-    user = relationship("User", back_populates="clubs")
+    # Note: User relationship removed as we're using Supabase Auth
     
     def __repr__(self):
         return f"<Club(id={self.id}, user_id={self.user_id}, name={self.name}, type={self.club_type})>"

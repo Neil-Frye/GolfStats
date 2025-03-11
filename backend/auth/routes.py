@@ -123,8 +123,11 @@ def me():
     """Get current user information."""
     user = get_current_user()
     if user:
+        # Log the user ID for debugging
+        logger.info(f"Current authenticated user ID: {user.get('id')}, type: {type(user.get('id'))}")
         return jsonify({"authenticated": True, "user": user}), 200
     else:
+        logger.warning("No authenticated user found")
         return jsonify({"authenticated": False}), 401
         
 @auth_bp.route('/profile', methods=['POST'])
