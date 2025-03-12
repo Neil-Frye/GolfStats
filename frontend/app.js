@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize navigation and event listeners
     initNavigation();
     initNewRoundModal();
+    initRoundDetailModal();
     setupEventListeners();
     initLogoutHandler();
     
@@ -1194,6 +1195,9 @@ function updateRoundsTable(rounds, pagination) {
     // Add rows
     rounds.forEach(round => {
         const row = document.createElement('tr');
+        
+        // Add data-round-id attribute to the row
+        row.setAttribute('data-round-id', round.id);
         
         // Format date
         const date = new Date(round.date);
@@ -2780,34 +2784,288 @@ function attachRoundViewListeners() {
     viewRoundButtons.forEach(button => {
         button.addEventListener('click', function() {
             const row = this.closest('tr');
-            const roundId = row.getAttribute('data-round-id');
+            const roundId = this.getAttribute('data-round-id') || row.getAttribute('data-round-id');
             
-            // Navigate to round details
-            viewRoundDetails(roundId);
+            if (roundId) {
+                // Navigate to round details
+                viewRoundDetails(roundId);
+            } else {
+                console.error("No round ID found for this button");
+            }
         });
     });
 }
 
 // View round details
 function viewRoundDetails(roundId) {
-    console.log(`Viewing round details for ID: ${roundId}`);
+    console.log(`Loading round details for ID: ${roundId}`);
     
-    // Navigate to rounds view
-    const roundsLink = document.querySelector('a[href="#rounds"]');
-    if (roundsLink) {
-        roundsLink.click();
+    // Show the round detail modal
+    const roundDetailModal = document.getElementById('round-detail-modal');
+    const loadingContainer = document.getElementById('round-detail-loading');
+    const contentContainer = document.getElementById('round-detail-content');
+    const errorContainer = document.getElementById('round-detail-error');
+    
+    if (roundDetailModal) {
+        // Reset the modal state
+        loadingContainer.style.display = 'flex';
+        contentContainer.style.display = 'none';
+        errorContainer.style.display = 'none';
         
-        // In a real app, you would load the specific round details here
-        // For now, we'll just show a message
-        const roundsView = document.getElementById('rounds-view');
-        if (roundsView) {
-            roundsView.innerHTML = `
-                <div class="section-placeholder">
-                    <h2>Round Details</h2>
-                    <p>Loading details for round ID: ${roundId}...</p>
-                </div>
-            `;
+        // Show the modal
+        roundDetailModal.classList.add('visible');
+        
+        // Fetch round details from the API
+        fetchRoundDetails(roundId)
+            .then(data => {
+                // Hide loading indicator
+                loadingContainer.style.display = 'none';
+                
+                // Populate round details
+                populateRoundDetails(data);
+                
+                // Show content
+                contentContainer.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error fetching round details:', error);
+                loadingContainer.style.display = 'none';
+                errorContainer.style.display = 'block';
+            });
+    }
+}
+
+// Get authentication token from local storage
+function getAuthToken() {
+    return localStorage.getItem('auth_token') || '';
+}
+
+// Fetch round details from API
+async function fetchRoundDetails(roundId) {
+    // Get the authentication token
+    const token = getAuthToken();
+    
+    try {
+        // Make API request to get round details
+        const response = await fetch(`/api/rounds/${roundId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
         }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching round details:', error);
+        throw error;
+    }
+}
+
+// Populate round details in the modal
+function populateRoundDetails(data) {
+    // Set course and date information
+    document.getElementById('detail-course-name').textContent = data.course || 'Unknown Course';
+    document.getElementById('detail-round-date').textContent = formatDate(data.date) || 'Unknown Date';
+    
+    // Set score information
+    document.getElementById('detail-total-score').textContent = data.total_score || '--';
+    
+    // Calculate to par display
+    let toPar = '';
+    if (data.total_score && data.course_par) {
+        const diff = data.total_score - data.course_par;
+        toPar = diff === 0 ? 'E' : (diff > 0 ? `+${diff}` : diff.toString());
+    }
+    document.getElementById('detail-to-par').textContent = toPar ? `(${toPar})` : '';
+    
+    // Set stats information
+    const fairwaysDisplay = data.fairways_hit ? 
+        `${data.fairways_hit}/${data.total_fairways} (${data.fairways_hit_percentage}%)` : 
+        'N/A';
+    document.getElementById('detail-fairways').textContent = fairwaysDisplay;
+    
+    const girDisplay = data.greens_hit ? 
+        `${data.greens_hit}/18 (${data.gir_percentage}%)` : 
+        'N/A';
+    document.getElementById('detail-gir').textContent = girDisplay;
+    
+    document.getElementById('detail-putts').textContent = data.total_putts || 'N/A';
+    document.getElementById('detail-weather').textContent = data.weather || 'N/A';
+    
+    // Set notes if available
+    const notesContainer = document.getElementById('detail-notes');
+    if (data.notes) {
+        notesContainer.innerHTML = `<h4>Notes</h4><p>${data.notes}</p>`;
+    } else {
+        notesContainer.innerHTML = `<h4>Notes</h4><p>No notes for this round.</p>`;
+    }
+    
+    // Populate scorecard if available
+    if (data.scorecard) {
+        populateScorecard(data.scorecard);
+    }
+    
+    // Populate shot details if available
+    if (data.shots && data.shots.length > 0) {
+        populateShotDetails(data.shots);
+    } else {
+        document.getElementById('shot-details-container').innerHTML = 
+            '<p class="no-shots-message">No detailed shot data available for this round.</p>';
+    }
+}
+
+// Format date for display
+function formatDate(dateString) {
+    if (!dateString) return '';
+    
+    const date = new Date(dateString);
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+}
+
+// Populate scorecard with data
+function populateScorecard(scorecard) {
+    // Skip if no scorecard data
+    if (!scorecard || !Array.isArray(scorecard.holes)) return;
+    
+    // Set par and score for each hole
+    let frontNinePar = 0;
+    let frontNineScore = 0;
+    let backNinePar = 0;
+    let backNineScore = 0;
+    
+    scorecard.holes.forEach((hole, index) => {
+        const holeNumber = index + 1;
+        const parElement = document.getElementById(`par-${holeNumber}`);
+        const scoreElement = document.getElementById(`score-${holeNumber}`);
+        
+        if (parElement && scoreElement) {
+            parElement.textContent = hole.par || '--';
+            scoreElement.textContent = hole.score || '--';
+            
+            // Add color classes based on score
+            if (hole.score && hole.par) {
+                scoreElement.classList.remove('birdie', 'par', 'bogey', 'double-bogey');
+                
+                if (hole.score < hole.par) {
+                    scoreElement.classList.add('birdie');
+                } else if (hole.score === hole.par) {
+                    scoreElement.classList.add('par');
+                } else if (hole.score === hole.par + 1) {
+                    scoreElement.classList.add('bogey');
+                } else if (hole.score > hole.par + 1) {
+                    scoreElement.classList.add('double-bogey');
+                }
+            }
+            
+            // Calculate front/back nine totals
+            if (holeNumber <= 9) {
+                frontNinePar += Number(hole.par || 0);
+                frontNineScore += Number(hole.score || 0);
+            } else {
+                backNinePar += Number(hole.par || 0);
+                backNineScore += Number(hole.score || 0);
+            }
+        }
+    });
+    
+    // Set front nine totals
+    document.getElementById('par-out').textContent = frontNinePar || '--';
+    document.getElementById('score-out').textContent = frontNineScore || '--';
+    
+    // Set back nine totals
+    document.getElementById('par-in').textContent = backNinePar || '--';
+    document.getElementById('score-in').textContent = backNineScore || '--';
+    
+    // Set total
+    document.getElementById('par-total').textContent = (frontNinePar + backNinePar) || '--';
+    document.getElementById('score-total').textContent = (frontNineScore + backNineScore) || '--';
+}
+
+// Populate shot details
+function populateShotDetails(shots) {
+    const container = document.getElementById('shot-details-container');
+    
+    // Clear existing content
+    container.innerHTML = '';
+    
+    if (!shots || shots.length === 0) {
+        container.innerHTML = '<p class="no-shots-message">No detailed shot data available for this round.</p>';
+        return;
+    }
+    
+    // Group shots by hole
+    const shotsByHole = {};
+    shots.forEach(shot => {
+        if (!shotsByHole[shot.hole]) {
+            shotsByHole[shot.hole] = [];
+        }
+        shotsByHole[shot.hole].push(shot);
+    });
+    
+    // Create shot details for each hole
+    for (const hole in shotsByHole) {
+        const holeShots = shotsByHole[hole];
+        
+        const holeElement = document.createElement('div');
+        holeElement.className = 'hole-shots';
+        holeElement.innerHTML = `<h4>Hole ${hole}</h4>`;
+        
+        const shotsList = document.createElement('ul');
+        shotsList.className = 'shots-list';
+        
+        holeShots.forEach((shot, index) => {
+            const shotItem = document.createElement('li');
+            shotItem.className = 'shot-item';
+            
+            // Format shot details based on available data
+            let shotDetails = `Shot ${index + 1}: `;
+            
+            if (shot.club) {
+                shotDetails += `${shot.club}, `;
+            }
+            
+            if (shot.distance) {
+                shotDetails += `${shot.distance} yards, `;
+            }
+            
+            if (shot.result) {
+                shotDetails += `${shot.result}`;
+            }
+            
+            shotItem.textContent = shotDetails;
+            shotsList.appendChild(shotItem);
+        });
+        
+        holeElement.appendChild(shotsList);
+        container.appendChild(holeElement);
+    }
+}
+
+// Initialize the round detail modal
+function initRoundDetailModal() {
+    const modal = document.getElementById('round-detail-modal');
+    
+    if (modal) {
+        // Close button
+        const closeBtn = modal.querySelector('.close-modal');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                modal.classList.remove('visible');
+            });
+        }
+        
+        // Close when clicking outside the modal content
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                modal.classList.remove('visible');
+            }
+        });
     }
 }
 
