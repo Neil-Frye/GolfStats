@@ -59,18 +59,20 @@ def get_golf_rounds(user_id: str, limit: int = 100, token: str = None) -> List[D
         logger.error(f"Error getting golf rounds: {str(e)}")
         return []
 
-def get_golf_round(round_id: int) -> Optional[Dict[str, Any]]:
+def get_golf_round(round_id: int, token: str = None) -> Optional[Dict[str, Any]]:
     """
     Get a specific golf round.
     
     Args:
         round_id: Golf round ID
+        token: JWT token for authorization
         
     Returns:
         Golf round data or None if not found
     """
     try:
-        supabase = get_supabase()
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('golf_rounds') \
             .select('*') \
             .eq('id', round_id) \
@@ -185,18 +187,20 @@ def update_golf_round(round_id: int, round_data: Dict[str, Any], token: str = No
         logger.error(f"Error updating golf round {round_id}: {str(e)}")
         return None
 
-def delete_golf_round(round_id: int) -> bool:
+def delete_golf_round(round_id: int, token: str = None) -> bool:
     """
     Delete a golf round.
     
     Args:
         round_id: Golf round ID
+        token: JWT token for authorization
         
     Returns:
         True if successful, False otherwise
     """
     try:
-        supabase = get_supabase()
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('golf_rounds') \
             .delete() \
             .eq('id', round_id) \
@@ -208,18 +212,20 @@ def delete_golf_round(round_id: int) -> bool:
         return False
 
 # Golf shot functions
-def get_shots_for_round(round_id: int) -> List[Dict[str, Any]]:
+def get_shots_for_round(round_id: int, token: str = None) -> List[Dict[str, Any]]:
     """
     Get shots for a specific golf round.
     
     Args:
         round_id: Golf round ID
+        token: JWT token for authorization
         
     Returns:
         List of golf shots
     """
     try:
-        supabase = get_supabase()
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
         response = supabase.table('golf_shots') \
             .select('*') \
             .eq('round_id', round_id) \

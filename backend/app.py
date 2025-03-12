@@ -130,12 +130,23 @@ def list_rounds():
 @require_auth
 def get_round(round_id):
     """Get a specific round with all shot data."""
-    round_data = get_golf_round(round_id)
+    from backend.auth import get_current_user
+    
+    user = get_current_user()
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+    
+    round_data = get_golf_round(round_id, token)
     if not round_data:
         return jsonify({"error": "Round not found"}), 404
         
     # Get shots for this round
-    shots = get_shots_for_round(round_id)
+    shots = get_shots_for_round(round_id, token)
     
     # Add shots to round data
     round_data['shots'] = shots
@@ -177,6 +188,9 @@ def add_round():
 @require_auth
 def update_round(round_id):
     """Update a round."""
+    from backend.auth import get_current_user
+    
+    user = get_current_user()
     data = request.get_json()
     
     if not data:
@@ -186,8 +200,15 @@ def update_round(round_id):
     existing = get_golf_round(round_id)
     if not existing:
         return jsonify({"error": "Round not found"}), 404
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
         
-    round_data = update_golf_round(round_id, data)
+    round_data = update_golf_round(round_id, data, token)
     
     if not round_data:
         return jsonify({"error": "Failed to update round"}), 500
@@ -201,12 +222,23 @@ def update_round(round_id):
 @require_auth
 def delete_round(round_id):
     """Delete a round."""
+    from backend.auth import get_current_user
+    
+    user = get_current_user()
+    
     # Check if round exists
     existing = get_golf_round(round_id)
     if not existing:
         return jsonify({"error": "Round not found"}), 404
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
         
-    success = delete_golf_round(round_id)
+    success = delete_golf_round(round_id, token)
     
     if not success:
         return jsonify({"error": "Failed to delete round"}), 500
@@ -219,6 +251,9 @@ def delete_round(round_id):
 @require_auth
 def add_shot_to_round(round_id):
     """Add a shot to a round."""
+    from backend.auth import get_current_user
+    
+    user = get_current_user()
     data = request.get_json()
     
     if not data:
@@ -228,8 +263,15 @@ def add_shot_to_round(round_id):
     existing = get_golf_round(round_id)
     if not existing:
         return jsonify({"error": "Round not found"}), 404
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
         
-    shot_data = add_shot(round_id, data)
+    shot_data = add_shot(round_id, data, token)
     
     if not shot_data:
         return jsonify({"error": "Failed to add shot"}), 500
@@ -246,7 +288,15 @@ def get_preferences():
     from backend.auth import get_current_user
     
     user = get_current_user()
-    preferences = get_user_preferences(user['id'])
+    
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+    
+    preferences = get_user_preferences(user['id'], token)
     
     return jsonify({
         "preferences": preferences
@@ -264,7 +314,14 @@ def update_preferences():
     if not data:
         return jsonify({"error": "No data provided"}), 400
         
-    preferences = update_user_preferences(user['id'], data)
+    # Pass the token to satisfy RLS policies
+    token = user.get('token')
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+    
+    preferences = update_user_preferences(user['id'], data, token)
     
     if not preferences:
         return jsonify({"error": "Failed to update preferences"}), 500
