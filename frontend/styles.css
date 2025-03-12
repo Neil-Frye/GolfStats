@@ -756,6 +756,10 @@ button {
     overflow: auto;
 }
 
+.modal.visible {
+    display: block;
+}
+
 .modal-content {
     background-color: var(--white);
     margin: 10vh auto;
@@ -2131,6 +2135,198 @@ input:focus, select:focus, textarea:focus {
 
 .setup-integrations-btn:hover {
     background-color: var(--primary-dark);
+}
+
+/* Round Detail Modal Styles */
+.round-detail-modal .modal-content {
+    max-width: 800px;
+}
+
+.round-summary {
+    margin-bottom: var(--spacing-lg);
+}
+
+.round-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.round-course-date h3 {
+    margin-bottom: 4px;
+    color: var(--text-color);
+}
+
+.round-course-date span {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.round-score {
+    text-align: right;
+}
+
+.round-score #detail-total-score {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+}
+
+.round-score #detail-to-par {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+}
+
+.round-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.round-stat-item {
+    padding: var(--spacing-sm);
+}
+
+.round-notes {
+    background-color: var(--primary-light);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-md);
+    margin-top: var(--spacing-md);
+}
+
+.round-notes h4 {
+    margin-bottom: var(--spacing-xs);
+    color: var(--primary-dark);
+}
+
+.round-notes p {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.round-scorecard {
+    margin-bottom: var(--spacing-lg);
+}
+
+.round-scorecard h3 {
+    margin-bottom: var(--spacing-md);
+    color: var(--primary-dark);
+}
+
+.scorecard-container {
+    overflow-x: auto;
+}
+
+.scorecard-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: var(--spacing-md);
+}
+
+.scorecard-table th,
+.scorecard-table td {
+    padding: 8px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.scorecard-table th {
+    background-color: var(--bg-color);
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.scorecard-table .par-row {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.scorecard-table .birdie {
+    background-color: rgba(46, 204, 113, 0.15);
+    color: #27ae60;
+    font-weight: 600;
+}
+
+.scorecard-table .par {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: #2980b9;
+}
+
+.scorecard-table .bogey {
+    background-color: rgba(230, 126, 34, 0.1);
+    color: #d35400;
+}
+
+.scorecard-table .double-bogey {
+    background-color: rgba(231, 76, 60, 0.1);
+    color: #c0392b;
+}
+
+.round-shots-section h3 {
+    margin-bottom: var(--spacing-md);
+    color: var(--primary-dark);
+}
+
+.shot-details-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.hole-shots {
+    background-color: var(--bg-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md);
+}
+
+.hole-shots h4 {
+    margin-bottom: var(--spacing-sm);
+    color: var(--primary-dark);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 4px;
+}
+
+.shots-list {
+    list-style: none;
+    padding: 0;
+}
+
+.shot-item {
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border-color);
+    font-size: 0.9rem;
+}
+
+.shot-item:last-child {
+    border-bottom: none;
+}
+
+.no-shots-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: var(--spacing-lg);
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .round-summary-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .round-score {
+        text-align: left;
+        margin-top: var(--spacing-sm);
+    }
+    
+    .shot-details-container {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Toast Notifications */

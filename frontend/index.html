@@ -1155,6 +1155,175 @@
         </div>
     </div>
 
+    <!-- Round Details Modal -->
+    <div id="round-detail-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Round Details</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading indicator shown when data is being fetched -->
+                <div id="round-detail-loading" class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p>Loading round details...</p>
+                </div>
+                <!-- Round details content shown when data is loaded -->
+                <div id="round-detail-content" style="display: none;">
+                    <div class="round-summary">
+                        <div class="round-summary-header">
+                            <div class="round-course-date">
+                                <h3 id="detail-course-name">Course Name</h3>
+                                <span id="detail-round-date">Date</span>
+                            </div>
+                            <div class="round-score">
+                                <span id="detail-total-score">85</span>
+                                <span id="detail-to-par">(+13)</span>
+                            </div>
+                        </div>
+                        <div class="round-stats-grid">
+                            <div class="round-stat-item">
+                                <span class="stat-label">Fairways Hit</span>
+                                <span id="detail-fairways" class="stat-value">9/14 (64%)</span>
+                            </div>
+                            <div class="round-stat-item">
+                                <span class="stat-label">GIR</span>
+                                <span id="detail-gir" class="stat-value">7/18 (39%)</span>
+                            </div>
+                            <div class="round-stat-item">
+                                <span class="stat-label">Putts</span>
+                                <span id="detail-putts" class="stat-value">32</span>
+                            </div>
+                            <div class="round-stat-item">
+                                <span class="stat-label">Weather</span>
+                                <span id="detail-weather" class="stat-value">Sunny, 75°F</span>
+                            </div>
+                        </div>
+                        <div class="round-notes" id="detail-notes">
+                            <h4>Notes</h4>
+                            <p>Round notes will appear here...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="round-scorecard">
+                        <h3>Scorecard</h3>
+                        <div class="scorecard-container">
+                            <table class="scorecard-table">
+                                <thead>
+                                    <tr>
+                                        <th>Hole</th>
+                                        <th>1</th>
+                                        <th>2</th>
+                                        <th>3</th>
+                                        <th>4</th>
+                                        <th>5</th>
+                                        <th>6</th>
+                                        <th>7</th>
+                                        <th>8</th>
+                                        <th>9</th>
+                                        <th>Out</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="par-row">
+                                        <td>Par</td>
+                                        <td id="par-1">4</td>
+                                        <td id="par-2">4</td>
+                                        <td id="par-3">3</td>
+                                        <td id="par-4">4</td>
+                                        <td id="par-5">5</td>
+                                        <td id="par-6">4</td>
+                                        <td id="par-7">3</td>
+                                        <td id="par-8">4</td>
+                                        <td id="par-9">5</td>
+                                        <td id="par-out">36</td>
+                                    </tr>
+                                    <tr class="score-row">
+                                        <td>Score</td>
+                                        <td id="score-1">5</td>
+                                        <td id="score-2">5</td>
+                                        <td id="score-3">4</td>
+                                        <td id="score-4">5</td>
+                                        <td id="score-5">6</td>
+                                        <td id="score-6">4</td>
+                                        <td id="score-7">3</td>
+                                        <td id="score-8">5</td>
+                                        <td id="score-9">6</td>
+                                        <td id="score-out">43</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <table class="scorecard-table">
+                                <thead>
+                                    <tr>
+                                        <th>Hole</th>
+                                        <th>10</th>
+                                        <th>11</th>
+                                        <th>12</th>
+                                        <th>13</th>
+                                        <th>14</th>
+                                        <th>15</th>
+                                        <th>16</th>
+                                        <th>17</th>
+                                        <th>18</th>
+                                        <th>In</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="par-row">
+                                        <td>Par</td>
+                                        <td id="par-10">4</td>
+                                        <td id="par-11">4</td>
+                                        <td id="par-12">3</td>
+                                        <td id="par-13">4</td>
+                                        <td id="par-14">5</td>
+                                        <td id="par-15">4</td>
+                                        <td id="par-16">3</td>
+                                        <td id="par-17">4</td>
+                                        <td id="par-18">4</td>
+                                        <td id="par-in">35</td>
+                                        <td id="par-total">71</td>
+                                    </tr>
+                                    <tr class="score-row">
+                                        <td>Score</td>
+                                        <td id="score-10">5</td>
+                                        <td id="score-11">5</td>
+                                        <td id="score-12">3</td>
+                                        <td id="score-13">5</td>
+                                        <td id="score-14">6</td>
+                                        <td id="score-15">5</td>
+                                        <td id="score-16">4</td>
+                                        <td id="score-17">5</td>
+                                        <td id="score-18">4</td>
+                                        <td id="score-in">42</td>
+                                        <td id="score-total">85</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="round-shots-section">
+                        <h3>Shot Details</h3>
+                        <div id="shot-details-container" class="shot-details-container">
+                            <p class="no-shots-message">No detailed shot data available for this round.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Error message shown when data loading fails -->
+                <div id="round-detail-error" class="error-container" style="display: none;">
+                    <div class="error-icon">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <p>Unable to load round details. Please try again later.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Import third-party libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="app.js"></script>
