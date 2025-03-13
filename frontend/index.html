@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/shots.css">
 </head>
 <body>
     <div class="app-container">
@@ -36,6 +37,12 @@
                         <a href="#rounds">
                             <i class="fas fa-flag"></i>
                             <span>Rounds</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#shots">
+                            <i class="fas fa-golf-ball"></i>
+                            <span>Shots</span>
                         </a>
                     </li>
                     <li>
@@ -323,6 +330,239 @@
                 </div>
             </section>
 
+            <!-- Shots View -->
+            <section id="shots-view" class="content-section">
+                <div class="section-header-actions">
+                    <div class="section-title">
+                        <h2>Range Shots</h2>
+                        <p class="section-subtitle">Track and analyze your shots from the driving range</p>
+                    </div>
+                    <div class="section-actions">
+                        <div class="filter-controls">
+                            <select id="shots-timeframe">
+                                <option value="all">All Time</option>
+                                <option value="recent">Last 30 Days</option>
+                                <option value="week">Last Week</option>
+                                <option value="last100">Last 100 Shots</option>
+                            </select>
+                        </div>
+                        <button class="add-btn" id="new-range-session-btn">
+                            <i class="fas fa-plus"></i> New Session
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="shots-tabs">
+                    <button class="shots-tab-btn active" data-tab="range-view">Range View</button>
+                    <button class="shots-tab-btn" data-tab="benchmarks">Benchmarks</button>
+                    <button class="shots-tab-btn" data-tab="trends">Trends</button>
+                </div>
+                
+                <!-- Range View Tab -->
+                <div class="shots-tab-content active" id="range-view-tab">
+                    <div class="range-sessions-container">
+                        <div class="range-sessions-header">
+                            <h3>Range Sessions</h3>
+                            <p>Select a session to view detailed shot data</p>
+                        </div>
+                        
+                        <!-- Sessions List -->
+                        <div class="range-sessions-list">
+                            <!-- Sessions will be loaded here dynamically -->
+                            <div class="loading-indicator">
+                                <div class="loading-spinner small"></div>
+                                <span>Loading sessions...</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Shots Data Table -->
+                        <div class="range-shots-data">
+                            <h3 id="session-title">Select a Session</h3>
+                            
+                            <div class="session-details" id="session-details" style="display: none;">
+                                <div class="session-info">
+                                    <div class="session-info-item">
+                                        <span class="info-label">Date:</span>
+                                        <span class="info-value" id="session-date">--</span>
+                                    </div>
+                                    <div class="session-info-item">
+                                        <span class="info-label">Location:</span>
+                                        <span class="info-value" id="session-location">--</span>
+                                    </div>
+                                    <div class="session-info-item">
+                                        <span class="info-label">Duration:</span>
+                                        <span class="info-value" id="session-duration">--</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="shots-actions">
+                                    <button id="add-shot-btn" class="btn-primary small">
+                                        <i class="fas fa-plus"></i> Add Shot
+                                    </button>
+                                    <button id="import-shots-btn" class="btn-secondary small">
+                                        <i class="fas fa-file-import"></i> Import
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="shots-table-container">
+                                <table class="shots-table" id="shots-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Club</th>
+                                            <th>Carry (yds)</th>
+                                            <th>Total (yds)</th>
+                                            <th>Ball Speed (mph)</th>
+                                            <th>Height (ft)</th>
+                                            <th>Launch Angle (deg)</th>
+                                            <th>Launch Dir (deg)</th>
+                                            <th>Carry Side (ft)</th>
+                                            <th>From Pin (yds)</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="no-data-row">
+                                            <td colspan="11">Select a session to view shots data</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="shots-empty-state" style="display: none;">
+                                <i class="fas fa-golf-ball fa-3x"></i>
+                                <h3>No Shots Recorded</h3>
+                                <p>You haven't recorded any shots for this session yet.</p>
+                                <button id="add-first-shot-btn" class="btn-primary">
+                                    <i class="fas fa-plus"></i> Add Your First Shot
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Benchmarks Tab -->
+                <div class="shots-tab-content" id="benchmarks-tab">
+                    <div class="benchmarks-header">
+                        <h3>Club Benchmarks</h3>
+                        <p>Performance metrics based on your range sessions</p>
+                    </div>
+                    
+                    <div class="benchmarks-container">
+                        <div class="benchmarks-filters">
+                            <div class="filter-item">
+                                <label for="benchmark-timeframe">Timeframe:</label>
+                                <select id="benchmark-timeframe">
+                                    <option value="all">All Time</option>
+                                    <option value="90days">Last 90 Days</option>
+                                    <option value="30days">Last 30 Days</option>
+                                    <option value="year">This Year</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="benchmark-club-type">Club Type:</label>
+                                <select id="benchmark-club-type">
+                                    <option value="all">All Clubs</option>
+                                    <option value="driver">Driver</option>
+                                    <option value="wood">Woods</option>
+                                    <option value="iron">Irons</option>
+                                    <option value="wedge">Wedges</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="benchmarks-table-container">
+                            <table class="benchmarks-table" id="benchmarks-table">
+                                <thead>
+                                    <tr>
+                                        <th>Club</th>
+                                        <th>Carry (yds)</th>
+                                        <th>Total (yds)</th>
+                                        <th>Consistency (yds)</th>
+                                        <th>Ball Speed (mph)</th>
+                                        <th>Height (ft)</th>
+                                        <th>Launch Angle (deg)</th>
+                                        <th>Launch Dir (deg)</th>
+                                        <th>Carry Side (ft)</th>
+                                        <th>From Pin (yds)</th>
+                                        <th>Efficiency</th>
+                                        <th>Consistency Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="loading-row">
+                                        <td colspan="12">
+                                            <div class="loading-indicator">
+                                                <div class="loading-spinner small"></div>
+                                                <span>Loading benchmarks...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="benchmarks-empty-state" style="display: none;">
+                            <i class="fas fa-chart-bar fa-3x"></i>
+                            <h3>No Benchmark Data Available</h3>
+                            <p>Record some shots at the range to generate benchmark data.</p>
+                            <button id="create-session-btn" class="btn-primary">
+                                <i class="fas fa-plus"></i> Create Range Session
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Trends Tab -->
+                <div class="shots-tab-content" id="trends-tab">
+                    <div class="trends-header">
+                        <h3>Performance Trends</h3>
+                        <p>Track your shot improvements over time</p>
+                    </div>
+                    
+                    <div class="trends-container">
+                        <div class="trends-filters">
+                            <div class="filter-item">
+                                <label for="trend-club">Club:</label>
+                                <select id="trend-club">
+                                    <option value="Driver">Driver</option>
+                                    <option value="7-Iron">7 Iron</option>
+                                    <option value="PW">Pitching Wedge</option>
+                                    <option value="all">All Clubs</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="trend-metric">Metric:</label>
+                                <select id="trend-metric">
+                                    <option value="carry_distance_yards">Carry Distance</option>
+                                    <option value="ball_speed_mph">Ball Speed</option>
+                                    <option value="launch_angle_degrees">Launch Angle</option>
+                                    <option value="consistency">Consistency</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="trend-chart-container">
+                            <canvas id="trend-chart"></canvas>
+                        </div>
+                        
+                        <div class="trends-empty-state" style="display: none;">
+                            <i class="fas fa-chart-line fa-3x"></i>
+                            <h3>No Trend Data Available</h3>
+                            <p>Record shots over multiple sessions to see performance trends.</p>
+                        </div>
+                        
+                        <div class="trends-insights">
+                            <h4>Performance Insights</h4>
+                            <div class="insights-content">
+                                <p class="no-insights">Select a club and metric to see performance insights.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
             <!-- Rounds View -->
             <section id="rounds-view" class="content-section">
                 <div class="section-header-actions">
@@ -1093,6 +1333,204 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Range Session Modal -->
+    <div id="range-session-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>New Range Session</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="range-session-form">
+                    <div class="form-group">
+                        <label for="session-date-input">Date</label>
+                        <input type="date" id="session-date-input" name="date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="session-location-input">Location</label>
+                        <input type="text" id="session-location-input" name="location" placeholder="Enter range location" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="session-duration-input">Duration (minutes)</label>
+                            <input type="number" id="session-duration-input" name="duration_minutes" min="5" max="300">
+                        </div>
+                        <div class="form-group">
+                            <label for="session-weather-input">Weather</label>
+                            <select id="session-weather-input" name="weather_conditions">
+                                <option value="">Select weather condition</option>
+                                <option value="Sunny">Sunny</option>
+                                <option value="Cloudy">Cloudy</option>
+                                <option value="Rainy">Rainy</option>
+                                <option value="Windy">Windy</option>
+                                <option value="Indoor">Indoor</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="session-notes-input">Notes</label>
+                        <textarea id="session-notes-input" name="notes" rows="2" placeholder="Add notes about this session..."></textarea>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn-secondary cancel-btn">Cancel</button>
+                        <button type="submit" class="btn-primary">Create Session</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Shot Modal -->
+    <div id="add-shot-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Shot</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-shot-form">
+                    <input type="hidden" id="shot-session-id" name="session_id">
+                    <input type="hidden" id="shot-number" name="shot_number">
+                    
+                    <div class="form-group">
+                        <label for="shot-club">Club</label>
+                        <select id="shot-club" name="club" required>
+                            <option value="">Select club</option>
+                            <!-- Club options will be dynamically populated -->
+                        </select>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h4>Distance Metrics</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="shot-carry-distance">Carry Distance (yards)</label>
+                                <input type="number" id="shot-carry-distance" name="carry_distance_yards" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label for="shot-total-distance">Total Distance (yards)</label>
+                                <input type="number" id="shot-total-distance" name="total_distance_yards" step="0.1">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h4>Ball Flight Data</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="shot-ball-speed">Ball Speed (mph)</label>
+                                <input type="number" id="shot-ball-speed" name="ball_speed_mph" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label for="shot-launch-angle">Launch Angle (degrees)</label>
+                                <input type="number" id="shot-launch-angle" name="launch_angle_degrees" step="0.1">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="shot-height">Height (feet)</label>
+                                <input type="number" id="shot-height" name="height_feet" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label for="shot-launch-direction">Launch Direction (degrees)</label>
+                                <input type="number" id="shot-launch-direction" name="launch_direction_degrees" step="0.1" placeholder="+ right, - left">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h4>Accuracy Data</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="shot-carry-side">Carry Side (feet)</label>
+                                <input type="number" id="shot-carry-side" name="carry_side_feet" step="0.1" placeholder="+ right, - left">
+                            </div>
+                            <div class="form-group">
+                                <label for="shot-from-pin">From Pin (yards)</label>
+                                <input type="number" id="shot-from-pin" name="from_pin_yards" step="0.1">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="button" class="btn-secondary cancel-btn">Cancel</button>
+                        <button type="submit" class="btn-primary">Add Shot</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Shots Modal -->
+    <div id="import-shots-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Import Shots</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-options">
+                    <h3>Select Data Source</h3>
+                    <div class="import-options-list">
+                        <div class="import-option">
+                            <input type="radio" id="import-trackman" name="import-source" value="trackman" checked>
+                            <label for="import-trackman">
+                                <div class="option-logo">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="option-details">
+                                    <h4>Import from TrackMan</h4>
+                                    <p>Import shot data directly from your TrackMan account</p>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="import-option">
+                            <input type="radio" id="import-skytrak" name="import-source" value="skytrak">
+                            <label for="import-skytrak">
+                                <div class="option-logo">
+                                    <i class="fas fa-golf-ball"></i>
+                                </div>
+                                <div class="option-details">
+                                    <h4>Import from SkyTrak</h4>
+                                    <p>Import shot data directly from your SkyTrak account</p>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="import-option">
+                            <input type="radio" id="import-csv" name="import-source" value="csv">
+                            <label for="import-csv">
+                                <div class="option-logo">
+                                    <i class="fas fa-file-csv"></i>
+                                </div>
+                                <div class="option-details">
+                                    <h4>Import from CSV</h4>
+                                    <p>Upload a CSV file with shot data</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="csv-upload" style="display: none;">
+                        <h4>Upload CSV File</h4>
+                        <p class="hint">Make sure your CSV has all required fields: club, carry_distance_yards, total_distance_yards, etc.</p>
+                        <div class="file-upload">
+                            <input type="file" id="csv-file-input" accept=".csv">
+                            <label for="csv-file-input" class="file-upload-btn">
+                                <i class="fas fa-upload"></i> Choose File
+                            </label>
+                            <span class="selected-file-name">No file selected</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="button" class="btn-secondary cancel-btn">Cancel</button>
+                        <button type="button" id="start-import-btn" class="btn-primary">Start Import</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- New Round Modal -->

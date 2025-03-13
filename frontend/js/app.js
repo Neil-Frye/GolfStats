@@ -4,6 +4,7 @@ import * as Auth from './auth/auth.js';
 import * as UI from './ui/ui.js';
 import * as Dashboard from './dashboard/dashboard.js';
 import * as Rounds from './rounds/rounds.js';
+import * as Shots from './shots/shots.js';
 
 // Create a clubs module with enhanced functionality
 const Clubs = {
@@ -266,6 +267,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Initialize clubs view
             Clubs.initClubsView();
             
+            // Initialize shots view
+            Shots.initShotsView();
+            
             // Listen for route changes
             window.addEventListener('hashchange', handleRouteChange);
             
@@ -290,6 +294,9 @@ function handleRouteChange() {
         case 'rounds':
             Rounds.loadRoundsData();
             break;
+        case 'shots':
+            Shots.loadRangeSessions();
+            break;
         case 'clubs':
             // Ensure club buttons are initialized when navigating directly to clubs
             Clubs.initClubsView();
@@ -304,6 +311,7 @@ window.GolfStatsApp = {
     ui: UI,
     dashboard: Dashboard,
     rounds: Rounds,
+    shots: Shots,
     clubs: Clubs,
     api: ApiService
 };
