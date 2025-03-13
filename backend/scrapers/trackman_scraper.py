@@ -874,18 +874,22 @@ class TrackmanScraper:
         return round_ids
 
 @log_exceptions()
-def get_trackman_data(user_id: int, limit: int = 10) -> List[int]:
+def get_trackman_data(user_id: str, limit: int = 10, use_user_credentials: bool = True) -> List[int]:
     """
     Scrape Trackman data for a specific user.
     
     Args:
         user_id: The database ID of the user
         limit: Maximum number of sessions to process
+        use_user_credentials: Whether to use user-specific credentials
         
     Returns:
         List of golf round IDs that were processed
     """
     logger.info(f"Starting Trackman data retrieval for user {user_id}")
+    
+    # TODO: Update TrackmanScraper to use user-specific credentials
+    # For now, we'll just use the global credentials
     scraper = TrackmanScraper(user_id=user_id)
     results = scraper.run(limit=limit)
     logger.info(f"Completed Trackman data retrieval: {len(results)} rounds processed")

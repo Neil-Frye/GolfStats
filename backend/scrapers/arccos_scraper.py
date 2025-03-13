@@ -55,17 +55,16 @@ class ArccosScraper:
     Scraper for retrieving golf data from Arccos Golf website.
     """
     
-    def __init__(self, user_id: int, headless: bool = True):
+    def __init__(self, user_id: str, headless: bool = True, use_user_credentials: bool = True):
         """
         Initialize ArccosScraper with user credentials.
         
         Args:
             user_id: ID of the user in the database
             headless: Whether to run the browser in headless mode
+            use_user_credentials: Whether to use user-specific credentials
         """
         self.user_id = user_id
-        self.email = config["scrapers"]["arccos"]["email"]
-        self.password = config["scrapers"]["arccos"]["password"]
         self.base_url = config["scrapers"]["arccos"]["url"]
         self.headless = headless
         self.driver = None
@@ -74,6 +73,44 @@ class ArccosScraper:
         # Directory for error screenshots
         self.screenshot_dir = os.path.join(project_root, 'data', 'screenshots', 'arccos')
         os.makedirs(self.screenshot_dir, exist_ok=True)
+        
+        if use_user_credentials:
+            # Try to get user-specific credentials
+            try:
+                from backend.models.user import User
+                from backend.database.supabase_client import get_supabase_client
+                from backend.auth.crypto_utils import decrypt_value
+                
+                # Get user data from Supabase
+                supabase = get_supabase_client()
+                user_response = supabase.table('user_preferences') \
+                    .select('arccos_email, arccos_password') \
+                    .eq('user_id', user_id) \
+                    .maybe_single() \
+                    .execute()
+                
+                user_prefs = user_response.data
+                
+                if user_prefs and user_prefs.get('arccos_email') and user_prefs.get('arccos_password'):
+                    self.email = user_prefs['arccos_email']
+                    # Decrypt password
+                    encrypted_password = user_prefs['arccos_password']
+                    self.password = decrypt_value(encrypted_password)
+                    logger.info(f"Using user-specific Arccos credentials for user {user_id}")
+                else:
+                    # Fall back to global credentials
+                    self.email = config["scrapers"]["arccos"]["email"]
+                    self.password = config["scrapers"]["arccos"]["password"]
+                    logger.info(f"User {user_id} has no Arccos credentials, using global credentials")
+            except Exception as e:
+                logger.error(f"Error getting user credentials: {str(e)}")
+                # Fall back to global credentials
+                self.email = config["scrapers"]["arccos"]["email"]
+                self.password = config["scrapers"]["arccos"]["password"]
+        else:
+            # Use global credentials from config
+            self.email = config["scrapers"]["arccos"]["email"]
+            self.password = config["scrapers"]["arccos"]["password"]
         
         # Validate credentials
         if not self.email or not self.password:
@@ -901,16 +938,17 @@ class ArccosScraper:
         
         return round_ids
 
-def get_arrcos_data(user_id: int, limit: int = 10) -> List[int]:
+def get_arrcos_data(user_id: str, limit: int = 10, use_user_credentials: bool = True) -> List[int]:
     """
     Scrape Arccos Golf data for a specific user.
     
     Args:
         user_id: The database ID of the user
         limit: Maximum number of rounds to process
+        use_user_credentials: Whether to use user-specific credentials
         
     Returns:
         List of golf round IDs that were processed
     """
-    scraper = ArccosScraper(user_id=user_id)
+    scraper = ArccosScraper(user_id=user_id, use_user_credentials=use_user_credentials)
     return scraper.run(limit=limit)

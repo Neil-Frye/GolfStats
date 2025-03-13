@@ -246,6 +246,66 @@ const ApiService = {
     }
   },
   
+  // Integrations
+  async connectIntegration(credentials) {
+    try {
+      const response = await fetch('/api/integrations/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(credentials)
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Connect integration error:', error);
+      throw error;
+    }
+  },
+  
+  async getIntegrationStatus() {
+    try {
+      const response = await fetch('/api/integrations/status', {
+        credentials: 'include'
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Get integration status error:', error);
+      throw error;
+    }
+  },
+  
+  async testIntegration(service) {
+    try {
+      const response = await fetch(`/api/integrations/test/${service}`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error(`Test ${service} integration error:`, error);
+      throw error;
+    }
+  },
+  
+  async disconnectIntegration(service) {
+    try {
+      const response = await fetch(`/api/integrations/disconnect/${service}`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error(`Disconnect ${service} integration error:`, error);
+      throw error;
+    }
+  },
+  
   // Range Sessions and Shots
   async getRangeSessions(params = {}) {
     try {
