@@ -188,6 +188,64 @@ button {
     object-fit: cover;
 }
 
+/* Profile image upload styling */
+.profile-avatar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+#profile-image-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--border-color);
+    margin-bottom: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.avatar-upload {
+    margin-top: 8px;
+}
+
+.change-avatar {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.change-avatar:hover {
+    background-color: var(--primary-color-dark);
+}
+
+/* Success and error messages for forms */
+.success-message,
+.error-message {
+    padding: 12px;
+    border-radius: 4px;
+    margin: 16px 0;
+    font-weight: 500;
+}
+
+.success-message {
+    background-color: rgba(46, 204, 113, 0.1);
+    border-left: 4px solid #2ecc71;
+    color: #27ae60;
+}
+
+.error-message {
+    background-color: rgba(231, 76, 60, 0.1);
+    border-left: 4px solid #e74c3c;
+    color: #c0392b;
+}
+
 .user-details {
     overflow: hidden;
 }
