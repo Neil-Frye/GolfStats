@@ -377,9 +377,14 @@ const ApiService = {
     }
   },
   
-  async getClubBenchmarks() {
+  async getClubBenchmarks(shotType = null) {
     try {
-      const response = await fetch('/api/club-benchmarks', {
+      let url = '/api/club-benchmarks';
+      if (shotType) {
+        url += `?shot_type=${encodeURIComponent(shotType)}`;
+      }
+      
+      const response = await fetch(url, {
         credentials: 'include'
       });
       

@@ -344,9 +344,16 @@ function renderShotsTable(shots) {
       return `${parseFloat(value).toFixed(decimals)}${unit}`;
     };
     
+    // Format shot type for display
+    const formatShotType = (type) => {
+      if (!type) return '--';
+      return type.charAt(0).toUpperCase() + type.slice(1);
+    };
+    
     row.innerHTML = `
       <td>${shot.shot_number}</td>
       <td>${shot.club || '--'}</td>
+      <td>${formatShotType(shot.shot_type)}</td>
       <td>${formatValue(shot.carry_distance_yards)}</td>
       <td>${formatValue(shot.total_distance_yards)}</td>
       <td>${formatValue(shot.ball_speed_mph)}</td>
@@ -646,6 +653,17 @@ function showAddShotModal(shot = null) {
       }
     }
     
+    // Set shot type
+    const shotTypeSelect = document.getElementById('shot-type');
+    if (shotTypeSelect && shot.shot_type) {
+      for (let i = 0; i < shotTypeSelect.options.length; i++) {
+        if (shotTypeSelect.options[i].value === shot.shot_type) {
+          shotTypeSelect.selectedIndex = i;
+          break;
+        }
+      }
+    }
+    
     // Set numeric values
     const numericFields = [
       'carry_distance_yards', 'total_distance_yards', 'ball_speed_mph',
@@ -936,8 +954,9 @@ function confirmDeleteShot(shotId, shotNumber) {
 
 /**
  * Load club benchmarks
+ * @param {string} shotType - Optional shot type to filter by
  */
-async function loadClubBenchmarks() {
+async function loadClubBenchmarks(shotType = null) {
   const benchmarksTable = document.getElementById('benchmarks-table');
   
   if (!benchmarksTable) return;
@@ -957,9 +976,51 @@ async function loadClubBenchmarks() {
     </tr>
   `;
   
+  // Add shot type filter UI if it doesn't exist
+  if (!document.querySelector('.shot-type-filters')) {
+    const benchmarksHeader = document.querySelector('.benchmarks-header');
+    if (benchmarksHeader) {
+      const filtersDiv = document.createElement('div');
+      filtersDiv.className = 'shot-type-filters';
+      filtersDiv.innerHTML = `
+        <div class="filter-section">
+          <label>Filter by shot type:</label>
+          <div class="filter-buttons">
+            <button class="shot-type-filter-btn active" data-shot-type="">All Shots</button>
+            <button class="shot-type-filter-btn" data-shot-type="range">Range</button>
+            <button class="shot-type-filter-btn" data-shot-type="sim">Simulator</button>
+            <button class="shot-type-filter-btn" data-shot-type="course">On Course</button>
+          </div>
+        </div>
+      `;
+      
+      // Insert filters after the header
+      benchmarksHeader.after(filtersDiv);
+      
+      // Add event listeners to filter buttons
+      const filterButtons = filtersDiv.querySelectorAll('.shot-type-filter-btn');
+      filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          // Update active state
+          filterButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+          
+          // Load benchmarks with selected filter
+          loadClubBenchmarks(button.dataset.shotType || null);
+        });
+      });
+    }
+  } else if (shotType !== null) {
+    // Update active filter button if already exists
+    const filterButtons = document.querySelectorAll('.shot-type-filter-btn');
+    filterButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.shotType === shotType);
+    });
+  }
+  
   try {
-    // Fetch benchmarks
-    const response = await ApiService.getClubBenchmarks();
+    // Fetch benchmarks with shot type filter
+    const response = await ApiService.getClubBenchmarks(shotType);
     
     if (response && response.benchmarks && response.benchmarks.length > 0) {
       // Render benchmarks table
