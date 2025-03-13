@@ -107,6 +107,8 @@ def api_create_range_session():
     try:
         # Get session data from request
         session_data = request.json
+        if not session_data:
+            return jsonify({"error": "No data provided"}), 400
         
         # Validate required fields
         required_fields = ['date', 'location']
@@ -114,11 +116,15 @@ def api_create_range_session():
             if field not in session_data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
         
+        # Log the request data for debugging
+        current_app.logger.info(f"Creating range session with data: {session_data}")
+        current_app.logger.info(f"User ID: {user['id']}")
+        
         # Create range session
         session = create_range_session(user['id'], session_data, token)
         
         if not session:
-            return jsonify({"error": "Failed to create range session"}), 500
+            return jsonify({"error": "Database error: Failed to create range session"}), 500
             
         return jsonify({
             "success": True,
@@ -126,7 +132,8 @@ def api_create_range_session():
         })
     except Exception as e:
         current_app.logger.error(f"Error creating range session: {str(e)}")
-        return jsonify({"error": "Failed to create range session"}), 500
+        current_app.logger.exception(e)  # Log full exception with traceback
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 @range_shots_bp.route('/api/range-sessions/<int:session_id>', methods=['PUT'])
 def api_update_range_session(session_id: int):
