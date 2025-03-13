@@ -375,7 +375,7 @@ function viewRoundDetails(roundId) {
 // Populate round details in the modal
 function populateRoundDetails(data) {
     // Set course and date information
-    document.getElementById('detail-course-name').textContent = data.course || 'Unknown Course';
+    document.getElementById('detail-course-name').textContent = data.course || data.course_name || 'Unknown Course';
     document.getElementById('detail-round-date').textContent = formatDate(data.date) || 'Unknown Date';
     
     // Set score information

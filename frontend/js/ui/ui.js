@@ -435,6 +435,12 @@ function closeModal(modalId, onCloseCallback) {
     modal.classList.remove('visible');
     document.body.classList.remove('modal-open');
     
+    // Reset form if present
+    const form = modal.querySelector('form');
+    if (form) {
+        form.reset();
+    }
+    
     if (onCloseCallback) {
         onCloseCallback();
     }
@@ -454,11 +460,20 @@ function setupEventListeners() {
     }
     
     // New round button handler
-    const newRoundBtns = document.querySelectorAll('.new-round-btn, .add-btn');
+    const newRoundBtns = document.querySelectorAll('.new-round-btn');
     newRoundBtns.forEach(btn => {
         btn.addEventListener('click', function() {
             // Show new round modal
             openModal('new-round-modal');
+        });
+    });
+    
+    // New goal button handler
+    const newGoalBtns = document.querySelectorAll('.goals-view .add-btn');
+    newGoalBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Show toast notification since goal functionality is not implemented yet
+            showToast('Goal functionality coming soon!', 'info');
         });
     });
     

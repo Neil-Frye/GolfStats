@@ -99,15 +99,28 @@ function initLogoutHandler() {
             e.preventDefault();
             
             try {
+                // Show loading state on button
+                const originalText = this.textContent;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
+                this.disabled = true;
+                
                 const result = await ApiService.logout();
                 if (result.success) {
+                    // Clear any stored credentials
+                    sessionStorage.clear();
+                    localStorage.removeItem('user_session');
+                    
                     // Redirect to login page
                     window.location.href = '/login.html';
                 } else {
                     console.error('Logout failed');
+                    this.innerHTML = originalText;
+                    this.disabled = false;
                 }
             } catch (error) {
                 console.error('Error during logout:', error);
+                logoutButton.innerHTML = originalText;
+                logoutButton.disabled = false;
             }
         });
     }
@@ -293,14 +306,31 @@ async function initProfileFormSubmission() {
             // Import showToast from UI module if needed
             const { showToast } = await import('../ui/ui.js').catch(() => ({}));
             
+            // Check for specific error types
+            let errorMessage = error.message || 'Failed to update profile';
+            
+            // Check for connection errors
+            if (error.name === 'TypeError' && errorMessage.includes('Failed to fetch')) {
+                errorMessage = 'Connection error. Please check your internet connection.';
+            }
+            
+            // Check for auth errors
+            if (errorMessage.includes('401') || errorMessage.includes('403')) {
+                errorMessage = 'Authentication error. Please login again.';
+                // Force logout after delay
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 3000);
+            }
+            
             // Show error toast or message
             if (typeof showToast === 'function') {
-                showToast(error.message || 'Failed to update profile', 'error');
+                showToast(errorMessage, 'error');
             } else {
                 // Fallback if UI module not loaded
                 const errorMsg = document.createElement('div');
                 errorMsg.className = 'error-message';
-                errorMsg.textContent = error.message || 'Failed to update profile';
+                errorMsg.textContent = errorMessage;
                 profileForm.appendChild(errorMsg);
                 
                 // Remove error after delay
