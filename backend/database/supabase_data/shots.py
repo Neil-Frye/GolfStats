@@ -234,3 +234,44 @@ def get_club_benchmark(user_id: str, club: str, shot_type: str = None, token: st
     except Exception as e:
         logger.error(f"Error getting club benchmark for user {user_id}, club {club}: {str(e)}")
         return None
+
+def get_shots_for_round(round_id: int, token: str = None) -> List[Dict[str, Any]]:
+    """
+    Get all shots for a specific golf round.
+    
+    Args:
+        round_id: Golf round ID
+        token: JWT token for authorization
+        
+    Returns:
+        List of shots for the round
+    """
+    try:
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
+        
+        # First get all holes for this round
+        holes_response = supabase.table('golf_holes') \
+            .select('id') \
+            .eq('round_id', round_id) \
+            .execute()
+            
+        if not holes_response.data:
+            logger.warning(f"No holes found for round {round_id}")
+            return []
+            
+        # Get hole IDs
+        hole_ids = [hole['id'] for hole in holes_response.data]
+        
+        # Get shots for all holes in this round
+        shots_response = supabase.table('golf_shots') \
+            .select('*') \
+            .in_('hole_id', hole_ids) \
+            .order('hole_id', desc=False) \
+            .order('shot_number', desc=False) \
+            .execute()
+            
+        return shots_response.data
+    except Exception as e:
+        logger.error(f"Error getting shots for round {round_id}: {str(e)}")
+        return []
