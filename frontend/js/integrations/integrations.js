@@ -175,25 +175,34 @@ const IntegrationsService = {
   
   // Set up event listeners for integration buttons
   _setupEventListeners() {
-    // Connect/disconnect buttons
-    document.querySelectorAll('.connect-integration-btn').forEach(button => {
-      button.addEventListener('click', (e) => {
-        const service = e.target.getAttribute('data-service');
+    // Use event delegation for all integration buttons
+    document.addEventListener('click', (e) => {
+      const button = e.target.closest('.connect-integration-btn');
+      if (button) {
+        const service = button.getAttribute('data-service');
+        console.log(`Integration button clicked for service: ${service}`);
         
-        if (e.target.classList.contains('disconnect-btn')) {
+        if (button.classList.contains('disconnect-btn')) {
           // Disconnect flow
           this.disconnectIntegration(service);
         } else {
           // Connect flow - show modal
+          console.log('Attempting to show integration modal');
           const connectFn = window.showIntegrationModal;
           if (typeof connectFn === 'function') {
+            console.log('showIntegrationModal function found, calling it');
             connectFn(service);
           } else {
             console.error('showIntegrationModal function not found');
+            alert('Could not open login form. Please refresh the page and try again.');
           }
         }
-      });
+      }
     });
+    
+    // Also log all buttons for debugging
+    const buttons = document.querySelectorAll('.connect-integration-btn');
+    console.log(`IntegrationsService found ${buttons.length} integration buttons`);
   },
   
   // Get formatted service name for display
