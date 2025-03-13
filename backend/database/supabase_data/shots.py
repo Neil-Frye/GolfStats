@@ -234,6 +234,64 @@ def get_club_benchmark(user_id: str, club: str, shot_type: str = None, token: st
     except Exception as e:
         logger.error(f"Error getting club benchmark for user {user_id}, club {club}: {str(e)}")
         return None
+        
+def add_shot(round_id: int, shot_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
+    """
+    Add a shot to a golf round. This function is a higher-level wrapper that:
+    1. Gets the appropriate hole data from the round
+    2. Routes the shot to the correct add function based on shot type
+    
+    Args:
+        round_id: Golf round ID
+        shot_data: Shot data dictionary
+        token: JWT token for authorization
+        
+    Returns:
+        Created shot data or None if failed
+    """
+    try:
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
+        
+        # Get hole data if hole_number is provided
+        hole_id = None
+        if 'hole_number' in shot_data:
+            hole_number = shot_data.pop('hole_number')  # Remove from shot data
+            
+            # Find the hole for this round with the matching hole_number
+            hole_response = supabase.table('golf_holes') \
+                .select('id') \
+                .eq('round_id', round_id) \
+                .eq('hole_number', hole_number) \
+                .limit(1) \
+                .execute()
+                
+            if hole_response.data:
+                hole_id = hole_response.data[0]['id']
+            else:
+                logger.error(f"Hole number {hole_number} not found for round {round_id}")
+                return None
+                
+        # Check shot_type if provided
+        shot_type = shot_data.get('shot_type', 'course')  # Default to course
+        
+        if shot_type == 'range':
+            # Add to range shots - using session_id instead of hole_id
+            session_id = shot_data.get('session_id')
+            if not session_id:
+                logger.error("Session ID required for range shots")
+                return None
+            return add_range_shot(session_id, shot_data, token)
+        else:
+            # This is a course shot, requires hole_id
+            if not hole_id:
+                logger.error("Hole ID required for course shots")
+                return None
+            return add_golf_shot(hole_id, shot_data, token)
+            
+    except Exception as e:
+        logger.error(f"Error adding shot to round {round_id}: {str(e)}")
+        return None
 
 def get_shots_for_round(round_id: int, token: str = None) -> List[Dict[str, Any]]:
     """
