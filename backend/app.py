@@ -41,6 +41,7 @@ init_auth(app)
 from flask import Blueprint
 from backend.integrations.routes import integrations_bp
 from backend.auth.routes import auth_bp
+from backend.range_shots.routes import range_shots_bp
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -512,6 +513,7 @@ app.register_blueprint(api_bp)
 # auth_bp is already registered by init_auth
 # app.register_blueprint(auth_bp)
 app.register_blueprint(integrations_bp)
+app.register_blueprint(range_shots_bp)
 
 @app.errorhandler(404)
 def not_found(error):

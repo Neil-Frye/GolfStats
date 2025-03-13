@@ -246,6 +246,163 @@ const ApiService = {
     }
   },
   
+  // Range Sessions and Shots
+  async getRangeSessions(params = {}) {
+    try {
+      const { limit = 50 } = params;
+      const queryParams = new URLSearchParams({
+        limit
+      }).toString();
+      
+      const response = await fetch(`/api/range-sessions?${queryParams}`, {
+        credentials: 'include'
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Get range sessions error:', error);
+      throw error;
+    }
+  },
+  
+  async getRangeSession(sessionId) {
+    try {
+      const response = await fetch(`/api/range-sessions/${sessionId}`, {
+        credentials: 'include'
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Get range session error:', error);
+      throw error;
+    }
+  },
+  
+  async createRangeSession(sessionData) {
+    try {
+      const response = await fetch('/api/range-sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(sessionData)
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Create range session error:', error);
+      throw error;
+    }
+  },
+  
+  async updateRangeSession(sessionId, sessionData) {
+    try {
+      const response = await fetch(`/api/range-sessions/${sessionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(sessionData)
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Update range session error:', error);
+      throw error;
+    }
+  },
+  
+  async deleteRangeSession(sessionId) {
+    try {
+      const response = await fetch(`/api/range-sessions/${sessionId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Delete range session error:', error);
+      throw error;
+    }
+  },
+  
+  async getRangeShots(sessionId) {
+    try {
+      const response = await fetch(`/api/range-sessions/${sessionId}/shots`, {
+        credentials: 'include'
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Get range shots error:', error);
+      throw error;
+    }
+  },
+  
+  async addRangeShot(sessionId, shotData) {
+    try {
+      const response = await fetch(`/api/range-sessions/${sessionId}/shots`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(shotData)
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Add range shot error:', error);
+      throw error;
+    }
+  },
+  
+  async addRangeShots(sessionId, shotsData) {
+    try {
+      const response = await fetch(`/api/range-sessions/${sessionId}/shots/batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(shotsData)
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Add range shots error:', error);
+      throw error;
+    }
+  },
+  
+  async getClubBenchmarks() {
+    try {
+      const response = await fetch('/api/club-benchmarks', {
+        credentials: 'include'
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Get club benchmarks error:', error);
+      throw error;
+    }
+  },
+  
+  async getClubBenchmark(club) {
+    try {
+      const response = await fetch(`/api/club-benchmarks/${encodeURIComponent(club)}`, {
+        credentials: 'include'
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Get club benchmark error:', error);
+      throw error;
+    }
+  },
+
   // Helper methods
   async _getAuthToken() {
     // Get the current user session with token
