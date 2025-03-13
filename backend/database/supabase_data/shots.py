@@ -293,6 +293,65 @@ def add_shot(round_id: int, shot_data: Dict[str, Any], token: str = None) -> Opt
         logger.error(f"Error adding shot to round {round_id}: {str(e)}")
         return None
 
+def add_holes_for_round(round_id: int, holes_data: List[Dict[str, Any]], token: str = None) -> List[Dict[str, Any]]:
+    """
+    Add multiple holes to a golf round.
+    
+    Args:
+        round_id: Golf round ID
+        holes_data: List of hole data dictionaries
+        token: JWT token for authorization
+        
+    Returns:
+        List of created hole data or empty list if failed
+    """
+    try:
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
+        
+        # Ensure round_id is set for each hole
+        for hole_data in holes_data:
+            hole_data['round_id'] = round_id
+            
+        # Insert all holes at once
+        response = supabase.table('golf_holes') \
+            .insert(holes_data) \
+            .execute()
+            
+        return response.data if response.data else []
+    except Exception as e:
+        logger.error(f"Error adding holes for round {round_id}: {str(e)}")
+        return []
+        
+def add_shots_for_hole(hole_id: int, shots_data: List[Dict[str, Any]], token: str = None) -> List[Dict[str, Any]]:
+    """
+    Add multiple shots to a golf hole.
+    
+    Args:
+        hole_id: Golf hole ID
+        shots_data: List of shot data dictionaries
+        token: JWT token for authorization
+        
+    Returns:
+        List of created shot data or empty list if failed
+    """
+    try:
+        # Ensure hole_id is set for each shot and set shot_type to 'course'
+        for shot_data in shots_data:
+            shot_data['hole_id'] = hole_id
+            shot_data['shot_type'] = shot_data.get('shot_type', 'course')
+            
+        # Insert all shots at once
+        supabase = get_supabase(token)
+        response = supabase.table('golf_shots') \
+            .insert(shots_data) \
+            .execute()
+            
+        return response.data if response.data else []
+    except Exception as e:
+        logger.error(f"Error adding shots for hole {hole_id}: {str(e)}")
+        return []
+
 def get_shots_for_round(round_id: int, token: str = None) -> List[Dict[str, Any]]:
     """
     Get all shots for a specific golf round.
