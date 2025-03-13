@@ -1,12 +1,18 @@
 import ApiService from '../api/api.js';
-import { formatDate, showToast, openModal, closeModal } from '../ui/ui.js';
+import { formatDate, showToast, openModal, closeModal, showLoadingState, hideLoadingState, showErrorState } from '../ui/ui.js';
 
 // Function to load rounds data
 function loadRoundsData(filter = 'all') {
     const tableBody = document.getElementById('rounds-table-body');
+    const roundsContainer = document.querySelector('.rounds-list-container');
     if (!tableBody) return;
     
-    // Show loading state
+    // Show enhanced loading state - both in table and as section overlay
+    if (roundsContainer) {
+        showLoadingState('rounds-list-container', 'Loading your rounds...');
+    }
+    
+    // Show loading state in table
     tableBody.innerHTML = `
         <tr class="loading-row">
             <td colspan="9">
@@ -21,6 +27,11 @@ function loadRoundsData(filter = 'all') {
     // Fetch rounds data
     ApiService.getRounds({ filter: filter, limit: 10, page: 1 })
         .then(data => {
+            // Hide loading state if we used the enhanced loading
+            if (roundsContainer) {
+                hideLoadingState('rounds-list-container');
+            }
+            
             if (data && data.rounds && data.rounds.length > 0) {
                 // Update table with rounds
                 updateRoundsTable(data.rounds, data.pagination);
@@ -31,13 +42,28 @@ function loadRoundsData(filter = 'all') {
         })
         .catch(error => {
             console.error('Error loading rounds data:', error);
+            
+            // Hide loading state if we used the enhanced loading
+            if (roundsContainer) {
+                hideLoadingState('rounds-list-container');
+            }
+            
+            // Show more detailed error message
+            const errorMessage = error.message || 'Failed to load rounds data';
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="9" class="error-message">
-                        Error loading rounds. Please try again.
+                        <i class="fas fa-exclamation-circle"></i>
+                        ${errorMessage}
+                        <button class="retry-btn" onclick="window.GolfStatsApp.rounds.loadRoundsData('${filter}')">
+                            <i class="fas fa-sync-alt"></i> Try Again
+                        </button>
                     </td>
                 </tr>
             `;
+            
+            // Show toast notification with error
+            showToast(`Error loading rounds: ${errorMessage}`, 'error');
         });
 }
 
@@ -151,8 +177,14 @@ function updatePagination(pagination) {
 // Function to navigate to a specific page
 function navigateToPage(page) {
     const filter = document.getElementById('rounds-filter')?.value || 'all';
+    const roundsContainer = document.querySelector('.rounds-list-container');
     
-    // Show loading state
+    // Show enhanced loading state with overlay
+    if (roundsContainer) {
+        showLoadingState('rounds-list-container', `Loading page ${page}...`);
+    }
+    
+    // Show loading state in table
     const tableBody = document.getElementById('rounds-table-body');
     if (tableBody) {
         tableBody.innerHTML = `
@@ -160,7 +192,7 @@ function navigateToPage(page) {
                 <td colspan="9">
                     <div class="loading-indicator">
                         <div class="loading-spinner small"></div>
-                        <span>Loading rounds...</span>
+                        <span>Loading page ${page}...</span>
                     </div>
                 </td>
             </tr>
@@ -170,6 +202,11 @@ function navigateToPage(page) {
     // Fetch data for the specified page
     ApiService.getRounds({ filter: filter, limit: 10, page: page })
         .then(data => {
+            // Hide loading state if we used the enhanced loading
+            if (roundsContainer) {
+                hideLoadingState('rounds-list-container');
+            }
+            
             if (data && data.rounds && data.rounds.length > 0) {
                 // Update table with rounds
                 updateRoundsTable(data.rounds, data.pagination);
@@ -180,14 +217,29 @@ function navigateToPage(page) {
         })
         .catch(error => {
             console.error('Error loading rounds data:', error);
+            
+            // Hide loading state if we used the enhanced loading
+            if (roundsContainer) {
+                hideLoadingState('rounds-list-container');
+            }
+            
             if (tableBody) {
+                // Show more detailed error message with retry button
+                const errorMessage = error.message || 'Failed to load rounds data';
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="9" class="error-message">
-                            Error loading rounds. Please try again.
+                            <i class="fas fa-exclamation-circle"></i>
+                            ${errorMessage}
+                            <button class="retry-btn" onclick="window.GolfStatsApp.rounds.navigateToPage(${page})">
+                                <i class="fas fa-sync-alt"></i> Try Again
+                            </button>
                         </td>
                     </tr>
                 `;
+                
+                // Show toast notification with error
+                showToast(`Error loading page ${page}: ${errorMessage}`, 'error');
             }
         });
 }
@@ -285,7 +337,37 @@ function viewRoundDetails(roundId) {
             .catch(error => {
                 console.error('Error fetching round details:', error);
                 loadingContainer.style.display = 'none';
+                
+                // Show detailed error message
+                const errorMessage = error.message || 'Unable to load round details';
+                errorContainer.innerHTML = `
+                    <div class="error-icon">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <h3>Error Loading Round Details</h3>
+                    <p>${errorMessage}</p>
+                    <button class="retry-btn" data-round-id="${roundId}">
+                        <i class="fas fa-sync-alt"></i> Try Again
+                    </button>
+                `;
+                
+                // Add event listener to the retry button
+                const retryBtn = errorContainer.querySelector('.retry-btn');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', function() {
+                        // Get the round ID from the button's data attribute
+                        const roundId = this.getAttribute('data-round-id');
+                        if (roundId) {
+                            // Retry loading the round details
+                            viewRoundDetails(roundId);
+                        }
+                    });
+                }
+                
                 errorContainer.style.display = 'block';
+                
+                // Show a toast notification with the error
+                UI.showToast(`Error: ${errorMessage}`, 'error');
             });
     }
 }
@@ -497,6 +579,29 @@ function initNewRoundModal() {
         dateInput.value = today;
     }
     
+    // Set up cancel button explicitly
+    const cancelBtn = modal.querySelector('.cancel-btn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            closeModal('new-round-modal');
+        });
+    }
+    
+    // Close button (X in the corner)
+    const closeBtn = modal.querySelector('.close-modal');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            closeModal('new-round-modal');
+        });
+    }
+    
+    // Close when clicking outside the modal
+    modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            closeModal('new-round-modal');
+        }
+    });
+    
     // Handle form submission
     const form = document.getElementById('new-round-form');
     if (form) {
@@ -638,5 +743,9 @@ export {
     viewRoundDetails,
     initRoundDetailModal,
     initNewRoundModal,
-    attachRoundViewListeners
+    attachRoundViewListeners,
+    populateRoundDetails,
+    populateScorecard,
+    populateShotDetails,
+    showRoundsEmptyState
 };
