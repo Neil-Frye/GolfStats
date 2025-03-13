@@ -619,16 +619,19 @@ class SkyTrakScraper:
         
         return round_ids
 
-def get_skytrak_data(user_id: int, limit: int = 10) -> List[int]:
+def get_skytrak_data(user_id: str, limit: int = 10, use_user_credentials: bool = True) -> List[int]:
     """
     Scrape SkyTrak data for a specific user.
     
     Args:
         user_id: The database ID of the user
         limit: Maximum number of sessions to process
+        use_user_credentials: Whether to use user-specific credentials
         
     Returns:
         List of golf round IDs that were processed
     """
+    # TODO: Update SkyTrakScraper to use user-specific credentials
+    # For now, we'll just use the global credentials
     scraper = SkyTrakScraper(user_id=user_id)
     return scraper.run(limit=limit)

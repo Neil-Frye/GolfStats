@@ -13,6 +13,8 @@ import {
     setupEventListeners
 } from './js/ui/ui.js';
 
+import IntegrationsService from './js/integrations/integrations.js';
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize the application
     console.log('GolfStats frontend initialized');
@@ -30,6 +32,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize profile-related functionality
     initProfileFormSubmission();
     initProfileImageUpload();
+    
+    // Make IntegrationsService available globally
+    window.IntegrationsService = IntegrationsService;
+    
+    // Initialize integrations
+    if (IntegrationsService && typeof IntegrationsService.initialize === 'function') {
+        IntegrationsService.initialize().catch(err => {
+            console.error('Error initializing integrations:', err);
+        });
+    }
     
     // Load data for the active view
     const hash = window.location.hash.substring(1);
@@ -3290,27 +3302,55 @@ function showIntegrationModal(service) {
 }
 
 // Update integration status in the UI
-function updateIntegrationStatus(service, isConnected) {
-    const integrationItem = document.getElementById(`${service}-integration`);
-    if (!integrationItem) return;
-    
-    const statusEl = integrationItem.querySelector('.integration-status');
-    const buttonEl = integrationItem.querySelector('.connect-integration-btn');
-    
-    if (isConnected) {
-        statusEl.textContent = 'Connected';
-        statusEl.classList.remove('disconnected');
-        statusEl.classList.add('connected');
-        
-        buttonEl.textContent = 'Manage Connection';
+// This is needed for the integration modal to access
+window.updateIntegrationStatus = function(service, isConnected) {
+    // Use the IntegrationsService if available
+    if (window.IntegrationsService) {
+        window.IntegrationsService.updateIntegrationUI(service, isConnected);
     } else {
-        statusEl.textContent = 'Disconnected';
-        statusEl.classList.remove('connected');
-        statusEl.classList.add('disconnected');
+        // Fallback implementation if service not loaded
+        const integrationItem = document.getElementById(`${service}-integration`);
+        if (!integrationItem) return;
         
-        buttonEl.textContent = 'Connect Account';
+        const statusEl = integrationItem.querySelector('.integration-status');
+        const buttonEl = integrationItem.querySelector('.connect-integration-btn');
+        
+        if (isConnected) {
+            statusEl.textContent = 'Connected';
+            statusEl.classList.remove('disconnected');
+            statusEl.classList.add('connected');
+            
+            buttonEl.textContent = 'Disconnect';
+            buttonEl.classList.add('disconnect-btn');
+            
+            // Add test sync button if it doesn't exist
+            if (!integrationItem.querySelector('.test-integration-btn')) {
+                const testBtn = document.createElement('button');
+                testBtn.className = 'test-integration-btn';
+                testBtn.textContent = 'Sync Now';
+                testBtn.setAttribute('data-service', service);
+                
+                // Insert before the disconnect button
+                buttonEl.parentNode.insertBefore(testBtn, buttonEl);
+            }
+        } else {
+            statusEl.textContent = 'Disconnected';
+            statusEl.classList.remove('connected');
+            statusEl.classList.add('disconnected');
+            
+            buttonEl.textContent = 'Connect Account';
+            buttonEl.classList.remove('disconnect-btn');
+            
+            // Remove test sync button if it exists
+            const testBtn = integrationItem.querySelector('.test-integration-btn');
+            if (testBtn) {
+                testBtn.remove();
+            }
+        }
     }
 }
+// Backward compatibility - make function available in global scope as well
+const updateIntegrationStatus = window.updateIntegrationStatus;
 
 // Loading state functions
 function showLoadingState() {

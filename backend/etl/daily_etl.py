@@ -38,29 +38,87 @@ file_handler = logging.FileHandler(os.path.join(logs_dir, 'daily_etl.log'))
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
-def extract_user_list() -> List[User]:
+def extract_user_list() -> List[Dict[str, Any]]:
     """
     Extract list of users from database.
     
     Returns:
-        List of User objects
+        List of dictionaries with user data
     """
     users = []
     try:
-        with get_db() as db:
-            users = db.query(User).filter(User.is_active == True).all()
-        logger.info(f"Found {len(users)} active users")
+        # Use Supabase to get all users and their preferences
+        from backend.database.supabase_client import get_supabase_client
+        
+        # Get users from the auth.users table
+        supabase = get_supabase_client()
+        
+        # First, get all users
+        response = supabase.auth.admin.list_users()
+        
+        if response.data:
+            for user_data in response.data:
+                # Only include active users
+                if user_data.get('email') and user_data.get('id'):
+                    # Create a lightweight user record
+                    user = {
+                        'id': user_data.get('id'),
+                        'email': user_data.get('email'),
+                        'has_credentials': False
+                    }
+                    users.append(user)
+        
+        # Then, get user preferences for users with integration credentials
+        prefs_response = supabase.table('user_preferences') \
+            .select('user_id, arccos_email, arccos_password, trackman_username, trackman_password, skytrak_username, skytrak_password') \
+            .execute()
+            
+        preferences = {}
+        if prefs_response.data:
+            for pref in prefs_response.data:
+                user_id = pref.get('user_id')
+                
+                if user_id:
+                    # Check for any service credentials
+                    has_arccos = bool(pref.get('arccos_email') and pref.get('arccos_password'))
+                    has_trackman = bool(pref.get('trackman_username') and pref.get('trackman_password'))
+                    has_skytrak = bool(pref.get('skytrak_username') and pref.get('skytrak_password'))
+                    
+                    preferences[user_id] = {
+                        'has_arccos': has_arccos,
+                        'has_trackman': has_trackman,
+                        'has_skytrak': has_skytrak
+                    }
+        
+        # Merge user preferences with user data
+        for user in users:
+            user_id = user.get('id')
+            if user_id in preferences:
+                user['has_arccos'] = preferences[user_id].get('has_arccos', False)
+                user['has_trackman'] = preferences[user_id].get('has_trackman', False)
+                user['has_skytrak'] = preferences[user_id].get('has_skytrak', False)
+                user['has_credentials'] = user['has_arccos'] or user['has_trackman'] or user['has_skytrak']
+            else:
+                user['has_arccos'] = False
+                user['has_trackman'] = False
+                user['has_skytrak'] = False
+                user['has_credentials'] = False
+        
+        # Filter to users with credentials only
+        users = [u for u in users if u.get('has_credentials', False)]
+        
+        logger.info(f"Found {len(users)} active users with integration credentials")
     except Exception as e:
         logger.error(f"Error extracting user list: {str(e)}")
     
     return users
 
-def process_user_data(user: User) -> Dict[str, List[int]]:
+def process_user_data(user: Dict[str, Any]) -> Dict[str, List[int]]:
     """
     Process golf data for a specific user from all sources.
     
     Args:
-        user: User object
+        user: Dictionary with user data
         
     Returns:
         Dictionary with results from each data source
@@ -72,62 +130,52 @@ def process_user_data(user: User) -> Dict[str, List[int]]:
     }
     
     try:
-        logger.info(f"Processing data for user {user.id} ({user.email})")
-        
-        # Create storage handler
-        from backend.etl.data_transformer import GolfDataStorage
-        storage = GolfDataStorage()
+        user_id = user.get('id')
+        email = user.get('email')
+        logger.info(f"Processing data for user {user_id} ({email})")
         
         # Process Trackman data
-        if user.trackman_credentials_valid():
+        if user.get('has_trackman', False):
             try:
-                logger.info(f"Processing Trackman data for user {user.id}")
-                trackman_data_list = get_trackman_data(user_id=user.id, limit=20)
+                logger.info(f"Processing Trackman data for user {user_id}")
+                trackman_data_list = get_trackman_data(user_id=user_id, limit=20, use_user_credentials=True)
                 
-                # Store each Trackman session
-                for trackman_data in trackman_data_list:
-                    round_id = storage.store_trackman_session(user.id, trackman_data)
-                    if round_id:
-                        results["trackman"].append(round_id)
+                if trackman_data_list:
+                    results["trackman"] = trackman_data_list
                 
                 logger.info(f"Processed and stored {len(results['trackman'])} Trackman sessions")
             except Exception as e:
-                logger.error(f"Error processing Trackman data for user {user.id}: {str(e)}")
+                logger.error(f"Error processing Trackman data for user {user_id}: {str(e)}")
         
         # Process Arccos data
-        if user.arccos_credentials_valid():
+        if user.get('has_arccos', False):
             try:
-                logger.info(f"Processing Arccos data for user {user.id}")
-                arccos_data_list = get_arrcos_data(user_id=user.id, limit=20)
+                logger.info(f"Processing Arccos data for user {user_id}")
+                # Get Arccos rounds - limit 10 for daily ETL to avoid overloading
+                arccos_round_ids = get_arrcos_data(user_id=user_id, limit=10, use_user_credentials=True)
                 
-                # Store each Arccos round
-                for arccos_data in arccos_data_list:
-                    round_id = storage.store_arccos_round(user.id, arccos_data)
-                    if round_id:
-                        results["arccos"].append(round_id)
+                if arccos_round_ids:
+                    results["arccos"] = arccos_round_ids
                 
                 logger.info(f"Processed and stored {len(results['arccos'])} Arccos rounds")
             except Exception as e:
-                logger.error(f"Error processing Arccos data for user {user.id}: {str(e)}")
+                logger.error(f"Error processing Arccos data for user {user_id}: {str(e)}")
         
         # Process SkyTrak data
-        if user.skytrak_credentials_valid():
+        if user.get('has_skytrak', False):
             try:
-                logger.info(f"Processing SkyTrak data for user {user.id}")
-                skytrak_data_list = get_skytrak_data(user_id=user.id, limit=20)
+                logger.info(f"Processing SkyTrak data for user {user_id}")
+                skytrak_data_list = get_skytrak_data(user_id=user_id, limit=20, use_user_credentials=True)
                 
-                # Store each SkyTrak session
-                for skytrak_data in skytrak_data_list:
-                    round_id = storage.store_skytrak_session(user.id, skytrak_data)
-                    if round_id:
-                        results["skytrak"].append(round_id)
+                if skytrak_data_list:
+                    results["skytrak"] = skytrak_data_list
                 
                 logger.info(f"Processed and stored {len(results['skytrak'])} SkyTrak sessions")
             except Exception as e:
-                logger.error(f"Error processing SkyTrak data for user {user.id}: {str(e)}")
+                logger.error(f"Error processing SkyTrak data for user {user_id}: {str(e)}")
     
     except Exception as e:
-        logger.error(f"Error in process_user_data for user {user.id}: {str(e)}")
+        logger.error(f"Error in process_user_data for user {user.get('id')}: {str(e)}")
     
     return results
 

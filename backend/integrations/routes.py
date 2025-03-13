@@ -129,7 +129,7 @@ def get_integration_status():
 @integrations_bp.route('/test/<service>', methods=['POST'])
 @require_auth
 def test_integration(service: str):
-    """Test integration connection with stored credentials."""
+    """Test integration connection and sync data."""
     if service not in ['trackman', 'arccos', 'skytrak']:
         return jsonify({"error": "Unsupported service"}), 400
     
@@ -139,21 +139,26 @@ def test_integration(service: str):
         return jsonify({"error": "User not authenticated"}), 401
     
     try:
+        # Get user preferences from Supabase
+        user_id = user_data['id']
+        
+        # Check if credentials exist based on the service
+        has_credentials = False
+        
         # Get database session using context manager
         with get_db() as session:
             # Get user
-            user = session.query(User).filter(User.id == user_data['id']).first()
+            user = session.query(User).filter(User.id == user_id).first()
             if not user:
                 return jsonify({"error": "User not found"}), 404
                 
             # Check if credentials exist
-            has_credentials = False
             if service == 'trackman':
-                has_credentials = bool(user.trackman_username and user.trackman_password)
+                has_credentials = user.trackman_credentials_valid()
             elif service == 'arccos':
-                has_credentials = bool(user.arccos_email and user.arccos_password)
+                has_credentials = user.arccos_credentials_valid()
             elif service == 'skytrak':
-                has_credentials = bool(user.skytrak_username and user.skytrak_password)
+                has_credentials = user.skytrak_credentials_valid()
                 
             if not has_credentials:
                 return jsonify({
@@ -161,13 +166,53 @@ def test_integration(service: str):
                     "message": f"No {service.capitalize()} credentials found. Please connect first."
                 }), 400
                 
-            # In a real implementation, we would test the connection to the service here
-            # For now, we'll just return successful status since the credentials exist
+            # Sync data based on the service type
+            if service == 'arccos':
+                # Import arccos scraper function
+                from backend.scrapers.arccos_scraper import get_arrcos_data
+                
+                # Run the scraper to sync Arccos data
+                try:
+                    # Set a limit of 5 for manual testing to speed things up
+                    round_ids = get_arrcos_data(user_id=user_id, limit=5, use_user_credentials=True)
+                    
+                    if round_ids:
+                        return jsonify({
+                            "success": True,
+                            "message": f"Successfully synced {len(round_ids)} rounds from Arccos.",
+                            "data": {
+                                "round_count": len(round_ids),
+                                "round_ids": round_ids
+                            }
+                        }), 200
+                    else:
+                        return jsonify({
+                            "success": True,
+                            "message": "No new rounds found to sync from Arccos."
+                        }), 200
+                        
+                except Exception as e:
+                    logger.error(f"Error syncing Arccos data: {str(e)}")
+                    return jsonify({
+                        "success": False,
+                        "message": f"Error syncing Arccos data: {str(e)}"
+                    }), 500
             
-            return jsonify({
-                "success": True,
-                "message": f"Connection to {service.capitalize()} is working properly."
-            }), 200
+            elif service == 'trackman':
+                # TODO: Add TrackMan sync functionality
+                # For now, just return a simulated success response
+                return jsonify({
+                    "success": True,
+                    "message": "TrackMan sync functionality will be available soon."
+                }), 200
+                
+            elif service == 'skytrak':
+                # TODO: Add SkyTrak sync functionality
+                # For now, just return a simulated success response
+                return jsonify({
+                    "success": True,
+                    "message": "SkyTrak sync functionality will be available soon."
+                }), 200
             
     except Exception as e:
         logger.error(f"Error testing {service} integration: {str(e)}")
