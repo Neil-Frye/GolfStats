@@ -411,6 +411,7 @@
                                         <tr>
                                             <th>#</th>
                                             <th>Club</th>
+                                            <th>Type</th>
                                             <th>Carry (yds)</th>
                                             <th>Total (yds)</th>
                                             <th>Ball Speed (mph)</th>
@@ -424,7 +425,7 @@
                                     </thead>
                                     <tbody>
                                         <tr class="no-data-row">
-                                            <td colspan="11">Select a session to view shots data</td>
+                                            <td colspan="12">Select a session to view shots data</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -1399,6 +1400,16 @@
                         <select id="shot-club" name="club" required>
                             <option value="">Select club</option>
                             <!-- Club options will be dynamically populated -->
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="shot-type">Shot Type</label>
+                        <select id="shot-type" name="shot_type" required>
+                            <option value="">Select shot type</option>
+                            <option value="range" selected>Range</option>
+                            <option value="sim">Simulator</option>
+                            <option value="course">On Course</option>
                         </select>
                     </div>
                     

@@ -10,7 +10,9 @@ from backend.database.supabase_data.range_shots import (
     get_range_session, 
     create_range_session, 
     update_range_session, 
-    delete_range_session,
+    delete_range_session
+)
+from backend.database.supabase_data.shots import (
     get_range_shots,
     add_range_shot,
     add_range_shots,
@@ -283,6 +285,23 @@ def api_add_range_shot(session_id: int):
             current_shots = get_range_shots(session_id, token)
             shot_data['shot_number'] = len(current_shots) + 1
         
+        # Determine shot_type if not provided
+        if 'shot_type' not in shot_data:
+            # Default to 'range' for manually added shots
+            shot_data['shot_type'] = 'range'
+        
+        # Determine source_system based on value or defaults
+        if 'source_system' not in shot_data:
+            # Default based on shot_type
+            if shot_data.get('shot_type') == 'sim':
+                # Try to determine which sim system
+                if session.get('source_system'):
+                    shot_data['source_system'] = session.get('source_system')
+                else:
+                    shot_data['source_system'] = 'simulator'
+            else:
+                shot_data['source_system'] = 'manual'
+        
         # Add shot
         shot = add_range_shot(session_id, shot_data, token)
         
@@ -330,6 +349,25 @@ def api_add_range_shots(session_id: int):
         if not isinstance(shots_data, list):
             return jsonify({"error": "Shots data must be an array"}), 400
         
+        # Process each shot to set defaults
+        for shot in shots_data:
+            # Determine shot_type if not provided
+            if 'shot_type' not in shot:
+                # Default to 'range' for manually added shots
+                shot['shot_type'] = 'range'
+            
+            # Determine source_system based on value or defaults
+            if 'source_system' not in shot:
+                # Default based on shot_type
+                if shot.get('shot_type') == 'sim':
+                    # Try to determine which sim system
+                    if session.get('source_system'):
+                        shot['source_system'] = session.get('source_system')
+                    else:
+                        shot['source_system'] = 'simulator'
+                else:
+                    shot['source_system'] = 'manual'
+        
         # Add shots
         shots = add_range_shots(session_id, shots_data, token)
         
@@ -358,8 +396,15 @@ def api_get_club_benchmarks():
         return jsonify({"error": "Unauthorized"}), 401
     
     try:
+        # Get shot_type filter if provided
+        shot_type = request.args.get('shot_type')
+        
         # Get club benchmarks
         benchmarks = get_club_benchmarks(user['id'], token)
+        
+        # Filter by shot_type if provided
+        if shot_type and benchmarks:
+            benchmarks = [b for b in benchmarks if b.get('shot_type') == shot_type]
         
         return jsonify({
             "success": True,
@@ -386,8 +431,11 @@ def api_get_club_benchmark(club: str):
         return jsonify({"error": "Unauthorized"}), 401
     
     try:
+        # Get shot_type filter if provided
+        shot_type = request.args.get('shot_type')
+        
         # Get club benchmark
-        benchmark = get_club_benchmark(user['id'], club, token)
+        benchmark = get_club_benchmark(user['id'], club, shot_type, token)
         
         if not benchmark:
             return jsonify({"error": "Club benchmark not found"}), 404
