@@ -1,4 +1,17 @@
 // GolfStats Frontend Application
+import { 
+    checkAuthentication, 
+    updateUserInfo, 
+    initLogoutHandler,
+    initProfileFormSubmission,
+    initProfileImageUpload
+} from './js/auth/auth.js';
+
+import { 
+    showToast,
+    initNavigation,
+    setupEventListeners
+} from './js/ui/ui.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize the application
@@ -13,6 +26,10 @@ document.addEventListener('DOMContentLoaded', function() {
     initRoundDetailModal();
     setupEventListeners();
     initLogoutHandler();
+    
+    // Initialize profile-related functionality
+    initProfileFormSubmission();
+    initProfileImageUpload();
     
     // Load data for the active view
     const hash = window.location.hash.substring(1);

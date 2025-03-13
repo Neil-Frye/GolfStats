@@ -191,9 +191,13 @@ def update_profile():
             filename = secure_filename(profile_image.filename)
             unique_filename = f"{user_id}_{uuid.uuid4()}_{filename}"
             
-            # Ensure upload directory exists
-            upload_folder = os.path.join('frontend', 'uploads', 'profiles')
+            # Ensure upload directory exists - use absolute path to be safe
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            upload_folder = os.path.join(base_dir, 'frontend', 'uploads', 'profiles')
             os.makedirs(upload_folder, exist_ok=True)
+            
+            # Log the folder for debugging
+            logger.info(f"Creating upload directory at: {upload_folder}")
             
             # Save file
             file_path = os.path.join(upload_folder, unique_filename)

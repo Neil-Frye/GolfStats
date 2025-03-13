@@ -207,6 +207,12 @@ async function initProfileFormSubmission() {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
         
+        // Remove any existing error messages
+        const existingErrorMsg = profileForm.querySelector('.error-message');
+        if (existingErrorMsg) {
+            existingErrorMsg.remove();
+        }
+        
         try {
             // Get image file if selected
             const imageFile = document.getElementById('profile-image-upload').files[0];
@@ -223,25 +229,86 @@ async function initProfileFormSubmission() {
             
             // Add image if available
             if (imageFile) {
+                console.log("Selected file:", imageFile.name, imageFile.type, imageFile.size);
+                
+                // Verify it's an image file
+                if (!imageFile.type.match('image.*')) {
+                    throw new Error('Please select a valid image file (JPEG, PNG, GIF, etc.)');
+                }
+                
+                // Verify file size (limit to 5MB)
+                if (imageFile.size > 5 * 1024 * 1024) {
+                    throw new Error('Image file size must be less than 5MB');
+                }
                 formData.append('profile_image', imageFile);
             }
             
-            // Update profile
-            const result = await ApiService.updateProfile(formData);
+            // Get authentication token for API request
+            const token = await ApiService._getAuthToken();
+            
+            // Update profile with proper authorization
+            const response = await fetch('/api/auth/profile', {
+                method: 'POST',
+                credentials: 'include',
+                headers: token ? {
+                    'Authorization': `Bearer ${token}`
+                } : {},
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Failed to update profile (${response.status})`);
+            }
+            
+            const result = await response.json();
             
             // Update UI with new user data
             if (result.user) {
                 updateUserInfo(result.user);
+                // Import showToast from UI module if needed
+                const { showToast } = await import('../ui/ui.js').catch(() => ({}));
+                
                 // Show success toast
                 if (typeof showToast === 'function') {
                     showToast('Profile updated successfully!', 'success');
+                } else {
+                    // Fallback if UI module not loaded
+                    const successMsg = document.createElement('div');
+                    successMsg.className = 'success-message';
+                    successMsg.textContent = 'Profile updated successfully!';
+                    profileForm.appendChild(successMsg);
+                    
+                    // Remove success message after 3 seconds
+                    setTimeout(() => {
+                        if (profileForm.contains(successMsg)) {
+                            profileForm.removeChild(successMsg);
+                        }
+                    }, 3000);
                 }
             }
         } catch (error) {
             console.error('Error updating profile:', error);
-            // Show error toast
+            
+            // Import showToast from UI module if needed
+            const { showToast } = await import('../ui/ui.js').catch(() => ({}));
+            
+            // Show error toast or message
             if (typeof showToast === 'function') {
-                showToast('Failed to update profile', 'error');
+                showToast(error.message || 'Failed to update profile', 'error');
+            } else {
+                // Fallback if UI module not loaded
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'error-message';
+                errorMsg.textContent = error.message || 'Failed to update profile';
+                profileForm.appendChild(errorMsg);
+                
+                // Remove error after delay
+                setTimeout(() => {
+                    if (profileForm.contains(errorMsg)) {
+                        profileForm.removeChild(errorMsg);
+                    }
+                }, 5000);
             }
         } finally {
             // Reset button state
@@ -255,12 +322,27 @@ async function initProfileFormSubmission() {
 function initProfileImageUpload() {
     const imageUpload = document.getElementById('profile-image-upload');
     const imagePreview = document.getElementById('profile-image-preview');
+    const avatarUploadLabel = document.querySelector('.change-avatar');
     
     if (!imageUpload || !imagePreview) return;
+    
+    // Add click handler to the "Change Photo" label to trigger file input
+    if (avatarUploadLabel) {
+        avatarUploadLabel.addEventListener('click', function(e) {
+            e.preventDefault();
+            imageUpload.click();
+        });
+    }
     
     imageUpload.addEventListener('change', function() {
         const file = this.files[0];
         if (file) {
+            // Check if file is an image
+            if (!file.type.match('image.*')) {
+                showToast('Please select an image file (JPEG, PNG, GIF)', 'error');
+                return;
+            }
+            
             const reader = new FileReader();
             reader.onload = function(e) {
                 imagePreview.src = e.target.result;
