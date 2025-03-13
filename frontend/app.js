@@ -15,9 +15,161 @@ import {
 
 import IntegrationsService from './js/integrations/integrations.js';
 
+// Define showIntegrationModal globally at the top level
+// Integration modal - make it globally available
+window.showIntegrationModal = function(service) {
+    console.log(`Showing integration modal for ${service}`);
+    
+    // Get service display name
+    const serviceNames = {
+        'trackman': 'Trackman',
+        'arccos': 'Arccos',
+        'skytrak': 'SkyTrak'
+    };
+    
+    const serviceName = serviceNames[service] || service;
+    
+    // Create modal if it doesn't exist
+    if (!document.getElementById('integration-modal')) {
+        const modal = document.createElement('div');
+        modal.id = 'integration-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content integration-modal-content">
+                <div class="modal-header">
+                    <h2>Connect <span class="service-name">${serviceName}</span></h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="loading-container" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Connecting to ${serviceName}...</p>
+                    </div>
+                    <div class="error-container" style="display: none;">
+                        <div class="error-icon">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="error-message"></div>
+                        <button class="try-again-btn">Try Again</button>
+                    </div>
+                    <form id="integration-form">
+                        <div class="form-group" id="username-field">
+                            <label for="integration-username">Username/Email</label>
+                            <input type="text" id="integration-username" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="integration-password">Password</label>
+                            <input type="password" id="integration-password" name="password" required>
+                        </div>
+                        <div class="form-options">
+                            <div class="remember-credentials">
+                                <input type="checkbox" id="remember-credentials" name="remember" checked>
+                                <label for="remember-credentials">Remember my credentials securely</label>
+                            </div>
+                        </div>
+                        <div class="security-callout">
+                            <i class="fas fa-lock"></i>
+                            <span>Your credentials are securely encrypted and stored using industry-standard security practices.</span>
+                        </div>
+                        <div class="form-buttons">
+                            <button type="button" class="btn-secondary cancel-integration-btn">Cancel</button>
+                            <button type="submit" class="btn-primary connect-btn">Connect</button>
+                        </div>
+                    </form>
+                    <div class="success-container" style="display: none;">
+                        <div class="success-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h3>Connection Successful!</h3>
+                        <p>Your <span class="service-name">${serviceName}</span> account has been successfully connected.</p>
+                        <button class="done-btn">Done</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Add event listeners
+        const closeBtn = modal.querySelector('.close-modal');
+        const cancelBtn = modal.querySelector('.cancel-integration-btn');
+        const form = modal.querySelector('#integration-form');
+        const tryAgainBtn = modal.querySelector('.try-again-btn');
+        const doneBtn = modal.querySelector('.done-btn');
+        
+        // Close modal functions
+        function closeIntegrationModal() {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        closeBtn.addEventListener('click', closeIntegrationModal);
+        cancelBtn.addEventListener('click', closeIntegrationModal);
+        
+        // Close when clicking outside the modal content
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeIntegrationModal();
+            }
+        });
+    } else {
+        // Update existing modal
+        const modal = document.getElementById('integration-modal');
+        const serviceNameEl = modal.querySelectorAll('.service-name');
+        serviceNameEl.forEach(el => {
+            el.textContent = serviceName;
+        });
+        
+        // Reset form
+        const form = modal.querySelector('#integration-form');
+        form.reset();
+        form.style.display = 'block';
+        
+        // Hide other containers
+        modal.querySelector('.loading-container').style.display = 'none';
+        modal.querySelector('.error-container').style.display = 'none';
+        modal.querySelector('.success-container').style.display = 'none';
+        
+        // Update username field label for Arccos (uses email)
+        const usernameField = modal.querySelector('#username-field');
+        if (usernameField) {
+            const label = usernameField.querySelector('label');
+            const input = usernameField.querySelector('input');
+            
+            if (service === 'arccos') {
+                label.textContent = 'Email Address';
+                input.type = 'email';
+            } else {
+                label.textContent = 'Username';
+                input.type = 'text';
+            }
+        }
+    }
+    
+    // Display the modal with proper z-index and positioning
+    const modal = document.getElementById('integration-modal');
+    modal.style.display = 'block';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    modal.style.zIndex = '1000';
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    
+    console.log('Modal should now be visible');
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize the application
     console.log('GolfStats frontend initialized');
+    
+    // Log all integration buttons for debugging
+    const integrationButtons = document.querySelectorAll('.connect-integration-btn');
+    console.log(`Found ${integrationButtons.length} integration buttons:`);
+    integrationButtons.forEach((btn, index) => {
+        console.log(`Button ${index + 1}: service = ${btn.getAttribute('data-service')}, visible = ${btn.offsetParent !== null}`);
+    });
     
     // Check authentication first
     checkAuthentication();
@@ -1007,13 +1159,15 @@ function setupEventListeners() {
         });
     });
     
-    // Handle integration connection buttons
-    const connectButtons = document.querySelectorAll('.connect-integration-btn');
-    connectButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const service = this.getAttribute('data-service');
-            showIntegrationModal(service);
-        });
+    // Handle integration connection buttons with event delegation
+    document.addEventListener('click', function(event) {
+        // Check if the clicked element is a connection button or its child
+        const button = event.target.closest('.connect-integration-btn');
+        if (button) {
+            const service = button.getAttribute('data-service');
+            console.log(`Connect button clicked for service: ${service}`);
+            window.showIntegrationModal(service);
+        }
     });
     
     // Add club button
@@ -3098,8 +3252,10 @@ function initRoundDetailModal() {
     }
 }
 
-// Integration modal
-function showIntegrationModal(service) {
+// Integration modal - make it globally available
+window.showIntegrationModal = function(service) {
+    console.log(`Showing integration modal for ${service}`);
+    
     // Get service display name
     const serviceNames = {
         'trackman': 'Trackman',
@@ -3295,10 +3451,19 @@ function showIntegrationModal(service) {
         }
     }
     
-    // Display the modal
+    // Display the modal with proper z-index and positioning
     const modal = document.getElementById('integration-modal');
     modal.style.display = 'block';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    modal.style.zIndex = '1000';
     document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    
+    console.log('Modal should now be visible');
 }
 
 // Update integration status in the UI
