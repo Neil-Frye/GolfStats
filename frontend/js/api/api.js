@@ -107,11 +107,18 @@ const ApiService = {
   
   async saveRound(roundData) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/rounds', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         credentials: 'include',
         body: JSON.stringify(roundData)
       });
@@ -125,11 +132,18 @@ const ApiService = {
   
   async updateRound(roundId, roundData) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/rounds/${roundId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         credentials: 'include',
         body: JSON.stringify(roundData)
       });
@@ -340,11 +354,18 @@ const ApiService = {
   
   async createRangeSession(sessionData) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/range-sessions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         credentials: 'include',
         body: JSON.stringify(sessionData)
       });
@@ -358,11 +379,18 @@ const ApiService = {
   
   async updateRangeSession(sessionId, sessionData) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/range-sessions/${sessionId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         credentials: 'include',
         body: JSON.stringify(sessionData)
       });
@@ -403,11 +431,18 @@ const ApiService = {
   
   async addRangeShot(sessionId, shotData) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/range-sessions/${sessionId}/shots`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         credentials: 'include',
         body: JSON.stringify(shotData)
       });
@@ -485,8 +520,29 @@ const ApiService = {
       // Try to get error message from response
       try {
         const errorData = await response.json();
+        console.error('API Error:', errorData);
+        
+        // Check for auth errors
+        if (response.status === 401 || response.status === 403) {
+          // Log details for debugging
+          console.error('Authentication error detected:', {
+            status: response.status,
+            message: errorData.message || 'Authentication error',
+            details: errorData
+          });
+          
+          // If response contains role=anon error, it's likely an auth token issue
+          if (errorData.message && errorData.message.includes('role=anon')) {
+            // Display an explicit message
+            throw new Error('Session expired or authentication error. Please refresh the page and try again.');
+          }
+        }
+        
         throw new Error(errorData.message || `Request failed with status ${response.status}`);
       } catch (e) {
+        if (e instanceof Error && e.message !== `Request failed with status ${response.status}`) {
+          throw e;
+        }
         throw new Error(`Request failed with status ${response.status}`);
       }
     }
