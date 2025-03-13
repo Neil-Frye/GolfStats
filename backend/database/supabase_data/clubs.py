@@ -67,8 +67,12 @@ def create_club(user_id: str, club_data: Dict[str, Any], token: str = None) -> O
         Created club data or None if failed
     """
     try:
-        # Ensure user_id is set and is a string
-        club_data['user_id'] = str(user_id)
+        # Create a copy of club_data to avoid modifying the original
+        club_data_copy = club_data.copy()
+        
+        # Ensure user_id is set correctly in a format that works with RLS policies
+        # Guarantees the user_id is in the format Supabase expects (UUID string)
+        club_data_copy['user_id'] = str(user_id)
         
         # Log the user ID type and value for debugging
         logger.info(f"Creating club with user_id type: {type(user_id)}, value: {user_id}")
@@ -76,7 +80,7 @@ def create_club(user_id: str, club_data: Dict[str, Any], token: str = None) -> O
         # Pass token to get_supabase to satisfy RLS policies
         supabase = get_supabase(token)
         response = supabase.table('clubs') \
-            .insert(club_data) \
+            .insert(club_data_copy) \
             .execute()
             
         # Log the response for debugging

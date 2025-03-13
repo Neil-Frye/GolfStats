@@ -405,28 +405,43 @@ def add_club():
     """Create a new club."""
     from backend.auth import get_current_user
     
-    user = get_current_user()
-    data = request.get_json()
-    
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-    
-    # Pass the token to satisfy RLS policies
-    token = user.get('token')
-    if not token:
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            token = auth_header.replace('Bearer ', '')
-            
-    club_data = create_club(user['id'], data, token)
-    
-    if not club_data:
-        return jsonify({"error": "Failed to create club"}), 500
+    try:
+        user = get_current_user()
+        data = request.get_json()
         
-    return jsonify({
-        "message": "Club created successfully",
-        "club": club_data
-    }), 201
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        # Validate required fields
+        required_fields = ['name', 'club_type']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        # Pass the token to satisfy RLS policies
+        token = user.get('token')
+        if not token:
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                token = auth_header.replace('Bearer ', '')
+        
+        # Log the request data for debugging
+        current_app.logger.info(f"Creating club with data: {data}")
+        current_app.logger.info(f"User ID: {user['id']}")
+                
+        club_data = create_club(user['id'], data, token)
+        
+        if not club_data:
+            return jsonify({"error": "Database error: Failed to create club"}), 500
+            
+        return jsonify({
+            "message": "Club created successfully",
+            "club": club_data
+        }), 201
+    except Exception as e:
+        current_app.logger.error(f"Error creating club: {str(e)}")
+        current_app.logger.exception(e)  # Log full exception with traceback
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 @api_bp.route('/clubs/<int:club_id>', methods=['PUT'])
 @require_auth

@@ -70,18 +70,29 @@ def create_range_session(user_id: str, session_data: Dict[str, Any], token: str 
         Created range session data or None if failed
     """
     try:
-        # Ensure user_id is set
-        session_data['user_id'] = user_id
+        # Create a copy of session_data to avoid modifying the original
+        session_data_copy = session_data.copy()
+        
+        # Ensure user_id is set correctly in a format that works with RLS policies
+        session_data_copy['user_id'] = str(user_id)
+        
+        # Log the user ID type and value for debugging
+        logger.info(f"Creating range session with user_id type: {type(user_id)}, value: {user_id}")
         
         # Pass token to satisfy RLS policies
         supabase = get_supabase(token)
         response = supabase.table('range_sessions') \
-            .insert(session_data) \
+            .insert(session_data_copy) \
             .execute()
+            
+        # Log the response for debugging
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase range session error: {response.error}")
             
         return response.data[0] if response.data else None
     except Exception as e:
         logger.error(f"Error creating range session for user {user_id}: {str(e)}")
+        logger.exception(e)  # Log full exception with traceback
         return None
 
 def update_range_session(session_id: int, session_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
