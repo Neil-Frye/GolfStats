@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Import</title>
+    <style>
+        /* Basic styling for the CSV import dialog */
+        .csv-import-container {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .step {
+            margin-bottom: 30px;
+        }
+        
+        .step-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .file-input-container {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .file-input-container:hover {
+            border-color: #999;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .preview-table th,
+        .preview-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 14px;
+        }
+        
+        .preview-table th {
+            background-color: #f2f2f2;
+        }
+        
+        .preview-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .mapped-field {
+            color: #008000;
+        }
+        
+        .unmapped-field {
+            color: #ff0000;
+        }
+        
+        .button-container {
+            text-align: right;
+            margin-top: 20px;
+        }
+        
+        .button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        
+        .button-cancel {
+            background-color: #f44336;
+        }
+        
+        .button:hover {
+            opacity: 0.9;
+        }
+        
+        .import-progress {
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            background-color: #f1f1f1;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .progress-bar-fill {
+            height: 20px;
+            background-color: #4CAF50;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .import-results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .info-message {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .error-message {
+            color: #f44336;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="csv-import-container">
+        <h1>Import CSV Data</h1>
+        
+        <div class="step" id="step-1">
+            <div class="step-title">Step 1: Select CSV File</div>
+            <div class="file-input-container" id="file-drop-area">
+                <p>Drag and drop your CSV file here or click to browse</p>
+                <p class="info-message">Files must have header row with column names</p>
+                <input type="file" id="csv-file-input" class="file-input" accept=".csv" />
+            </div>
+            <div class="error-message" id="file-error"></div>
+        </div>
+        
+        <div class="step" id="step-2" style="display: none;">
+            <div class="step-title">Step 2: Preview Data</div>
+            <p id="file-name"></p>
+            <p id="row-count"></p>
+            
+            <div>
+                <label for="source-system">Source System (Optional):</label>
+                <select id="source-system">
+                    <option value="">Auto-detect</option>
+                    <option value="trackman">Trackman</option>
+                    <option value="skytrak">SkyTrak</option>
+                    <option value="manual">Manual Entry</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="shot-type">Shot Type:</label>
+                <select id="shot-type">
+                    <option value="range" selected>Range</option>
+                    <option value="sim">Simulator</option>
+                </select>
+            </div>
+            
+            <div class="preview-container">
+                <h3>Data Preview</h3>
+                <div id="preview-table-container">
+                    <!-- Preview table will be inserted here -->
+                </div>
+                
+                <div class="info-message">
+                    <p>Green headers = recognized fields that will be imported</p>
+                    <p>Red headers = unrecognized fields that will be ignored</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="import-progress" id="import-progress">
+            <p>Importing data...</p>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="progress-bar-fill"></div>
+            </div>
+            <p id="import-status">Parsing file...</p>
+        </div>
+        
+        <div class="import-results" id="import-results">
+            <h3>Import Results</h3>
+            <p id="shots-imported"></p>
+            <p id="unmapped-fields"></p>
+        </div>
+        
+        <div class="button-container">
+            <button class="button button-cancel" id="cancel-button">Cancel</button>
+            <button class="button" id="next-button">Next</button>
+            <button class="button" id="import-button" style="display: none;">Import</button>
+        </div>
+    </div>
+    
+    <script>
+        // This script integrates with csv_import.js
+        // It handles the UI for the CSV import process
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
+            const fileDropArea = document.getElementById('file-drop-area');
+            const fileInput = document.getElementById('csv-file-input');
+            const fileError = document.getElementById('file-error');
+            const fileName = document.getElementById('file-name');
+            const rowCount = document.getElementById('row-count');
+            const sourceSystemSelect = document.getElementById('source-system');
+            const shotTypeSelect = document.getElementById('shot-type');
+            const previewTableContainer = document.getElementById('preview-table-container');
+            const nextButton = document.getElementById('next-button');
+            const importButton = document.getElementById('import-button');
+            const cancelButton = document.getElementById('cancel-button');
+            const importProgress = document.getElementById('import-progress');
+            const progressBarFill = document.getElementById('progress-bar-fill');
+            const importStatus = document.getElementById('import-status');
+            const importResults = document.getElementById('import-results');
+            const shotsImported = document.getElementById('shots-imported');
+            const unmappedFields = document.getElementById('unmapped-fields');
+            
+            // Step elements
+            const step1 = document.getElementById('step-1');
+            const step2 = document.getElementById('step-2');
+            
+            // State
+            let currentStep = 1;
+            let selectedFile = null;
+            let previewData = null;
+            let sessionId = null; // This should be set from the URL or parent page
+            
+            // Get session ID from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            sessionId = urlParams.get('sessionId');
+            
+            // Check if the browser supports the needed APIs
+            const isAdvancedUpload = function() {
+                const div = document.createElement('div');
+                return (('draggable' in div) || ('ondragstart' in div && 'ondrop' in div)) && 'FormData' in window && 'FileReader' in window;
+            }();
+            
+            // Initialize file drop area if supported
+            if (isAdvancedUpload) {
+                fileDropArea.classList.add('has-advanced-upload');
+                
+                ['drag', 'dragstart', 'dragend', 'dragover', 'dragenter', 'dragleave', 'drop'].forEach(event => {
+                    fileDropArea.addEventListener(event, function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    });
+                });
+                
+                ['dragover', 'dragenter'].forEach(event => {
+                    fileDropArea.addEventListener(event, function() {
+                        fileDropArea.classList.add('is-dragover');
+                    });
+                });
+                
+                ['dragleave', 'dragend', 'drop'].forEach(event => {
+                    fileDropArea.addEventListener(event, function() {
+                        fileDropArea.classList.remove('is-dragover');
+                    });
+                });
+                
+                fileDropArea.addEventListener('drop', function(e) {
+                    const droppedFiles = e.dataTransfer.files;
+                    if (droppedFiles.length) {
+                        fileInput.files = droppedFiles;
+                        handleFileSelect();
+                    }
+                });
+            }
+            
+            // File selection event handling
+            fileDropArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            function handleFileSelect() {
+                if (fileInput.files.length) {
+                    selectedFile = fileInput.files[0];
+                    
+                    // Check if file is a CSV
+                    if (!selectedFile.name.toLowerCase().endsWith('.csv')) {
+                        showError('Please select a CSV file.');
+                        return;
+                    }
+                    
+                    hideError();
+                    previewCsvFile();
+                }
+            }
+            
+            // Preview CSV file
+            function previewCsvFile() {
+                if (!selectedFile) return;
+                
+                // Use the GolfStats.CSVImport utility for preview
+                window.GolfStats.CSVImport.previewCsvFile(selectedFile)
+                    .then(data => {
+                        previewData = data;
+                        
+                        // Update UI with file info
+                        fileName.textContent = `File: ${selectedFile.name}`;
+                        rowCount.textContent = `Rows: ${data.totalRows}`;
+                        
+                        // Generate preview table
+                        generatePreviewTable(data);
+                        
+                        // Show preview step
+                        goToStep(2);
+                    })
+                    .catch(error => {
+                        showError(error.message || 'Error reading CSV file');
+                    });
+            }
+            
+            // Generate preview table with mapping indicators
+            function generatePreviewTable(data) {
+                // Create table element
+                const table = document.createElement('table');
+                table.className = 'preview-table';
+                
+                // Add header row
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                
+                // Add header cells with mapping indicators
+                data.headers.forEach(header => {
+                    const th = document.createElement('th');
+                    
+                    // Check if this field is likely to be mapped
+                    // This is just a simple check - the actual mapping happens on the server
+                    const isMapped = isLikelyMappedField(header);
+                    
+                    th.className = isMapped ? 'mapped-field' : 'unmapped-field';
+                    th.textContent = header;
+                    headerRow.appendChild(th);
+                });
+                
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+                
+                // Add sample data rows
+                const tbody = document.createElement('tbody');
+                
+                data.sampleRows.forEach(row => {
+                    const tr = document.createElement('tr');
+                    
+                    data.headers.forEach(header => {
+                        const td = document.createElement('td');
+                        td.textContent = row[header] || '';
+                        tr.appendChild(td);
+                    });
+                    
+                    tbody.appendChild(tr);
+                });
+                
+                table.appendChild(tbody);
+                
+                // Clear container and add the table
+                previewTableContainer.innerHTML = '';
+                previewTableContainer.appendChild(table);
+            }
+            
+            // Simple check to guess if a field will be mapped
+            // This is just for UI feedback - actual mapping happens on the server
+            function isLikelyMappedField(fieldName) {
+                const lowerField = fieldName.toLowerCase();
+                
+                // Common field patterns
+                const knownFields = [
+                    'club', 'ball speed', 'club speed', 'smash factor', 
+                    'launch angle', 'spin rate', 'spin axis', 'carry', 'total',
+                    'height', 'side', 'apex', 'shot number', 'club path',
+                    'face angle', 'attack angle', 'date', 'notes'
+                ];
+                
+                // Check for common patterns
+                for (const field of knownFields) {
+                    if (lowerField.includes(field)) {
+                        return true;
+                    }
+                }
+                
+                // Check for Trackman or SkyTrak specific fields
+                const trackmanFields = [
+                    'clubspeed', 'ballspeed', 'smashfactor', 'launchangle', 
+                    'spinrate', 'spinaxis', 'carrydistance', 'totaldistance'
+                ];
+                
+                const skytrakFields = [
+                    'speed', 'launch', 'backspin', 'sidespin', 'carry', 'total'
+                ];
+                
+                for (const field of trackmanFields.concat(skytrakFields)) {
+                    if (lowerField.replace(/[^a-z0-9]/g, '').includes(field)) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            // Button event handlers
+            nextButton.addEventListener('click', function() {
+                if (currentStep === 1) {
+                    if (!selectedFile) {
+                        showError('Please select a CSV file');
+                        return;
+                    }
+                    
+                    // Preview already happens on file select
+                } else if (currentStep === 2) {
+                    // Ready to import
+                    nextButton.style.display = 'none';
+                    importButton.style.display = 'inline-block';
+                }
+            });
+            
+            importButton.addEventListener('click', function() {
+                if (!sessionId) {
+                    showError('Session ID is missing');
+                    return;
+                }
+                
+                if (!selectedFile) {
+                    showError('Please select a CSV file');
+                    return;
+                }
+                
+                importCsvData();
+            });
+            
+            cancelButton.addEventListener('click', function() {
+                // If in a dialog, close it
+                if (window.opener) {
+                    window.close();
+                } else {
+                    // Otherwise just go back to the previous page
+                    window.history.back();
+                }
+            });
+            
+            // Import CSV data
+            function importCsvData() {
+                importProgress.style.display = 'block';
+                progressBarFill.style.width = '50%';
+                importStatus.textContent = 'Uploading and processing file...';
+                
+                // Get options
+                const sourceSystem = sourceSystemSelect.value || null;
+                const shotType = shotTypeSelect.value || 'range';
+                
+                // Use the GolfStats.CSVImport utility for import
+                window.GolfStats.CSVImport.importCsvToRangeSession(
+                    sessionId,
+                    selectedFile,
+                    sourceSystem,
+                    shotType
+                )
+                .then(result => {
+                    // Update progress UI
+                    progressBarFill.style.width = '100%';
+                    importStatus.textContent = 'Import complete!';
+                    
+                    // Show results
+                    shotsImported.textContent = `Successfully imported ${result.count} shots.`;
+                    
+                    if (result.unmapped_fields && result.unmapped_fields.length > 0) {
+                        unmappedFields.textContent = `The following fields were not mapped: ${result.unmapped_fields.join(', ')}`;
+                    } else {
+                        unmappedFields.textContent = 'All fields were successfully mapped.';
+                    }
+                    
+                    importResults.style.display = 'block';
+                    
+                    // Change import button to "Done"
+                    importButton.textContent = 'Done';
+                    importButton.addEventListener('click', function() {
+                        // Reload parent page or close dialog
+                        if (window.opener) {
+                            window.opener.location.reload();
+                            window.close();
+                        } else {
+                            window.location.reload();
+                        }
+                    });
+                })
+                .catch(error => {
+                    importProgress.style.display = 'none';
+                    showError(error.message || 'Error importing CSV data');
+                });
+            }
+            
+            // Navigation between steps
+            function goToStep(step) {
+                currentStep = step;
+                
+                if (step === 1) {
+                    step1.style.display = 'block';
+                    step2.style.display = 'none';
+                    nextButton.style.display = 'inline-block';
+                    importButton.style.display = 'none';
+                } else if (step === 2) {
+                    step1.style.display = 'none';
+                    step2.style.display = 'block';
+                    nextButton.style.display = 'none';
+                    importButton.style.display = 'inline-block';
+                }
+            }
+            
+            // Error handling
+            function showError(message) {
+                fileError.textContent = message;
+                fileError.style.display = 'block';
+            }
+            
+            function hideError() {
+                fileError.style.display = 'none';
+            }
+        });
+    </script>
+    
+    <!-- Include the CSV Import utility script -->
+    <script src="csv_import.js"></script>
+</body>
+</html>

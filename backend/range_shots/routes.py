@@ -19,6 +19,7 @@ from backend.database.supabase_data.shots import (
     get_club_benchmarks,
     get_club_benchmark
 )
+from backend.database.supabase_data.csv_import import import_csv_to_range_session
 
 # Create a blueprint for range shots routes
 range_shots_bp = Blueprint('range_shots', __name__)
@@ -447,3 +448,77 @@ def api_get_club_benchmark(club: str):
     except Exception as e:
         current_app.logger.error(f"Error getting club benchmark for {club}: {str(e)}")
         return jsonify({"error": "Failed to get club benchmark"}), 500
+        
+@range_shots_bp.route('/api/range-sessions/<int:session_id>/import-csv', methods=['POST'])
+def api_import_csv(session_id: int):
+    """
+    Import shots from CSV file to a range session.
+    
+    Args:
+        session_id: Range session ID
+        
+    Returns:
+        JSON response with imported shots data
+    """
+    # Authenticate user
+    user, token = get_authenticated_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        # Get current session to verify ownership
+        session = get_range_session(session_id, token)
+        
+        if not session:
+            return jsonify({"error": "Range session not found"}), 404
+            
+        # Check if session belongs to the user
+        if session['user_id'] != user['id']:
+            return jsonify({"error": "Unauthorized"}), 403
+        
+        # Check if file was included in the request
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+            
+        csv_file = request.files['file']
+        
+        # Check if the file has a name
+        if csv_file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+            
+        # Check if the file is a CSV
+        if not csv_file.filename.endswith('.csv'):
+            return jsonify({"error": "File must be a CSV"}), 400
+        
+        # Read CSV content
+        csv_content = csv_file.read().decode('utf-8')
+        
+        # Get optional parameters
+        source_system = request.form.get('source_system', None)
+        shot_type = request.form.get('shot_type', 'range')
+        
+        # Import CSV data
+        shots, unmapped_fields = import_csv_to_range_session(
+            session_id, 
+            csv_content,
+            source_system,
+            shot_type,
+            token
+        )
+        
+        if not shots:
+            return jsonify({
+                "success": False,
+                "error": "No shots were imported",
+                "unmapped_fields": unmapped_fields
+            }), 400
+            
+        return jsonify({
+            "success": True,
+            "shots": shots,
+            "count": len(shots),
+            "unmapped_fields": unmapped_fields
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error importing CSV to session {session_id}: {str(e)}")
+        return jsonify({"error": f"Failed to import CSV: {str(e)}"}), 500
