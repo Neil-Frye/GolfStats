@@ -116,6 +116,55 @@ def get_current_user() -> Optional[Dict[str, Any]]:
     
     return None
 
+def get_authenticated_user() -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """
+    Get the authenticated user and their token.
+    
+    This function attempts to retrieve the current authenticated user and their
+    associated token from the request context, session, or Authorization header.
+    
+    Returns:
+        A tuple of (user_info, token) where user_info is a dictionary containing
+        user details and token is the JWT token string. Both will be None if
+        authentication fails.
+    """
+    # Check if user is already stored in flask's g object (request context)
+    if hasattr(g, 'user') and 'token' in g.user:
+        return g.user, g.user['token']
+        
+    # Check session first
+    user_session = session.get('user')
+    if user_session and 'token' in user_session:
+        # Store in request context
+        g.user = user_session
+        return user_session, user_session['token']
+        
+    # Check if token is in request headers
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.replace('Bearer ', '')
+        try:
+            # Verify token with Supabase
+            # Pass the token to get_supabase to set it on the client for RLS
+            supabase = get_supabase(token)
+            user_obj = supabase.auth.get_user(token)
+            if user_obj and hasattr(user_obj, 'user'):
+                user = {
+                    'id': user_obj.user.id,
+                    'email': user_obj.user.email,
+                    'name': user_obj.user.user_metadata.get('full_name', ''),
+                    'is_superuser': user_obj.user.app_metadata.get('is_superuser', False),
+                    'token': token
+                }
+                # Store in request context
+                g.user = user
+                return user, token
+        except Exception as e:
+            logger.warning(f"Failed to verify token: {str(e)}")
+            return None, None
+    
+    return None, None
+
 def get_service_role_token() -> Optional[str]:
     """
     Get a service role token for admin operations.
