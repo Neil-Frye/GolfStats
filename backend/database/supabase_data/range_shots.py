@@ -1,9 +1,12 @@
 """
 Supabase data access functions for range sessions and shots.
+DEPRECATED: The functions for range shots have been moved to shots.py
+Only range session management remains in this file.
 """
 from typing import Dict, Any, List, Optional
 
 from backend.database.supabase_data.common import logger, get_supabase
+from backend.database.supabase_data.shots import get_shots, add_shot_to_context, add_shots_to_context
 
 def get_range_sessions(user_id: str, limit: int = 50, token: str = None) -> List[Dict[str, Any]]:
     """
@@ -156,19 +159,8 @@ def get_range_shots(session_id: int, token: str = None) -> List[Dict[str, Any]]:
     Returns:
         List of range shots
     """
-    try:
-        # Pass token to satisfy RLS policies
-        supabase = get_supabase(token)
-        response = supabase.table('range_shots') \
-            .select('*') \
-            .eq('session_id', session_id) \
-            .order('shot_number', desc=False) \
-            .execute()
-            
-        return response.data
-    except Exception as e:
-        logger.error(f"Error getting shots for range session {session_id}: {str(e)}")
-        return []
+    # DEPRECATED: Use shots.get_shots(session_id, 'session', token) instead
+    return get_shots(session_id, 'session', token)
 
 def add_range_shot(session_id: int, shot_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
     """
@@ -182,30 +174,8 @@ def add_range_shot(session_id: int, shot_data: Dict[str, Any], token: str = None
     Returns:
         Created shot data or None if failed
     """
-    try:
-        # Ensure session_id is set
-        shot_data['session_id'] = session_id
-        
-        # Calculate derived metrics if possible
-        if 'carry_distance_yards' in shot_data and 'ball_speed_mph' in shot_data and shot_data['ball_speed_mph'] > 0:
-            shot_data['carry_efficiency'] = shot_data['carry_distance_yards'] / shot_data['ball_speed_mph']
-            
-        if 'height_feet' in shot_data and 'carry_distance_yards' in shot_data and shot_data['carry_distance_yards'] > 0:
-            shot_data['height_to_carry_ratio'] = shot_data['height_feet'] / shot_data['carry_distance_yards']
-            
-        if 'spin_rate_rpm' in shot_data and 'launch_angle_degrees' in shot_data and shot_data['launch_angle_degrees'] > 0:
-            shot_data['spin_to_launch_ratio'] = shot_data['spin_rate_rpm'] / shot_data['launch_angle_degrees']
-        
-        # Pass token to satisfy RLS policies
-        supabase = get_supabase(token)
-        response = supabase.table('range_shots') \
-            .insert(shot_data) \
-            .execute()
-            
-        return response.data[0] if response.data else None
-    except Exception as e:
-        logger.error(f"Error adding shot to range session {session_id}: {str(e)}")
-        return None
+    # DEPRECATED: Use shots.add_shot_to_context(session_id, shot_data, 'session', token) instead
+    return add_shot_to_context(session_id, shot_data, 'session', token)
 
 def add_range_shots(session_id: int, shots_data: List[Dict[str, Any]], token: str = None) -> List[Dict[str, Any]]:
     """
@@ -219,32 +189,11 @@ def add_range_shots(session_id: int, shots_data: List[Dict[str, Any]], token: st
     Returns:
         List of created shot data or empty list if failed
     """
-    try:
-        # Ensure session_id and derived metrics are set for each shot
-        for i, shot_data in enumerate(shots_data):
-            shot_data['session_id'] = session_id
-            shot_data['shot_number'] = i + 1  # Auto-number shots
-            
-            # Calculate derived metrics if possible
-            if 'carry_distance_yards' in shot_data and 'ball_speed_mph' in shot_data and shot_data['ball_speed_mph'] > 0:
-                shot_data['carry_efficiency'] = shot_data['carry_distance_yards'] / shot_data['ball_speed_mph']
-                
-            if 'height_feet' in shot_data and 'carry_distance_yards' in shot_data and shot_data['carry_distance_yards'] > 0:
-                shot_data['height_to_carry_ratio'] = shot_data['height_feet'] / shot_data['carry_distance_yards']
-                
-            if 'spin_rate_rpm' in shot_data and 'launch_angle_degrees' in shot_data and shot_data['launch_angle_degrees'] > 0:
-                shot_data['spin_to_launch_ratio'] = shot_data['spin_rate_rpm'] / shot_data['launch_angle_degrees']
-        
-        # Pass token to satisfy RLS policies
-        supabase = get_supabase(token)
-        response = supabase.table('range_shots') \
-            .insert(shots_data) \
-            .execute()
-            
-        return response.data if response.data else []
-    except Exception as e:
-        logger.error(f"Error adding shots to range session {session_id}: {str(e)}")
-        return []
+    # DEPRECATED: Use shots.add_shots_to_context(session_id, shots_data, 'session', token) instead
+    return add_shots_to_context(session_id, shots_data, 'session', token)
+
+# Club benchmark functions are deprecated in this file and moved to shots.py
+# These implementations remain here for backward compatibility but will be removed in a future update
 
 def get_club_benchmarks(user_id: str, token: str = None) -> List[Dict[str, Any]]:
     """
@@ -257,18 +206,9 @@ def get_club_benchmarks(user_id: str, token: str = None) -> List[Dict[str, Any]]
     Returns:
         List of club benchmark data
     """
-    try:
-        # Pass token to satisfy RLS policies
-        supabase = get_supabase(token)
-        response = supabase.from_('club_benchmark_data') \
-            .select('*') \
-            .eq('user_id', user_id) \
-            .execute()
-            
-        return response.data
-    except Exception as e:
-        logger.error(f"Error getting club benchmarks for user {user_id}: {str(e)}")
-        return []
+    # Import here to avoid circular imports
+    from backend.database.supabase_data.shots import get_club_benchmarks as shots_get_club_benchmarks
+    return shots_get_club_benchmarks(user_id, token)
 
 def get_club_benchmark(user_id: str, club: str, token: str = None) -> Optional[Dict[str, Any]]:
     """
@@ -282,17 +222,6 @@ def get_club_benchmark(user_id: str, club: str, token: str = None) -> Optional[D
     Returns:
         Club benchmark data or None if not found
     """
-    try:
-        # Pass token to satisfy RLS policies
-        supabase = get_supabase(token)
-        response = supabase.from_('club_benchmark_data') \
-            .select('*') \
-            .eq('user_id', user_id) \
-            .eq('club', club) \
-            .limit(1) \
-            .execute()
-            
-        return response.data[0] if response.data else None
-    except Exception as e:
-        logger.error(f"Error getting club benchmark for user {user_id}, club {club}: {str(e)}")
-        return None
+    # Import here to avoid circular imports
+    from backend.database.supabase_data.shots import get_club_benchmark as shots_get_club_benchmark
+    return shots_get_club_benchmark(user_id, club, None, token)
