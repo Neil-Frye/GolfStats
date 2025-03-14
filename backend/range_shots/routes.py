@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify, current_app
 from typing import Dict, Any
 
 from backend.auth.supabase_auth import get_authenticated_user
+from backend.database.supabase_data.common import get_supabase
 from backend.database.supabase_data.range_shots import (
     get_range_sessions, 
     get_range_session, 
@@ -17,7 +18,9 @@ from backend.database.supabase_data.shots import (
     add_range_shot,
     add_range_shots,
     get_club_benchmarks,
-    get_club_benchmark
+    get_club_benchmark,
+    update_shot,
+    delete_shot
 )
 from backend.database.supabase_data.csv_import import import_csv_to_range_session
 
@@ -456,6 +459,239 @@ def api_get_club_benchmark(club: str):
         current_app.logger.error(f"Error getting club benchmark for {club}: {str(e)}")
         return jsonify({"error": "Failed to get club benchmark"}), 500
         
+@range_shots_bp.route('/api/shots/<string:shot_id>', methods=['PUT'])
+def api_update_shot(shot_id: str):
+    """
+    Update a golf shot (works for both range and course shots).
+    
+    Args:
+        shot_id: Shot ID
+        
+    Returns:
+        JSON response with updated shot data
+    """
+    # Authenticate user
+    user, token = get_authenticated_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        # Get shot data from request
+        shot_data = request.json
+        if not shot_data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        # First verify that the shot exists and belongs to the user
+        supabase = get_supabase(token)
+        
+        # Get the shot to check its context (session or hole)
+        shot_query = supabase.table('golf_shots') \
+            .select('*') \
+            .eq('id', shot_id) \
+            .execute()
+        
+        if not shot_query.data:
+            return jsonify({"error": "Shot not found"}), 404
+            
+        shot_info = shot_query.data[0]
+        
+        # Check ownership based on context
+        if shot_info.get('session_id'):
+            # This is a range shot, check if session belongs to user
+            session_query = supabase.table('range_sessions') \
+                .select('id') \
+                .eq('id', shot_info['session_id']) \
+                .eq('user_id', user['id']) \
+                .execute()
+                
+            if not session_query.data:
+                return jsonify({"error": "You do not have permission to update this shot"}), 403
+        elif shot_info.get('hole_id'):
+            # This is a course shot, check if hole's round belongs to user
+            hole_query = supabase.table('golf_holes') \
+                .select('round_id') \
+                .eq('id', shot_info['hole_id']) \
+                .execute()
+                
+            if not hole_query.data:
+                return jsonify({"error": "Shot is associated with non-existent hole"}), 404
+                
+            round_id = hole_query.data[0]['round_id']
+            
+            round_query = supabase.table('golf_rounds') \
+                .select('id') \
+                .eq('id', round_id) \
+                .eq('user_id', user['id']) \
+                .execute()
+                
+            if not round_query.data:
+                return jsonify({"error": "You do not have permission to update this shot"}), 403
+        else:
+            return jsonify({"error": "Shot is not associated with a session or hole"}), 400
+            
+        # Update the shot
+        updated_shot = update_shot(shot_id, shot_data, token)
+        
+        if not updated_shot:
+            return jsonify({"error": "Failed to update shot"}), 500
+            
+        return jsonify({
+            "success": True,
+            "shot": updated_shot
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error updating shot {shot_id}: {str(e)}")
+        return jsonify({"error": f"Failed to update shot: {str(e)}"}), 500
+        
+@range_shots_bp.route('/api/shots/<string:shot_id>', methods=['GET'])
+def api_get_shot(shot_id: str):
+    """
+    Get a golf shot (works for both range and course shots).
+    
+    Args:
+        shot_id: Shot ID
+        
+    Returns:
+        JSON response with shot data
+    """
+    # Authenticate user
+    user, token = get_authenticated_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        # Get the shot
+        supabase = get_supabase(token)
+        shot_query = supabase.table('golf_shots') \
+            .select('*') \
+            .eq('id', shot_id) \
+            .execute()
+        
+        if not shot_query.data:
+            return jsonify({"error": "Shot not found"}), 404
+            
+        shot_info = shot_query.data[0]
+        
+        # Check ownership based on context
+        if shot_info.get('session_id'):
+            # This is a range shot, check if session belongs to user
+            session_query = supabase.table('range_sessions') \
+                .select('id') \
+                .eq('id', shot_info['session_id']) \
+                .eq('user_id', user['id']) \
+                .execute()
+                
+            if not session_query.data:
+                return jsonify({"error": "You do not have permission to view this shot"}), 403
+        elif shot_info.get('hole_id'):
+            # This is a course shot, check if hole's round belongs to user
+            hole_query = supabase.table('golf_holes') \
+                .select('round_id') \
+                .eq('id', shot_info['hole_id']) \
+                .execute()
+                
+            if not hole_query.data:
+                return jsonify({"error": "Shot is associated with non-existent hole"}), 404
+                
+            round_id = hole_query.data[0]['round_id']
+            
+            round_query = supabase.table('golf_rounds') \
+                .select('id') \
+                .eq('id', round_id) \
+                .eq('user_id', user['id']) \
+                .execute()
+                
+            if not round_query.data:
+                return jsonify({"error": "You do not have permission to view this shot"}), 403
+        else:
+            return jsonify({"error": "Shot is not associated with a session or hole"}), 400
+        
+        return jsonify({
+            "success": True,
+            "shot": shot_info
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error getting shot {shot_id}: {str(e)}")
+        return jsonify({"error": f"Failed to get shot: {str(e)}"}), 500
+
+@range_shots_bp.route('/api/shots/<string:shot_id>', methods=['DELETE'])
+def api_delete_shot(shot_id: str):
+    """
+    Delete a golf shot (works for both range and course shots).
+    
+    Args:
+        shot_id: Shot ID
+        
+    Returns:
+        JSON response with success status
+    """
+    # Authenticate user
+    user, token = get_authenticated_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        # First verify that the shot exists and belongs to the user
+        supabase = get_supabase(token)
+        
+        # Get the shot to check its context (session or hole)
+        shot_query = supabase.table('golf_shots') \
+            .select('*') \
+            .eq('id', shot_id) \
+            .execute()
+        
+        if not shot_query.data:
+            return jsonify({"error": "Shot not found"}), 404
+            
+        shot_info = shot_query.data[0]
+        
+        # Check ownership based on context
+        if shot_info.get('session_id'):
+            # This is a range shot, check if session belongs to user
+            session_query = supabase.table('range_sessions') \
+                .select('id') \
+                .eq('id', shot_info['session_id']) \
+                .eq('user_id', user['id']) \
+                .execute()
+                
+            if not session_query.data:
+                return jsonify({"error": "You do not have permission to delete this shot"}), 403
+        elif shot_info.get('hole_id'):
+            # This is a course shot, check if hole's round belongs to user
+            hole_query = supabase.table('golf_holes') \
+                .select('round_id') \
+                .eq('id', shot_info['hole_id']) \
+                .execute()
+                
+            if not hole_query.data:
+                return jsonify({"error": "Shot is associated with non-existent hole"}), 404
+                
+            round_id = hole_query.data[0]['round_id']
+            
+            round_query = supabase.table('golf_rounds') \
+                .select('id') \
+                .eq('id', round_id) \
+                .eq('user_id', user['id']) \
+                .execute()
+                
+            if not round_query.data:
+                return jsonify({"error": "You do not have permission to delete this shot"}), 403
+        else:
+            return jsonify({"error": "Shot is not associated with a session or hole"}), 400
+            
+        # Delete the shot
+        success = delete_shot(shot_id, token)
+        
+        if not success:
+            return jsonify({"error": "Failed to delete shot"}), 500
+            
+        return jsonify({
+            "success": True
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error deleting shot {shot_id}: {str(e)}")
+        return jsonify({"error": f"Failed to delete shot: {str(e)}"}), 500
+
 @range_shots_bp.route('/api/range-sessions/<int:session_id>/import-csv', methods=['POST'])
 def api_import_csv(session_id: int):
     """

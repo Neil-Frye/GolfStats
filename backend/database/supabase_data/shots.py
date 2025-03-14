@@ -205,6 +205,119 @@ def get_club_benchmark(user_id: str, club: str, shot_type: str = None, token: st
         logger.error(f"Error getting club benchmark for user {user_id}, club {club}: {str(e)}")
         return None
         
+def update_shot(shot_id: str, shot_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
+    """
+    Update a golf shot.
+    
+    Args:
+        shot_id: Shot ID
+        shot_data: Updated shot data
+        token: JWT token for authorization
+        
+    Returns:
+        Updated shot data or None if failed
+    """
+    try:
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
+        
+        # First get the existing shot to calculate derived metrics properly
+        existing_shot_response = supabase.table('golf_shots') \
+            .select('*') \
+            .eq('id', shot_id) \
+            .limit(1) \
+            .execute()
+            
+        if not existing_shot_response.data:
+            logger.error(f"Shot with ID {shot_id} not found")
+            return None
+            
+        existing_shot = existing_shot_response.data[0]
+        
+        # Combine existing data with new data
+        updated_data = {**existing_shot, **shot_data}
+        
+        # Calculate derived metrics
+        if any(key in shot_data for key in [
+            'launch_angle_degrees', 'ball_speed_mph', 'carry_distance_yards',
+            'total_distance_yards', 'max_height_yards', 'spin_rate_rpm'
+        ]):
+            # Calculate carry efficiency
+            if updated_data.get('carry_distance_yards') and updated_data.get('ball_speed_mph'):
+                if updated_data['ball_speed_mph'] > 0:
+                    updated_data['carry_efficiency'] = round(
+                        updated_data['carry_distance_yards'] / updated_data['ball_speed_mph'], 
+                        3
+                    )
+            
+            # Calculate height to carry ratio
+            if updated_data.get('max_height_yards') and updated_data.get('carry_distance_yards'):
+                if updated_data['carry_distance_yards'] > 0:
+                    updated_data['height_to_carry_ratio'] = round(
+                        updated_data['max_height_yards'] / updated_data['carry_distance_yards'], 
+                        3
+                    )
+            
+            # Calculate spin to launch ratio
+            if updated_data.get('spin_rate_rpm') and updated_data.get('launch_angle_degrees'):
+                if updated_data['launch_angle_degrees'] > 0:
+                    updated_data['spin_to_launch_ratio'] = round(
+                        updated_data['spin_rate_rpm'] / updated_data['launch_angle_degrees'], 
+                        1
+                    )
+        
+        # Remove any fields we don't want to update
+        update_fields = {k: v for k, v in shot_data.items() if k != 'id'}
+        
+        # Add calculated fields if they exist
+        for field in ['carry_efficiency', 'height_to_carry_ratio', 'spin_to_launch_ratio']:
+            if field in updated_data:
+                update_fields[field] = updated_data[field]
+        
+        # Update shot in the database
+        update_response = supabase.table('golf_shots') \
+            .update(update_fields) \
+            .eq('id', shot_id) \
+            .execute()
+            
+        if not update_response.data:
+            logger.error(f"Failed to update shot with ID {shot_id}")
+            return None
+            
+        return update_response.data[0]
+    except Exception as e:
+        logger.error(f"Error updating shot {shot_id}: {str(e)}")
+        return None
+        
+def delete_shot(shot_id: str, token: str = None) -> bool:
+    """
+    Delete a golf shot.
+    
+    Args:
+        shot_id: Shot ID
+        token: JWT token for authorization
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Pass token to satisfy RLS policies
+        supabase = get_supabase(token)
+        
+        # Delete the shot
+        delete_response = supabase.table('golf_shots') \
+            .delete() \
+            .eq('id', shot_id) \
+            .execute()
+            
+        # Check if the deletion was successful
+        if delete_response.data:
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Error deleting shot {shot_id}: {str(e)}")
+        return False
+        
 def add_shot(round_id: int, shot_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
     """
     Add a shot to a golf round. This function is a higher-level wrapper that:
