@@ -166,15 +166,14 @@ def test_integration(service: str):
                     "message": f"No {service.capitalize()} credentials found. Please connect first."
                 }), 400
                 
-            # Sync data based on the service type
-            if service == 'arccos':
-                # Import arccos scraper function
-                from backend.scrapers.arccos_scraper import get_arrcos_data
-                
-                # Run the scraper to sync Arccos data
-                try:
+            # Import scrapers from the unified module
+            from backend.scrapers import get_arccos_data, get_trackman_data, get_skytrak_data
+            
+            # Run the appropriate scraper based on service type
+            try:
+                if service == 'arccos':
                     # Set a limit of 5 for manual testing to speed things up
-                    round_ids = get_arrcos_data(user_id=user_id, limit=5, use_user_credentials=True)
+                    round_ids = get_arccos_data(user_id=user_id, limit=5, use_user_credentials=True)
                     
                     if round_ids:
                         return jsonify({
@@ -190,29 +189,51 @@ def test_integration(service: str):
                             "success": True,
                             "message": "No new rounds found to sync from Arccos."
                         }), 200
-                        
-                except Exception as e:
-                    logger.error(f"Error syncing Arccos data: {str(e)}")
-                    return jsonify({
-                        "success": False,
-                        "message": f"Error syncing Arccos data: {str(e)}"
-                    }), 500
-            
-            elif service == 'trackman':
-                # TODO: Add TrackMan sync functionality
-                # For now, just return a simulated success response
-                return jsonify({
-                    "success": True,
-                    "message": "TrackMan sync functionality will be available soon."
-                }), 200
                 
-            elif service == 'skytrak':
-                # TODO: Add SkyTrak sync functionality
-                # For now, just return a simulated success response
+                elif service == 'trackman':
+                    # Run the TrackMan scraper
+                    session_ids = get_trackman_data(user_id=user_id, limit=5, use_user_credentials=True)
+                    
+                    if session_ids:
+                        return jsonify({
+                            "success": True,
+                            "message": f"Successfully synced {len(session_ids)} sessions from TrackMan.",
+                            "data": {
+                                "session_count": len(session_ids),
+                                "session_ids": session_ids
+                            }
+                        }), 200
+                    else:
+                        return jsonify({
+                            "success": True,
+                            "message": "No new sessions found to sync from TrackMan."
+                        }), 200
+                
+                elif service == 'skytrak':
+                    # Run the SkyTrak scraper
+                    session_ids = get_skytrak_data(user_id=user_id, limit=5, use_user_credentials=True)
+                    
+                    if session_ids:
+                        return jsonify({
+                            "success": True,
+                            "message": f"Successfully synced {len(session_ids)} sessions from SkyTrak.",
+                            "data": {
+                                "session_count": len(session_ids),
+                                "session_ids": session_ids
+                            }
+                        }), 200
+                    else:
+                        return jsonify({
+                            "success": True,
+                            "message": "No new sessions found to sync from SkyTrak."
+                        }), 200
+            
+            except Exception as e:
+                logger.error(f"Error syncing {service} data: {str(e)}")
                 return jsonify({
-                    "success": True,
-                    "message": "SkyTrak sync functionality will be available soon."
-                }), 200
+                    "success": False,
+                    "message": f"Error syncing {service} data: {str(e)}"
+                }), 500
             
     except Exception as e:
         logger.error(f"Error testing {service} integration: {str(e)}")

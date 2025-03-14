@@ -16,9 +16,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from backend.database.db_connection import get_db
-from backend.scrapers.trackman_scraper import get_trackman_data
-from backend.scrapers.arccos_scraper import get_arrcos_data
-from backend.scrapers.skytrak_scraper import get_skytrak_data
+from backend.scrapers import get_trackman_data, get_arccos_data, get_skytrak_data
 from backend.models.user import User
 
 # Configure logging
@@ -152,7 +150,7 @@ def process_user_data(user: Dict[str, Any]) -> Dict[str, List[int]]:
             try:
                 logger.info(f"Processing Arccos data for user {user_id}")
                 # Get Arccos rounds - limit 10 for daily ETL to avoid overloading
-                arccos_round_ids = get_arrcos_data(user_id=user_id, limit=10, use_user_credentials=True)
+                arccos_round_ids = get_arccos_data(user_id=user_id, limit=10, use_user_credentials=True)
                 
                 if arccos_round_ids:
                     results["arccos"] = arccos_round_ids

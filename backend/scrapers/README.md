@@ -1,47 +1,61 @@
 # Golf Data Scrapers
 
-This directory contains web scrapers for extracting golf data from various sources:
+This directory contains web scrapers for extracting golf data from various sources.
 
-## Scrapers
+## Unified Scraper Architecture
 
-### Trackman Scraper
-- Connects to the Trackman website to extract shot data from practice sessions
-- Provides detailed launch monitor data (ball speed, club speed, spin rate, etc.)
-- Accessible via `get_trackman_data(user_id, limit)`
+GolfStats provides a unified scraper architecture that works in both:
+- Regular environments with Selenium (full web scraping capabilities)
+- Serverless environments without Selenium (graceful fallback to mock implementations)
 
-### Arccos Golf Scraper
-- Extracts round data from Arccos Golf dashboard
-- Provides detailed shot-by-shot data from actual rounds of golf
-- Includes statistics like fairways hit, GIR, putts per round
-- Accessible via `get_arrcos_data(user_id, limit)`
+### Key Components
 
-### SkyTrak Scraper
-- Extracts shot data from SkyTrak practice sessions
-- Provides detailed launch monitor data similar to Trackman
-- Accessible via `get_skytrak_data(user_id, limit)`
+1. **Real Scrapers**:
+   - `arccos_scraper.py`: Extracts data from Arccos Golf using Selenium
+   - `trackman_scraper.py`: Extracts data from Trackman using Selenium
+   - `skytrak_scraper.py`: Extracts data from SkyTrak using Selenium
+
+2. **Mock Implementations**:
+   - `mock.py`: Provides mock implementations for serverless environments
+   - Used automatically when Selenium is not available
+
+3. **Unified Interface**:
+   - Accessible via the scrapers module (`import backend.scrapers`)
+   - Same function signatures work in all environments
+   - Intelligent fallback to mocks when needed
 
 ## Usage
 
-The scrapers can be used in two ways:
-
-### 1. Direct Usage
+The preferred way to use scrapers is through the unified interface:
 
 ```python
-from backend.scrapers.trackman_scraper import get_trackman_data
-from backend.scrapers.arccos_scraper import get_arrcos_data
-from backend.scrapers.skytrak_scraper import get_skytrak_data
+from backend.scrapers import get_arccos_data, get_trackman_data, get_skytrak_data
 
 # Get Trackman data for a specific user
-trackman_rounds = get_trackman_data(user_id=1, limit=10)
+trackman_sessions = get_trackman_data(user_id=1, limit=10)
 
 # Get Arccos data for a specific user
-arccos_rounds = get_arrcos_data(user_id=1, limit=10)
+arccos_rounds = get_arccos_data(user_id=1, limit=10)
 
 # Get SkyTrak data for a specific user
-skytrak_rounds = get_skytrak_data(user_id=1, limit=10)
+skytrak_sessions = get_skytrak_data(user_id=1, limit=10)
 ```
 
-### 2. Through ETL Process
+The unified interface will:
+1. Try to use the real scrapers with Selenium if available
+2. Fall back to mock implementations if Selenium is not available
+3. Handle exceptions gracefully and log appropriate messages
+
+## Authentication
+
+Each scraper supports two authentication methods:
+
+1. **Global credentials** defined in the `.env` file
+2. **User-specific credentials** stored in user profile in the database
+
+The scrapers will first check for user-specific credentials, then fall back to global credentials if needed.
+
+## ETL Process Integration
 
 The ETL process automatically runs all scrapers for all active users:
 
@@ -56,18 +70,16 @@ print(f"Arccos Rounds: {results['arccos_rounds']}")
 print(f"SkyTrak Sessions: {results['skytrak_sessions']}")
 ```
 
-## Authentication
-
-Each scraper supports two authentication methods:
-
-1. **Global credentials** defined in `.env` file
-2. **User-specific credentials** stored in user profile in database
-
-The scrapers will first check for user-specific credentials, then fall back to global credentials if needed.
-
 ## Error Handling
 
 All scrapers include comprehensive error handling and logging to:
 - Handle timeouts, missing elements, and other scraping issues
 - Log all errors to log files (`logs/trackman_scraper.log`, etc.)
 - Prevent crashes when one scraper fails
+
+## Extending with New Scrapers
+
+To add a new scraper:
+1. Create a new real scraper file in the `scrapers` directory
+2. Add corresponding mock implementation in `mock.py`
+3. Update the `__init__.py` file to include the new scraper in the unified interface
