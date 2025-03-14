@@ -971,6 +971,9 @@ button.primary,
     overflow: visible !important; /* Prevent text from being cut off */
     height: auto !important; /* Allow height to adjust to content */
     line-height: normal !important; /* Fix text vertical alignment */
+    min-width: 150px !important; /* Ensure sufficient width for text */
+    text-align: center !important; /* Center the text */
+    font-size: 14px !important; /* Ensure text is readable */
 }
 
 .btn-secondary {
