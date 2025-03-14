@@ -4,39 +4,12 @@ Supabase data access functions for all golf shots (course and range).
 from typing import Dict, Any, List, Optional, Union
 
 from backend.database.supabase_data.common import logger, get_supabase
-
-def calculate_derived_metrics(shot_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Calculate derived metrics for a shot based on available data.
-    
-    Args:
-        shot_data: Shot data dictionary
-        
-    Returns:
-        Shot data with calculated derived metrics
-    """
-    # Create a copy to avoid modifying the original
-    shot_data_copy = shot_data.copy()
-    
-    # Calculate carry efficiency
-    if ('carry_distance_yards' in shot_data_copy and 
-        'ball_speed_mph' in shot_data_copy and 
-        shot_data_copy.get('ball_speed_mph', 0) > 0):
-        shot_data_copy['carry_efficiency'] = shot_data_copy['carry_distance_yards'] / shot_data_copy['ball_speed_mph']
-        
-    # Calculate height to carry ratio
-    if ('height_feet' in shot_data_copy and 
-        'carry_distance_yards' in shot_data_copy and 
-        shot_data_copy.get('carry_distance_yards', 0) > 0):
-        shot_data_copy['height_to_carry_ratio'] = shot_data_copy['height_feet'] / shot_data_copy['carry_distance_yards']
-        
-    # Calculate spin to launch ratio
-    if ('spin_rate_rpm' in shot_data_copy and 
-        'launch_angle_degrees' in shot_data_copy and 
-        shot_data_copy.get('launch_angle_degrees', 0) > 0):
-        shot_data_copy['spin_to_launch_ratio'] = shot_data_copy['spin_rate_rpm'] / shot_data_copy['launch_angle_degrees']
-    
-    return shot_data_copy
+from backend.database.supabase_data.shot_utils import (
+    calculate_derived_metrics, 
+    prepare_shot_data, 
+    insert_shots, 
+    ShotContextType
+)
 
 def get_shots(context_id: int, context_type: str = 'hole', token: str = None) -> List[Dict[str, Any]]:
     """
@@ -84,7 +57,7 @@ def get_golf_shots(hole_id: int, token: str = None) -> List[Dict[str, Any]]:
 def add_shot_to_context(
     context_id: int, 
     shot_data: Dict[str, Any], 
-    context_type: str = 'hole', 
+    context_type: ShotContextType = 'hole', 
     token: str = None
 ) -> Optional[Dict[str, Any]]:
     """
@@ -99,39 +72,7 @@ def add_shot_to_context(
     Returns:
         Created shot data or None if failed
     """
-    try:
-        # Create a copy to avoid modifying the original
-        shot_data_copy = shot_data.copy()
-        
-        # Set the appropriate ID field based on context type
-        field_name = 'hole_id' if context_type == 'hole' else 'session_id'
-        shot_data_copy[field_name] = context_id
-        
-        # If this is a hole shot, ensure session_id is None and vice versa
-        if context_type == 'hole':
-            shot_data_copy['session_id'] = None
-            shot_data_copy['shot_type'] = 'course'
-        else:
-            shot_data_copy['hole_id'] = None
-            shot_data_copy['shot_type'] = 'range'
-            
-        # Set source_system if not provided
-        if 'source_system' not in shot_data_copy:
-            shot_data_copy['source_system'] = 'manual'
-            
-        # Calculate derived metrics
-        shot_data_copy = calculate_derived_metrics(shot_data_copy)
-        
-        # Pass token to satisfy RLS policies
-        supabase = get_supabase(token)
-        response = supabase.table('golf_shots') \
-            .insert(shot_data_copy) \
-            .execute()
-            
-        return response.data[0] if response.data else None
-    except Exception as e:
-        logger.error(f"Error adding shot to {context_type} {context_id}: {str(e)}")
-        return None
+    return insert_shots(shot_data, context_id, context_type, token)
 
 def add_golf_shot(hole_id: int, shot_data: Dict[str, Any], token: str = None) -> Optional[Dict[str, Any]]:
     """
@@ -164,7 +105,7 @@ def add_range_shot(session_id: int, shot_data: Dict[str, Any], token: str = None
 def add_shots_to_context(
     context_id: int, 
     shots_data: List[Dict[str, Any]], 
-    context_type: str = 'hole', 
+    context_type: ShotContextType = 'hole', 
     token: str = None
 ) -> List[Dict[str, Any]]:
     """
@@ -179,42 +120,7 @@ def add_shots_to_context(
     Returns:
         List of created shot data or empty list if failed
     """
-    try:
-        # Create a copy to avoid modifying the original
-        shots_data_copy = [shot.copy() for shot in shots_data]
-        
-        # Determine field name and shot type based on context
-        field_name = 'hole_id' if context_type == 'hole' else 'session_id'
-        shot_type = 'course' if context_type == 'hole' else 'range'
-        
-        # Ensure context ID and derived metrics are set for each shot
-        for i, shot_data in enumerate(shots_data_copy):
-            # Set the appropriate ID field and ensure the other is null
-            shot_data[field_name] = context_id
-            shot_data['hole_id' if field_name == 'session_id' else 'session_id'] = None
-            shot_data['shot_number'] = i + 1  # Auto-number shots
-            
-            # Set shot_type if not provided
-            if 'shot_type' not in shot_data:
-                shot_data['shot_type'] = shot_type
-                
-            # Set source_system if not provided
-            if 'source_system' not in shot_data:
-                shot_data['source_system'] = 'manual'
-            
-            # Calculate derived metrics
-            shots_data_copy[i] = calculate_derived_metrics(shot_data)
-        
-        # Pass token to satisfy RLS policies
-        supabase = get_supabase(token)
-        response = supabase.table('golf_shots') \
-            .insert(shots_data_copy) \
-            .execute()
-            
-        return response.data if response.data else []
-    except Exception as e:
-        logger.error(f"Error adding shots to {context_type} {context_id}: {str(e)}")
-        return []
+    return insert_shots(shots_data, context_id, context_type, token)
 
 def add_range_shots(session_id: int, shots_data: List[Dict[str, Any]], token: str = None) -> List[Dict[str, Any]]:
     """
@@ -345,13 +251,13 @@ def add_shot(round_id: int, shot_data: Dict[str, Any], token: str = None) -> Opt
             if not session_id:
                 logger.error("Session ID required for range shots")
                 return None
-            return add_shot_to_context(session_id, shot_data, 'session', token)
+            return insert_shots(shot_data, session_id, 'session', token)
         else:
             # This is a course shot, requires hole_id
             if not hole_id:
                 logger.error("Hole ID required for course shots")
                 return None
-            return add_shot_to_context(hole_id, shot_data, 'hole', token)
+            return insert_shots(shot_data, hole_id, 'hole', token)
             
     except Exception as e:
         logger.error(f"Error adding shot to round {round_id}: {str(e)}")
@@ -399,7 +305,7 @@ def add_shots_for_hole(hole_id: int, shots_data: List[Dict[str, Any]], token: st
     Returns:
         List of created shot data or empty list if failed
     """
-    return add_shots_to_context(hole_id, shots_data, 'hole', token)
+    return insert_shots(shots_data, hole_id, 'hole', token)
 
 def get_shots_for_round(round_id: int, token: str = None) -> List[Dict[str, Any]]:
     """
