@@ -113,6 +113,79 @@ if (typeof window.showIntegrationModal !== 'function') {
                 closeIntegrationModal();
             }
         });
+        
+        // Try again button event listener
+        if (tryAgainBtn) {
+            tryAgainBtn.addEventListener('click', function() {
+                // Hide error container and show form again
+                modal.querySelector('.error-container').style.display = 'none';
+                form.style.display = 'block';
+            });
+        }
+        
+        // Done button (on success) event listener
+        if (doneBtn) {
+            doneBtn.addEventListener('click', closeIntegrationModal);
+        }
+        
+        // Handle form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            const loadingContainer = modal.querySelector('.loading-container');
+            const errorContainer = modal.querySelector('.error-container');
+            const successContainer = modal.querySelector('.success-container');
+            const errorMessage = modal.querySelector('.error-message');
+            
+            // Hide form and show loading
+            form.style.display = 'none';
+            loadingContainer.style.display = 'flex';
+            
+            try {
+                // Get form data
+                const formData = new FormData(form);
+                const credentials = {
+                    service: service,
+                    password: formData.get('password'),
+                    remember: formData.get('remember') === 'on'
+                };
+                
+                // Arccos uses email, others use username
+                if (service === 'arccos') {
+                    credentials.email = formData.get('username'); // Username field contains email for Arccos
+                } else {
+                    credentials.username = formData.get('username');
+                }
+                
+                // Use IntegrationsService to connect
+                if (window.IntegrationsService && typeof window.IntegrationsService.connectIntegration === 'function') {
+                    console.log(`Connecting to ${service} with provided credentials`);
+                    const result = await window.IntegrationsService.connectIntegration(service, credentials);
+                    
+                    // Hide loading
+                    loadingContainer.style.display = 'none';
+                    
+                    if (result && result.success) {
+                        // Show success message
+                        successContainer.style.display = 'flex';
+                    } else {
+                        // Show error message
+                        errorMessage.textContent = result.message || `Failed to connect to ${serviceName}.`;
+                        errorContainer.style.display = 'flex';
+                    }
+                } else {
+                    throw new Error('Integration service not available');
+                }
+            } catch (error) {
+                console.error(`Error connecting to ${service}:`, error);
+                
+                // Hide loading and show error
+                loadingContainer.style.display = 'none';
+                errorMessage.textContent = error.message || `An error occurred while connecting to ${serviceName}.`;
+                errorContainer.style.display = 'flex';
+            }
+        });
     } else {
         // Update existing modal
         const modal = document.getElementById('integration-modal');
