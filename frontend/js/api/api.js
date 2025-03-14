@@ -81,7 +81,15 @@ const ApiService = {
         page
       }).toString();
       
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/rounds?${queryParams}`, {
+        headers: headers,
         credentials: 'include'
       });
       
@@ -94,7 +102,15 @@ const ApiService = {
   
   async getRound(roundId) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/rounds/${roundId}`, {
+        headers: headers,
         credentials: 'include'
       });
       
@@ -157,8 +173,16 @@ const ApiService = {
   
   async deleteRound(roundId) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/rounds/${roundId}`, {
         method: 'DELETE',
+        headers: headers,
         credentials: 'include'
       });
       
@@ -328,7 +352,15 @@ const ApiService = {
         limit
       }).toString();
       
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/range-sessions?${queryParams}`, {
+        headers: headers,
         credentials: 'include'
       });
       
@@ -341,7 +373,15 @@ const ApiService = {
   
   async getRangeSession(sessionId) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/range-sessions/${sessionId}`, {
+        headers: headers,
         credentials: 'include'
       });
       
@@ -418,7 +458,15 @@ const ApiService = {
   
   async getRangeShots(sessionId) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/range-sessions/${sessionId}/shots`, {
+        headers: headers,
         credentials: 'include'
       });
       
@@ -456,11 +504,18 @@ const ApiService = {
   
   async addRangeShots(sessionId, shotsData) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/range-sessions/${sessionId}/shots/batch`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         credentials: 'include',
         body: JSON.stringify(shotsData)
       });
@@ -505,10 +560,28 @@ const ApiService = {
 
   // Helper methods
   async _getAuthToken() {
-    // Get the current user session with token
+    // Check for cached token first (valid for 5 minutes)
+    const cachedToken = sessionStorage.getItem('auth_token');
+    const tokenTimestamp = sessionStorage.getItem('auth_token_timestamp');
+    const now = Date.now();
+    const tokenValidityPeriod = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+    // If we have a cached token that's less than 5 minutes old, use it
+    if (cachedToken && tokenTimestamp && (now - parseInt(tokenTimestamp)) < tokenValidityPeriod) {
+      console.log('Using cached auth token');
+      return cachedToken;
+    }
+
+    // Otherwise get a fresh token
     try {
       const user = await this.getCurrentUser();
-      return user?.token;
+      if (user?.token) {
+        // Cache the token with timestamp
+        sessionStorage.setItem('auth_token', user.token);
+        sessionStorage.setItem('auth_token_timestamp', now.toString());
+        return user.token;
+      }
+      return null;
     } catch (error) {
       console.error('Error getting auth token:', error);
       return null;

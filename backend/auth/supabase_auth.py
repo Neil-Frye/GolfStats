@@ -97,19 +97,25 @@ def get_current_user() -> Optional[Dict[str, Any]]:
         try:
             # Verify token with Supabase
             # Pass the token to get_supabase to set it on the client for RLS
-            supabase = get_supabase(token)
-            user_obj = supabase.auth.get_user(token)
-            if user_obj and hasattr(user_obj, 'user'):
-                user = {
-                    'id': user_obj.user.id,
-                    'email': user_obj.user.email,
-                    'name': user_obj.user.user_metadata.get('full_name', ''),
-                    'is_superuser': user_obj.user.app_metadata.get('is_superuser', False),
-                    'token': token
-                }
-                # Store in request context
-                g.user = user
-                return user
+            try:
+                supabase = get_supabase(token)
+                user_obj = supabase.auth.get_user()
+                if user_obj and hasattr(user_obj, 'user'):
+                    user = {
+                        'id': user_obj.user.id,
+                        'email': user_obj.user.email,
+                        'name': user_obj.user.user_metadata.get('full_name', ''),
+                        'is_superuser': user_obj.user.app_metadata.get('is_superuser', False),
+                        'token': token
+                    }
+                    # Store in request context
+                    g.user = user
+                    logger.info(f"Successfully authenticated user {user['email']} with token")
+                    return user
+                else:
+                    logger.warning("Token seems valid but user_obj is invalid")
+            except Exception as e:
+                logger.error(f"Error verifying token with Supabase: {str(e)}")
         except Exception as e:
             logger.warning(f"Failed to verify token: {str(e)}")
             return None
@@ -146,21 +152,27 @@ def get_authenticated_user() -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         try:
             # Verify token with Supabase
             # Pass the token to get_supabase to set it on the client for RLS
-            supabase = get_supabase(token)
-            user_obj = supabase.auth.get_user(token)
-            if user_obj and hasattr(user_obj, 'user'):
-                user = {
-                    'id': user_obj.user.id,
-                    'email': user_obj.user.email,
-                    'name': user_obj.user.user_metadata.get('full_name', ''),
-                    'is_superuser': user_obj.user.app_metadata.get('is_superuser', False),
-                    'token': token
-                }
-                # Store in request context
-                g.user = user
-                return user, token
+            try:
+                supabase = get_supabase(token)
+                user_obj = supabase.auth.get_user()
+                if user_obj and hasattr(user_obj, 'user'):
+                    user = {
+                        'id': user_obj.user.id,
+                        'email': user_obj.user.email,
+                        'name': user_obj.user.user_metadata.get('full_name', ''),
+                        'is_superuser': user_obj.user.app_metadata.get('is_superuser', False),
+                        'token': token
+                    }
+                    # Store in request context
+                    g.user = user
+                    logger.info(f"Successfully authenticated user {user['email']} with token in get_authenticated_user")
+                    return user, token
+                else:
+                    logger.warning("Token seems valid but user_obj is invalid in get_authenticated_user")
+            except Exception as e:
+                logger.error(f"Error verifying token with Supabase in get_authenticated_user: {str(e)}")
         except Exception as e:
-            logger.warning(f"Failed to verify token: {str(e)}")
+            logger.warning(f"Failed to verify token in get_authenticated_user: {str(e)}")
             return None, None
     
     return None, None
