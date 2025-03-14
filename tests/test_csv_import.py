@@ -19,12 +19,17 @@ class TestCsvImport(unittest.TestCase):
     def test_normalize_header(self):
         """Test header normalization function."""
         test_cases = [
-            ("Ball Speed", "Ball Speed"),
+            ("Ball Speed", "ball speed"),
             ("ball speed", "ball speed"),
-            ("Ball-Speed", "Ball Speed"),
-            ("Ball.Speed (mph)", "Ball Speed mph"),
-            ("  Ball   Speed  ", "Ball Speed"),
-            ("Ball_Speed", "Ball Speed"),
+            ("Ball-Speed", "ball speed"),
+            ("Ball.Speed (mph)", "ball speed"),
+            ("  Ball   Speed  ", "ball speed"),
+            ("Ball_Speed", "ball speed"),
+            ("ball_speed_mph", "ball speed mph"),
+            ("LaunchAngle", "launch angle"),
+            ("BallSpeed", "ball speed"),
+            ("carry_distance_yards", "carry distance yards"),
+            ("Carry (yards)", "carry"),
         ]
         
         for input_str, expected in test_cases:
@@ -65,6 +70,16 @@ class TestCsvImport(unittest.TestCase):
         # Normalized fields
         self.assertEqual(map_csv_field("Ball-Speed", "default"), "ball_speed_mph")
         self.assertEqual(map_csv_field("Launch Angle (°)", "default"), "launch_angle_degrees")
+        
+        # Direct DB field matches (new functionality)
+        self.assertEqual(map_csv_field("ball_speed_mph", "default"), "ball_speed_mph")
+        self.assertEqual(map_csv_field("carry_distance_yards", "default"), "carry_distance_yards")
+        self.assertEqual(map_csv_field("total_distance_yards", "default"), "total_distance_yards")
+        
+        # Normalized with underscores (new functionality)
+        self.assertEqual(map_csv_field("Carry Distance Yards", "default"), "carry_distance_yards")
+        self.assertEqual(map_csv_field("Ball Speed (mph)", "default"), "ball_speed_mph")
+        self.assertEqual(map_csv_field("Launch_Angle_Degrees", "default"), "launch_angle_degrees")
         
         # Unknown field
         self.assertIsNone(map_csv_field("Unknown Field", "default"))
@@ -151,6 +166,42 @@ Driver,not a number,12.5
         self.assertEqual(len(shots), 1)
         self.assertNotIn("ball_speed_mph", shots[0])
         self.assertEqual(shots[0]["launch_angle_degrees"], 12.5)
+        
+    def test_parse_csv_with_direct_db_fields(self):
+        """Test CSV parsing with direct database field names."""
+        csv_content = """club,ball_speed_mph,launch_angle_degrees,carry_distance_yards,total_distance_yards
+Driver,150.2,12.5,245.7,265.2
+7 Iron,120.1,18.2,155.3,160.5
+"""
+        shots, unmapped = parse_csv_data(csv_content)
+        
+        self.assertEqual(len(shots), 2)
+        self.assertEqual(len(unmapped), 0)
+        
+        # Check first shot
+        self.assertEqual(shots[0]["club"], "Driver")
+        self.assertEqual(shots[0]["ball_speed_mph"], 150.2)
+        self.assertEqual(shots[0]["launch_angle_degrees"], 12.5)
+        self.assertEqual(shots[0]["carry_distance_yards"], 245.7)
+        self.assertEqual(shots[0]["total_distance_yards"], 265.2)
+        
+    def test_parse_csv_with_mixed_field_naming(self):
+        """Test CSV parsing with mixed field naming styles."""
+        csv_content = """club,Ball Speed,launch_angle_degrees,Carry (yards),Total
+Driver,150.2,12.5,245.7,265.2
+7 Iron,120.1,18.2,155.3,160.5
+"""
+        shots, unmapped = parse_csv_data(csv_content)
+        
+        self.assertEqual(len(shots), 2)
+        self.assertEqual(len(unmapped), 0)
+        
+        # Check first shot
+        self.assertEqual(shots[0]["club"], "Driver")
+        self.assertEqual(shots[0]["ball_speed_mph"], 150.2)
+        self.assertEqual(shots[0]["launch_angle_degrees"], 12.5)
+        self.assertEqual(shots[0]["carry_distance_yards"], 245.7)
+        self.assertEqual(shots[0]["total_distance_yards"], 265.2)
         
 if __name__ == '__main__':
     unittest.main()
