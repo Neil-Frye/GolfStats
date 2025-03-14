@@ -12,12 +12,15 @@
 }
 
 .integration-item {
-    background-color: var(--card-bg);
+    background-color: var(--white); /* Updated to match the color scheme */
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow: visible;
     transition: transform 0.2s, box-shadow 0.2s;
     position: relative;
+    min-height: 320px; /* Ensure all cards have consistent height */
+    display: flex;
+    flex-direction: column; /* Stack content vertically */
 }
 
 .integration-item:hover {
@@ -71,9 +74,10 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    min-height: 180px; /* Increased height to ensure space for button */
+    min-height: 200px; /* Further increased height to ensure space for button */
     position: relative; /* Ensure proper stacking context */
-    overflow: visible; /* Prevent content from being cut off */
+    overflow: visible !important; /* Prevent content from being cut off */
+    justify-content: space-between; /* Push button to bottom */
 }
 
 /* Ensure buttons are clickable with margin */
@@ -91,7 +95,7 @@
 
 .connect-integration-btn {
     align-self: flex-start;
-    background-color: var(--primary) !important;
+    background-color: var(--primary-color) !important; /* Updated variable name to match root vars */
     color: white !important;
     border: none !important;
     border-radius: 4px;
@@ -110,20 +114,28 @@
     line-height: normal !important; /* Fix text vertical alignment */
     overflow: visible !important; /* Prevent text from being cut off */
     height: auto !important; /* Allow height to adjust to content */
+    margin-top: 10px !important; /* Add more space at the top */
+    margin-bottom: 10px !important; /* Add space at the bottom */
+    font-size: 14px !important; /* Ensure text is readable */
+    text-align: center !important; /* Center the text */
 }
 
 .connect-integration-btn:hover {
-    background-color: var(--primary-dark);
+    background-color: var(--primary-dark) !important;
+    color: white !important;
+    text-decoration: none !important;
 }
 
 .connect-integration-btn.disconnect-btn {
-    background-color: var(--danger-light);
-    color: var(--danger);
+    background-color: rgba(231, 76, 60, 0.15) !important; /* Using rgba for danger-light */
+    color: #e74c3c !important; /* Explicit danger color */
+    border: 1px solid #e74c3c !important; /* Add border for better visibility */
 }
 
 .connect-integration-btn.disconnect-btn:hover {
-    background-color: var(--danger);
-    color: white;
+    background-color: #e74c3c !important; /* Using hex for danger */
+    color: white !important;
+    text-decoration: none !important;
 }
 
 .test-integration-btn {
@@ -363,9 +375,41 @@
         flex: 1;
         display: flex;
         flex-direction: column;
+        justify-content: space-between; /* Push button to bottom */
+        padding-bottom: 20px; /* Extra padding for button */
     }
     
     .integration-details p {
-        flex: 1;
+        flex: 0 1 auto; /* Don't force flex grow */
+    }
+    
+    /* Ensure connect button is always visible and properly styled */
+    .connect-integration-btn {
+        align-self: flex-start;
+        margin-top: auto !important; /* Push to bottom of container */
+        min-width: 150px !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+        display: block !important;
+        visibility: visible !important;
+    }
+}
+
+/* Additional styles for smaller screens */
+@media (max-width: 767px) {
+    .integration-item {
+        min-height: 280px; /* Slightly smaller on mobile */
+    }
+    
+    .integration-details {
+        min-height: 160px; /* Ensure enough space on mobile */
+    }
+    
+    .connect-integration-btn {
+        width: 100% !important; /* Full width on mobile */
+        font-size: 14px !important;
+        padding: 10px !important;
+        margin-top: 15px !important;
+        margin-bottom: 10px !important;
     }
 }
