@@ -6,7 +6,8 @@ Only range session management remains in this file.
 from typing import Dict, Any, List, Optional
 
 from backend.database.supabase_data.common import logger, get_supabase
-from backend.database.supabase_data.shots import get_shots, add_shot_to_context, add_shots_to_context
+from backend.database.supabase_data.shots import get_shots
+from backend.database.supabase_data.shot_utils import insert_shots
 
 def get_range_sessions(user_id: str, limit: int = 50, token: str = None) -> List[Dict[str, Any]]:
     """
@@ -174,8 +175,8 @@ def add_range_shot(session_id: int, shot_data: Dict[str, Any], token: str = None
     Returns:
         Created shot data or None if failed
     """
-    # DEPRECATED: Use shots.add_shot_to_context(session_id, shot_data, 'session', token) instead
-    return add_shot_to_context(session_id, shot_data, 'session', token)
+    # DEPRECATED: Use shots.py or directly use shot_utils.insert_shots()
+    return insert_shots(shot_data, session_id, 'session', token)
 
 def add_range_shots(session_id: int, shots_data: List[Dict[str, Any]], token: str = None) -> List[Dict[str, Any]]:
     """
@@ -189,8 +190,8 @@ def add_range_shots(session_id: int, shots_data: List[Dict[str, Any]], token: st
     Returns:
         List of created shot data or empty list if failed
     """
-    # DEPRECATED: Use shots.add_shots_to_context(session_id, shots_data, 'session', token) instead
-    return add_shots_to_context(session_id, shots_data, 'session', token)
+    # DEPRECATED: Use shots.py or directly use shot_utils.insert_shots()
+    return insert_shots(shots_data, session_id, 'session', token)
 
 # Club benchmark functions are deprecated in this file and moved to shots.py
 # These implementations remain here for backward compatibility but will be removed in a future update

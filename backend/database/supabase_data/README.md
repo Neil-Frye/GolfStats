@@ -1,43 +1,76 @@
-# Supabase Data Access Package
+# Supabase Data Access Layer
 
-This package provides modular access to Supabase data tables for the GolfStats application.
+This directory contains modules for accessing and manipulating data in the Supabase database.
 
-## Package Structure
+## Shot Data Handling
 
-The package is organized into domain-specific modules:
+We've refactored the shot data handling to eliminate duplicated code between course shots and range shots. 
 
-- `rounds.py`: Golf round management functions
-- `shots.py`: Golf shot and hole management functions
-- `stats.py`: Statistics and analytics functions
-- `clubs.py`: Club management functions
-- `user_preferences.py`: User preferences and settings functions
-- `common.py`: Shared utilities and base classes
+### Key Components:
 
-Each module contains functions related to a specific domain, making the code more maintainable and easier to understand.
+1. **shot_utils.py**: Central utilities for shot data processing
+   - `calculate_derived_metrics()`: Computes metrics like carry efficiency
+   - `prepare_shot_data()`: Prepares shot data with proper context fields
+   - `insert_shots()`: Universal function for inserting one or multiple shots
 
-## Usage
+2. **shots.py**: Main API for golf shots (both course and range)
+   - Uses shot_utils for all data processing and insertion
+   - Provides context-specific wrapper functions
 
-You can import functions directly from the specific module:
+3. **range_shots.py**: (Deprecated) Range session management
+   - Range shot functions now use shot_utils directly
+   - Session management functions remain in this file
+
+### Usage Examples:
+
+#### Adding a Single Shot
 
 ```python
-from backend.database.supabase_data.rounds import get_golf_rounds
-from backend.database.supabase_data.clubs import get_user_clubs
+from backend.database.supabase_data.shot_utils import insert_shots
+
+# Add a course shot
+course_shot = {
+    'club': 'Driver', 
+    'ball_speed_mph': 150,
+    'carry_distance_yards': 250
+}
+result = insert_shots(course_shot, hole_id, 'hole', token)
+
+# Add a range shot
+range_shot = {
+    'club': 'Driver', 
+    'ball_speed_mph': 150,
+    'carry_distance_yards': 250
+}
+result = insert_shots(range_shot, session_id, 'session', token)
 ```
 
-Or you can import from the package itself, which re-exports all functions:
+#### Adding Multiple Shots
 
 ```python
-from backend.database.supabase_data import get_golf_rounds, get_user_clubs
+from backend.database.supabase_data.shot_utils import insert_shots
+
+# Multiple shots (auto-numbered in sequence)
+shots = [
+    {'club': 'Driver', 'ball_speed_mph': 150},
+    {'club': '7 Iron', 'ball_speed_mph': 120}
+]
+
+# Add to a hole
+results = insert_shots(shots, hole_id, 'hole', token)
+
+# Add to a range session
+results = insert_shots(shots, session_id, 'session', token)
 ```
 
-## Migration
+### Benefits of the Refactored Approach:
 
-The legacy module `backend.database.supabase_data.py` has been refactored into this package structure. The original module is now deprecated and re-exports functions from this package to maintain backward compatibility.
+1. **Single source of truth** for shot data processing logic
+2. **Reduced code duplication** between course and range shot handling
+3. **Consistent treatment** of derived metrics calculation
+4. **Unified interface** for adding both single and multiple shots
+5. **Context-agnostic processing** with context type parameter
 
-## Design Considerations
+### Note on Deprecated Code:
 
-- **Domain-Driven Design**: Functions are grouped by their domain to improve code organization.
-- **Backward Compatibility**: All functions are re-exported from the package's `__init__.py` to maintain backward compatibility.
-- **Modular Architecture**: Each module focuses on a specific concern, making the code more maintainable.
-- **Type Hints**: All functions include proper type hints for better IDE support and code safety.
-- **Error Handling**: Consistent error handling patterns across all modules.
+The `range_shots.py` module contains several deprecated functions that now forward to the appropriate functions in `shots.py` or directly to `shot_utils.py`. These are maintained for backward compatibility but will be removed in a future update.
