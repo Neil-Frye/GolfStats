@@ -89,17 +89,20 @@
 
 .connect-integration-btn {
     align-self: flex-start;
-    background-color: var(--primary);
-    color: white;
-    border: none;
+    background-color: var(--primary) !important;
+    color: white !important;
+    border: none !important;
     border-radius: 4px;
     padding: 0.6rem 1.2rem;
     font-weight: 500;
-    cursor: pointer;
+    cursor: pointer !important;
     transition: background-color 0.2s;
-    display: inline-block; /* Ensure button is always visible */
-    position: relative; /* Ensure z-index works */
-    z-index: 1;
+    display: inline-block !important; /* Ensure button is always visible */
+    position: relative !important; /* Ensure z-index works */
+    z-index: 100 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
 }
 
 .connect-integration-btn:hover {

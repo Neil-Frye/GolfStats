@@ -928,11 +928,14 @@ input:focus, select:focus, textarea:focus {
 
 /* Fix for button visibility issues */
 button, .btn, .add-btn, .new-round-btn, input[type="submit"], 
-.form-buttons button, #save-round-btn, #create-session-btn, #save-shot-btn {
+.form-buttons button, #save-round-btn, #create-session-btn, #save-shot-btn,
+.connect-integration-btn, #add-shot-btn, .add-shot-btn {
     opacity: 1 !important;
     visibility: visible !important;
     pointer-events: auto !important;
     display: inline-block !important;
+    z-index: 1 !important;
+    position: relative !important;
 }
 
 /* Extra specific styles for the Save Round button */
@@ -948,7 +951,10 @@ button[type="submit"],
 .btn-create,
 .btn-add,
 button.primary,
-.btn.primary {
+.btn.primary,
+.connect-integration-btn,
+#add-shot-btn, 
+.add-shot-btn {
     background-color: var(--primary-color) !important;
     color: white !important;
     border: none !important;
