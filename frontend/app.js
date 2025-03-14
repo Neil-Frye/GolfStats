@@ -17,24 +17,26 @@ import IntegrationsService from './js/integrations/integrations.js';
 
 // Define showIntegrationModal globally at the top level
 // Integration modal - make it globally available
-window.showIntegrationModal = function(service) {
-    console.log(`Showing integration modal for ${service}`);
-    
-    // Get service display name
-    const serviceNames = {
-        'trackman': 'Trackman',
-        'arccos': 'Arccos',
-        'skytrak': 'SkyTrak'
-    };
-    
-    const serviceName = serviceNames[service] || service;
-    
-    // Create modal if it doesn't exist
-    if (!document.getElementById('integration-modal')) {
-        const modal = document.createElement('div');
-        modal.id = 'integration-modal';
-        modal.className = 'modal';
-        modal.innerHTML = `
+// Only define the function if it doesn't already exist
+if (typeof window.showIntegrationModal !== 'function') {
+    window.showIntegrationModal = function(service) {
+        console.log(`Showing integration modal for ${service}`);
+        
+        // Get service display name
+        const serviceNames = {
+            'trackman': 'Trackman',
+            'arccos': 'Arccos',
+            'skytrak': 'SkyTrak'
+        };
+        
+        const serviceName = serviceNames[service] || service;
+        
+        // Create modal if it doesn't exist
+        if (!document.getElementById('integration-modal')) {
+            const modal = document.createElement('div');
+            modal.id = 'integration-modal';
+            modal.className = 'modal';
+            modal.innerHTML = `
             <div class="modal-content integration-modal-content">
                 <div class="modal-header">
                     <h2>Connect <span class="service-name">${serviceName}</span></h2>
@@ -3252,20 +3254,12 @@ function initRoundDetailModal() {
     }
 }
 
-// Integration modal - make it globally available
+// This section was removed as it was a duplicate of the showIntegrationModal function
+// already defined at the top of the file.
+/* REMOVED DUPLICATE FUNCTION - Implementation moved to line ~20
 window.showIntegrationModal = function(service) {
-    console.log(`Showing integration modal for ${service}`);
-    
-    // Get service display name
-    const serviceNames = {
-        'trackman': 'Trackman',
-        'arccos': 'Arccos',
-        'skytrak': 'SkyTrak'
-    };
-    
     const serviceName = serviceNames[service] || service;
-    
-    // Create modal if it doesn't exist
+
     if (!document.getElementById('integration-modal')) {
         const modal = document.createElement('div');
         modal.id = 'integration-modal';
@@ -3465,6 +3459,7 @@ window.showIntegrationModal = function(service) {
     
     console.log('Modal should now be visible');
 }
+*/
 
 // Update integration status in the UI
 // This is needed for the integration modal to access
