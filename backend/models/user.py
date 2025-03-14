@@ -19,7 +19,7 @@ if project_root not in sys.path:
 
 from backend.database.db_connection import Base
 from config.config import config
-from backend.database.supabase_data import get_user_preferences
+from backend.database.supabase_data.user_preferences import get_user_preferences
 
 class UserPreference(Base):
     """User preferences model for storing preferences and tracker credentials."""

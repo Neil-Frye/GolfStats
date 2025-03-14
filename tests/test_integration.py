@@ -260,18 +260,18 @@ class TestGolfStatsIntegration(unittest.TestCase):
                 'skytrak_sessions': 3,
                 'errors': []
             }), \
-            patch('backend.database.supabase_data.get_golf_rounds', return_value=[
+            patch('backend.database.supabase_data.rounds.get_golf_rounds', return_value=[
                 {'id': 1, 'date': '2023-08-01', 'course_name': 'Test Course', 'score': 72},
                 {'id': 2, 'date': '2023-08-15', 'course_name': 'Another Course', 'score': 78}
             ]), \
-            patch('backend.database.supabase_data.get_golf_round', return_value={
+            patch('backend.database.supabase_data.rounds.get_golf_round', return_value={
                 'id': 1, 'date': '2023-08-01', 'course_name': 'Test Course', 'score': 72
             }), \
-            patch('backend.database.supabase_data.get_shots_for_round', return_value=[
+            patch('backend.database.supabase_data.shots.get_shots_for_round', return_value=[
                 {'id': 101, 'hole': 1, 'club': 'Driver', 'distance': 285},
                 {'id': 102, 'hole': 1, 'club': '9 Iron', 'distance': 150}
             ]), \
-            patch('backend.database.supabase_data.get_user_rounds_stats', return_value={
+            patch('backend.database.supabase_data.stats.get_user_rounds_stats', return_value={
                 'average_score': 75,
                 'rounds_played': 10,
                 'best_score': 72

@@ -17,12 +17,9 @@ if project_root not in sys.path:
 
 from backend.database.db_connection import get_db
 from backend.models.golf_data import GolfRound, GolfHole, GolfShot, RoundStats
-from backend.database.supabase_data import (
-    create_golf_round, 
-    add_holes_for_round, 
-    add_shots_for_hole, 
-    add_round_stats
-)
+from backend.database.supabase_data.rounds import create_golf_round
+from backend.database.supabase_data.shots import add_holes_for_round, add_shots_for_hole
+from backend.database.supabase_data.stats import add_round_stats
 
 # Configure logging
 logger = logging.getLogger(__name__)
