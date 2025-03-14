@@ -69,11 +69,20 @@ export function initShotsView() {
     importShotsBtn.addEventListener('click', showImportShotsModal);
   }
   
+  // Set up "Add Club" button
+  const addClubCard = document.querySelector('.club-card.add-club');
+  if (addClubCard) {
+    addClubCard.addEventListener('click', showAddClubModal);
+  }
+  
   // Initialize range session form
   initRangeSessionForm();
   
   // Initialize add shot form
   initAddShotForm();
+  
+  // Initialize add club form
+  initAddClubForm();
   
   // Initialize import options
   initImportOptions();
@@ -524,7 +533,18 @@ async function loadUserClubs() {
           clubSelect.remove(1);
         }
         
-        // Add club options
+        // Add "No Club / Unknown" option
+        const unknownOption = document.createElement('option');
+        unknownOption.value = "unknown";
+        unknownOption.textContent = "No Club / Unknown";
+        clubSelect.appendChild(unknownOption);
+        
+        // Add standard club options if user has no clubs
+        if (!userClubs || userClubs.length === 0) {
+          addStandardClubOptions(clubSelect);
+        }
+        
+        // Add user's custom clubs
         userClubs.forEach(club => {
           const option = document.createElement('option');
           option.value = club.name;
@@ -563,8 +583,17 @@ function initAddShotForm() {
       
       // Convert form data to shot data object
       formData.forEach((value, key) => {
+        // Handle club field specially
+        if (key === 'club') {
+          if (value === 'unknown') {
+            // Don't add club if "unknown" is selected
+            // Backend will record it as null
+          } else if (value) {
+            shotData[key] = value;
+          }
+        }
         // Convert numeric values to numbers
-        if (key !== 'club' && key !== 'session_id' && value) {
+        else if (key !== 'session_id' && value) {
           shotData[key] = parseFloat(value);
         } else if (value) {
           shotData[key] = value;
@@ -1169,6 +1198,40 @@ function showEmptyBenchmarksState() {
 }
 
 /**
+ * Add standard club options to the club select dropdown
+ * @param {HTMLSelectElement} selectElement - The club select dropdown
+ */
+function addStandardClubOptions(selectElement) {
+  const standardClubs = [
+    "Driver",
+    "3 Wood",
+    "5 Wood",
+    "2 Hybrid",
+    "3 Hybrid",
+    "4 Hybrid",
+    "3 Iron",
+    "4 Iron",
+    "5 Iron",
+    "6 Iron",
+    "7 Iron",
+    "8 Iron",
+    "9 Iron",
+    "PW",
+    "GW",
+    "SW",
+    "LW",
+    "Putter"
+  ];
+  
+  standardClubs.forEach(club => {
+    const option = document.createElement('option');
+    option.value = club;
+    option.textContent = club;
+    selectElement.appendChild(option);
+  });
+}
+
+/**
  * Load trend data for charts
  */
 function loadTrendData() {
@@ -1183,6 +1246,83 @@ function loadTrendData() {
     // In a real implementation, we would fetch time series data and render charts
     // using a library like Chart.js
   }
+}
+
+/**
+ * Initialize the add club form
+ */
+function initAddClubForm() {
+  const form = document.getElementById('add-club-form');
+  
+  if (!form) return;
+  
+  // Form submission handler
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Disable submit button and show loading
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+    
+    try {
+      // Get form data
+      const formData = new FormData(form);
+      const clubData = {};
+      
+      // Convert form data to club data object
+      formData.forEach((value, key) => {
+        if (key === 'loft' && value) {
+          clubData[key] = parseFloat(value);
+        } else if (value) {
+          clubData[key] = value;
+        }
+      });
+      
+      // Create club
+      const response = await ApiService.saveClub(clubData);
+      
+      if (response && response.club) {
+        // Close modal
+        UI.closeModal('add-club-modal');
+        
+        // Show success message
+        UI.showToast('Club added successfully!', 'success');
+        
+        // Reset form
+        form.reset();
+        
+        // Reload clubs
+        loadUserClubs();
+      } else {
+        throw new Error('Failed to add club');
+      }
+    } catch (error) {
+      console.error('Error adding club:', error);
+      UI.showToast(`Error: ${error.message || 'Failed to add club'}`, 'error');
+    } finally {
+      // Re-enable submit button
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
+  });
+  
+  // Cancel button handler
+  const cancelBtn = form.querySelector('.cancel-btn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      UI.closeModal('add-club-modal');
+      form.reset();
+    });
+  }
+}
+
+/**
+ * Show the add club modal
+ */
+function showAddClubModal() {
+  UI.openModal('add-club-modal');
 }
 
 // Export functions
