@@ -46,12 +46,21 @@ from backend.range_shots.routes import range_shots_bp
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 # Import Supabase data access functions
-from backend.database.supabase_data import (
+from backend.database.supabase_data.rounds import (
     get_golf_rounds, get_golf_round, create_golf_round, 
-    update_golf_round, delete_golf_round, get_shots_for_round,
-    add_shot, get_user_preferences, update_user_preferences,
-    get_user_rounds_stats, get_user_clubs, get_club, create_club,
-    update_club, delete_club
+    update_golf_round, delete_golf_round
+)
+from backend.database.supabase_data.shots import (
+    get_shots_for_round, add_shot
+)
+from backend.database.supabase_data.user_preferences import (
+    get_user_preferences, update_user_preferences
+)
+from backend.database.supabase_data.stats import (
+    get_user_rounds_stats
+)
+from backend.database.supabase_data.clubs import (
+    get_user_clubs, get_club, create_club, update_club, delete_club
 )
 
 # Import auth decorators

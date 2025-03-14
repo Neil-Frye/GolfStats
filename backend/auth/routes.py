@@ -155,7 +155,7 @@ def update_profile():
     import os
     import uuid
     from werkzeug.utils import secure_filename
-    from backend.database.supabase_data import update_user_preferences, get_user_preferences
+    from backend.database.supabase_data.user_preferences import update_user_preferences, get_user_preferences
     
     if not is_authenticated():
         return jsonify({"error": "Authentication required"}), 401
