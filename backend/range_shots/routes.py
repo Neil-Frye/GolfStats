@@ -504,8 +504,14 @@ def api_import_csv(session_id: int):
         source_system = request.form.get('source_system', None)
         shot_type = request.form.get('shot_type', 'range')
         
-        # Import CSV data
-        shots, unmapped_fields = import_csv_to_range_session(
+        # Enable debug mode if requested
+        if request.form.get('debug_import', '0') == '1':
+            import os
+            os.environ['DEBUG_IMPORT'] = '1'
+            current_app.logger.info("CSV import debug mode enabled")
+        
+        # Import CSV data with enhanced error handling
+        shots, unmapped_fields, import_stats = import_csv_to_range_session(
             session_id, 
             csv_content,
             source_system,
@@ -513,19 +519,39 @@ def api_import_csv(session_id: int):
             token
         )
         
+        # Check if import was successful
         if not shots:
+            error_message = "No shots were imported"
+            
+            # Include any error messages from the import process
+            if import_stats.get("errors"):
+                error_message = import_stats["errors"][0]
+                
             return jsonify({
                 "success": False,
-                "error": "No shots were imported",
-                "unmapped_fields": unmapped_fields
+                "error": error_message,
+                "unmapped_fields": unmapped_fields,
+                "import_stats": import_stats
             }), 400
             
-        return jsonify({
+        # Success response with detailed stats
+        response = {
             "success": True,
             "shots": shots,
             "count": len(shots),
-            "unmapped_fields": unmapped_fields
-        })
+            "unmapped_fields": unmapped_fields,
+            "import_stats": import_stats
+        }
+        
+        # Add any warnings to the response
+        if import_stats.get("warnings"):
+            response["warnings"] = import_stats["warnings"]
+            
+        return jsonify(response)
     except Exception as e:
         current_app.logger.error(f"Error importing CSV to session {session_id}: {str(e)}")
-        return jsonify({"error": f"Failed to import CSV: {str(e)}"}), 500
+        current_app.logger.exception(e)  # Log the full traceback for debugging
+        return jsonify({
+            "error": f"Failed to import CSV: {str(e)}",
+            "success": False
+        }), 500
