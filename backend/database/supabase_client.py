@@ -15,7 +15,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from config.config import config
+from config.env import env
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -34,10 +34,9 @@ class SupabaseClientSingleton:
             Supabase client instance
         """
         if cls._instance is None:
-            # Get credentials from environment or config
-            supabase_url = os.environ.get("SUPABASE_URL") or config["supabase"]["url"]
-            # Try multiple environment variable names for the API key
-            supabase_key = os.environ.get("SUPABASE_API_KEY") or os.environ.get("SUPABASE_KEY") or config["supabase"]["anon_key"]
+            # Get credentials from the centralized environment module
+            supabase_url = env.get_supabase_url()
+            supabase_key = env.get_supabase_key()
             
             if not supabase_url or not supabase_key:
                 logger.error("Supabase credentials not configured")
@@ -45,7 +44,7 @@ class SupabaseClientSingleton:
                 
             # Create client
             cls._instance = create_client(supabase_url, supabase_key)
-            logger.info(f"Supabase client initialized for {os.environ.get('APP_ENVIRONMENT', 'production')} environment")
+            logger.info(f"Supabase client initialized for {env.env_name} environment")
             
         return cls._instance
 
@@ -60,9 +59,9 @@ def get_supabase(jwt_token: str = None) -> Client:
     Returns:
         Supabase client instance
     """
-    # Get credentials from environment or config
-    supabase_url = os.environ.get("SUPABASE_URL") or config["supabase"]["url"]
-    supabase_key = os.environ.get("SUPABASE_API_KEY") or os.environ.get("SUPABASE_KEY") or config["supabase"]["anon_key"]
+    # Get credentials from the centralized environment module
+    supabase_url = env.get_supabase_url()
+    supabase_key = env.get_supabase_key()
     
     # If a JWT token is provided, create a new client with the token
     if jwt_token:
