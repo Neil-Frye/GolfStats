@@ -24,61 +24,74 @@ HEADER_VARIANTS = {
         "club_name", "club_type"
     ],
     "ball_speed_mph": [
-        "ball speed", "ball_speed", "ballspeed", "ball speed (mph)", 
+        "ball speed", "ball_speed", "ballspeed", "ball speed (mph)", "ball speed mph",
         "ball_speed_mph", "ballspeedmph", "speed", "ball mph", "ball_mph"
     ],
     "club_speed_mph": [
-        "club speed", "club_speed", "clubspeed", "club speed (mph)", 
+        "club speed", "club_speed", "clubspeed", "club speed (mph)", "club speed mph",
         "club_speed_mph", "clubspeedmph", "head speed", "headspeed", "swing speed"
     ],
     "smash_factor": [
         "smash factor", "smash_factor", "smashfactor", "sm factor", "smash"
     ],
     "launch_angle_degrees": [
-        "launch angle", "launch_angle", "launchangle", "launch (deg)", "launch", 
-        "angle", "launch angle (deg)", "launch angle (°)", "launch_angle_degrees"
+        "launch angle", "launch_angle", "launchangle", "launch (deg)", "launch angle degrees", 
+        "angle", "launch angle (deg)", "launch angle (°)", "launch_angle_degrees", "launch"
     ],
     "spin_rate_rpm": [
-        "spin rate", "spin_rate", "spinrate", "spin (rpm)", "spin", "backspin", 
+        "spin rate", "spin_rate", "spinrate", "spin (rpm)", "spin rate rpm", "spin", "backspin", 
         "back spin", "spin rate (rpm)", "spin_rate_rpm", "total spin"
     ],
     "spin_axis_degrees": [
-        "spin axis", "spin_axis", "spinaxis", "axis", "spin direction", 
+        "spin axis", "spin_axis", "spinaxis", "axis", "spin direction", "spin axis degrees",
         "spin axis (deg)", "spin axis (°)", "spin_axis_degrees"
     ],
     "carry_distance_yards": [
-        "carry", "carry distance", "carry_distance", "carrydistance", 
+        "carry", "carry distance", "carry_distance", "carrydistance", "carry distance yards",
         "carry (yards)", "carry (yds)", "carry yards", "carry yds", 
         "carry_distance_yards", "carry_yards"
     ],
     "total_distance_yards": [
-        "total", "total distance", "total_distance", "totaldistance", 
+        "total", "total distance", "total_distance", "totaldistance", "total distance yards",
         "total (yards)", "total (yds)", "total yards", "total yds", 
         "total_distance_yards", "total_yards"
     ],
     "side_deviation_yards": [
-        "side", "side deviation", "side_deviation", "sidedeviation", 
+        "side", "side deviation", "side_deviation", "sidedeviation", "side deviation yards",
         "side (yards)", "side (yds)", "side yards", "side yds", 
         "side_deviation_yards", "side_yards", "lateral"
     ],
     "height_feet": [
-        "height", "apex", "max height", "peak height", 
+        "height", "apex", "max height", "peak height", "height feet",
         "height (feet)", "height (ft)", "apex (feet)", "apex (ft)", 
-        "height feet", "height ft", "apex feet", "apex ft"
+        "height feet", "height ft", "apex feet", "apex ft", "apex height", "max height"
+    ],
+    "carry_side_feet": [
+        "carry side", "carry_side", "carryside", "carry side (ft)", "carry side feet",
+        "carry side (feet)", "carry_side_feet", "lateral carry", "side carry"
+    ],
+    "launch_direction_degrees": [
+        "launch direction", "launch_direction", "launchdirection", "direction",
+        "launch direction (deg)", "launch direction (°)", "launch_direction_degrees",
+        "start direction", "start_direction", "heading", "launch heading"
+    ],
+    "from_pin_yards": [
+        "from pin", "from_pin", "frompin", "distance to pin", "pin distance",
+        "from pin (yards)", "from pin (yds)", "from pin yards", "from_pin_yards"
     ],
     "shot_number": [
         "shot number", "shot_number", "shotnumber", "shot #", "shot no", "number"
     ],
     "club_path_degrees": [
-        "club path", "club_path", "clubpath", "path", 
+        "club path", "club_path", "clubpath", "path", "club path degrees",
         "club path (deg)", "club path (°)", "club_path_degrees"
     ],
     "face_angle_degrees": [
-        "face angle", "face_angle", "faceangle", "face", 
+        "face angle", "face_angle", "faceangle", "face", "face angle degrees",
         "face angle (deg)", "face angle (°)", "face_angle_degrees"
     ],
     "attack_angle_degrees": [
-        "attack angle", "attack_angle", "attackangle", "angle of attack", 
+        "attack angle", "attack_angle", "attackangle", "angle of attack", "attack angle degrees",
         "attack angle (deg)", "attack angle (°)", "attack_angle_degrees"
     ],
     "shot_date": [
@@ -167,16 +180,28 @@ NUMERIC_FIELDS = [
     "attack_angle_degrees"
 ]
 
-# Valid database fields from the range_shots and golf_shots tables
+# Valid database fields from the golf_shots table
 DB_FIELDS = {
-    "club", "shot_number", "shot_type", "source_system",
+    # Core shot fields
+    "hole_id", "session_id", "club", "shot_number", "shot_type", "source_system",
+    
+    # Launch parameters
     "ball_speed_mph", "club_speed_mph", "smash_factor",
     "launch_angle_degrees", "spin_rate_rpm", "spin_axis_degrees",
+    
+    # Distance and accuracy fields
     "carry_distance_yards", "total_distance_yards", "side_deviation_yards",
     "height_feet", "launch_direction_degrees", "from_pin_yards", 
-    "carry_side_feet", "carry_efficiency", "height_to_carry_ratio",
-    "spin_to_launch_ratio", "club_path_degrees", "face_angle_degrees",
-    "attack_angle_degrees", "shot_date", "notes", "is_penalty"
+    "carry_side_feet",
+    
+    # Swing data
+    "club_path_degrees", "face_angle_degrees", "attack_angle_degrees",
+    
+    # Calculated efficiency metrics
+    "carry_efficiency", "height_to_carry_ratio", "spin_to_launch_ratio", 
+    
+    # Metadata
+    "shot_date", "notes", "is_penalty"
 }
 
 def detect_data_source(header_row: List[str]) -> str:
@@ -260,7 +285,14 @@ def normalize_header(header: str) -> str:
     # Replace underscores with spaces
     header = header.replace('_', ' ')
     
-    # Remove parentheses and their contents
+    # Remove parentheses and their contents - BUT save the unit information
+    # First, extract any unit information in parentheses
+    unit_match = re.search(r'\((.*?)\)', header)
+    unit_info = ""
+    if unit_match:
+        unit_info = unit_match.group(1).lower()
+        
+    # Now remove parentheses and their contents
     header = re.sub(r'\(.*?\)', '', header)
     
     # Replace special characters with spaces (but keep letters, numbers, spaces)
@@ -268,6 +300,19 @@ def normalize_header(header: str) -> str:
     
     # Remove extra spaces and standardize case
     normalized = ' '.join(normalized.split())
+    
+    # Add unit as a suffix in the normalized form
+    if unit_info:
+        if unit_info == "mph":
+            normalized += " mph"
+        elif unit_info == "ft" or unit_info == "feet":
+            normalized += " feet"
+        elif unit_info == "yds" or unit_info == "yards":
+            normalized += " yards"
+        elif unit_info == "deg" or unit_info == "°":
+            normalized += " degrees"
+        elif unit_info == "rpm":
+            normalized += " rpm"
     
     if DEBUG_IMPORT and normalized != header.lower().strip():
         logger.debug(f"Normalized header: '{header}' -> '{normalized}'")

@@ -110,12 +110,25 @@ def insert_shots(
         # Prepare each shot
         prepared_shots = []
         for i, shot in enumerate(shots_list):
-            prepared_shots.append(prepare_shot_data(
+            prepared_shot = prepare_shot_data(
                 shot, 
                 context_id, 
                 context_type,
                 shot_number=i+1 if len(shots_list) > 1 else shot.get('shot_number')
-            ))
+            )
+            
+            # Filter out any fields that don't belong in the database
+            # Import the DB_FIELDS from csv_import to ensure consistency
+            from backend.database.supabase_data.csv_import import DB_FIELDS
+            valid_shot = {k: v for k, v in prepared_shot.items() if k in DB_FIELDS}
+            
+            # Add to prepared shots
+            prepared_shots.append(valid_shot)
+            
+            # Debug logging if enabled
+            import os
+            if os.environ.get('DEBUG_IMPORT', '0') == '1':
+                logger.debug(f"Prepared shot for insertion: {valid_shot}")
         
         # Pass token to satisfy RLS policies
         supabase = get_supabase(token)
