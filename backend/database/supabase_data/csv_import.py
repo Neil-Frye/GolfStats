@@ -90,6 +90,18 @@ NUMERIC_FIELDS = [
     "attack_angle_degrees"
 ]
 
+# Valid database fields from the range_shots and golf_shots tables
+DB_FIELDS = {
+    "club", "shot_number", "shot_type", "source_system",
+    "ball_speed_mph", "club_speed_mph", "smash_factor",
+    "launch_angle_degrees", "spin_rate_rpm", "spin_axis_degrees",
+    "carry_distance_yards", "total_distance_yards", "side_deviation_yards",
+    "height_feet", "launch_direction_degrees", "from_pin_yards", 
+    "carry_side_feet", "carry_efficiency", "height_to_carry_ratio",
+    "spin_to_launch_ratio", "club_path_degrees", "face_angle_degrees",
+    "attack_angle_degrees", "shot_date", "notes", "is_penalty"
+}
+
 def detect_data_source(header_row: List[str]) -> str:
     """
     Detect the likely source of the CSV data based on header names.
@@ -152,11 +164,24 @@ def normalize_header(header: str) -> str:
     Returns:
         Normalized header string
     """
-    # Replace special characters with spaces
-    normalized = re.sub(r'[^a-zA-Z0-9\s]', ' ', header)
-    
     # Replace camel case with spaces (e.g., BallSpeed -> Ball Speed)
-    normalized = re.sub(r'([a-z])([A-Z])', r'\1 \2', normalized)
+    # Do this before lowercase to properly handle camelCase
+    header = re.sub(r'([a-z])([A-Z])', r'\1 \2', header)
+    
+    # Also handle cases like LaunchAngle -> Launch Angle
+    header = re.sub(r'([A-Z])([A-Z][a-z])', r'\1 \2', header)
+    
+    # Lowercase the entire header
+    header = header.lower()
+    
+    # Replace underscores with spaces
+    header = header.replace('_', ' ')
+    
+    # Remove parentheses and their contents
+    header = re.sub(r'\(.*?\)', '', header)
+    
+    # Replace special characters with spaces (but keep letters, numbers, spaces)
+    normalized = re.sub(r'[^a-z0-9\s]', ' ', header)
     
     # Remove extra spaces and standardize case
     normalized = ' '.join(normalized.split())
@@ -173,15 +198,15 @@ def map_csv_field(field_name: str, source: str) -> Optional[str]:
     Returns:
         Database field name or None if no mapping exists
     """
-    # First try exact match in source-specific mappings
+    # 1. First try exact match in source-specific mappings
     if field_name in FIELD_MAPPINGS[source]:
         return FIELD_MAPPINGS[source][field_name]
     
-    # Then try exact match in default mappings
+    # 2. Then try exact match in default mappings
     if field_name in FIELD_MAPPINGS["default"]:
         return FIELD_MAPPINGS["default"][field_name]
     
-    # Try normalized version
+    # 3. Try normalized version
     normalized = normalize_header(field_name)
     
     # Check normalized against source-specific mappings
@@ -194,7 +219,17 @@ def map_csv_field(field_name: str, source: str) -> Optional[str]:
         if normalized == normalize_header(csv_field):
             return db_field
     
-    # No mapping found
+    # 4. Check if the field_name exactly matches a database field
+    if field_name in DB_FIELDS:
+        return field_name
+    
+    # 5. Check if the normalized field_name with spaces replaced by underscores matches a database field
+    field_normalized_with_underscores = normalized.replace(' ', '_')
+    if field_normalized_with_underscores in DB_FIELDS:
+        return field_normalized_with_underscores
+    
+    # 6. No mapping found
+    logger.debug(f"Unable to map field: {field_name}, normalized: {normalized}")
     return None
 
 def parse_csv_data(csv_content: str) -> Tuple[List[Dict[str, Any]], List[str]]:
@@ -230,6 +265,7 @@ def parse_csv_data(csv_content: str) -> Tuple[List[Dict[str, Any]], List[str]]:
         db_field = map_csv_field(field, source)
         if db_field:
             field_mapping[i] = db_field
+            logger.debug(f"Mapped field '{field}' -> '{db_field}'")
         else:
             unmapped_fields.append(field)
             logger.warning(f"Unmapped field: {field}")
