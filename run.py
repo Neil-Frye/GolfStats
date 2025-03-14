@@ -20,8 +20,8 @@ import threading
 project_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, project_root)
 
-# Import configuration
-from config.config import config
+# Import configuration from the new centralized environment module
+from config.env import env
 
 def run_webapp(host='0.0.0.0', port=8000):
     """
@@ -32,7 +32,7 @@ def run_webapp(host='0.0.0.0', port=8000):
         port: Port to listen on
     """
     from backend.app import app
-    app.run(host=host, port=port, debug=config["app"]["debug"])
+    app.run(host=host, port=port, debug=env["app"]["debug"])
 
 def run_scheduler():
     """

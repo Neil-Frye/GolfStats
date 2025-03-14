@@ -33,12 +33,15 @@ def create_app():
         logger.info("Detected Render environment")
         app.config['RENDER'] = True
     
-    # Load configuration
-    from config.config import config
+    # Load configuration from the centralized environment module
+    from config.env import env
     app.config.update(
-        SECRET_KEY=config["app"]["secret_key"],
-        DEBUG=config["app"]["debug"]
+        SECRET_KEY=env["app"]["secret_key"],
+        DEBUG=env["app"]["debug"],
+        ENV=env.env_name
     )
+    
+    logger.info(f"Application configured for {env.env_name} environment")
     
     # Initialize authentication modules - this will also set up the before_first_request handler
     from backend.auth import init_app as init_auth
@@ -86,6 +89,9 @@ def register_blueprints(app):
     from flask import Blueprint, jsonify
     health_bp = Blueprint('health', __name__)
     
+    # Import the environment module for the health check endpoint
+    from config.env import env
+    
     @health_bp.route('/health')
     def health():
         """Health check endpoint."""
@@ -94,7 +100,7 @@ def register_blueprints(app):
             "version": "1.0.0",
             "supabase": True,
             "rls_enabled": True,
-            "environment": os.environ.get('APP_ENVIRONMENT', 'production'),
+            "environment": env.env_name,
             "render": os.environ.get('RENDER') == '1'
         })
     

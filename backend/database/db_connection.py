@@ -20,7 +20,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
 
-from config.config import config
+# Import from the new centralized environment module
+from config.env import env
 
 # Configure logging
 logging.basicConfig(
@@ -29,125 +30,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Determine which database to use from config
-db_type = config["database"]["type"]
+# Get database connection information from the environment
+db_type = env.get_database_type()
+DATABASE_URI = env.get_database_uri()
+connect_args = env.get_db_connect_args()
 
-# Build the database URI based on configuration
-if db_type == "sqlite":
-    db_path = config["database"]["sqlite"]["path"]
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    DATABASE_URI = f"sqlite:///{db_path}"
-    connect_args = {"check_same_thread": False}
-    poolclass = None
-    
-elif db_type == "postgresql":
-    pg_config = config["database"]["postgresql"]
-    DATABASE_URI = f"postgresql://{pg_config['user']}:{pg_config['password']}@{pg_config['host']}:{pg_config['port']}/{pg_config['database']}"
-    connect_args = {}
+# Determine the appropriate pool class
+poolclass = None
+if db_type in ["postgresql", "supabase"]:
     poolclass = QueuePool
-    
-elif db_type == "supabase":
-    # Initialize DATABASE_URI to empty to avoid reference errors
-    DATABASE_URI = ""
-    
-    # Get Supabase credentials
-    supabase_password = os.environ.get("SUPABASE_PASSWORD", "")
-    supabase_api_key = os.environ.get("SUPABASE_API_KEY", "") or os.environ.get("SUPABASE_KEY", "")
-    supabase_db_url = os.environ.get("SUPABASE_DB_URL", "")
-    
-    logger.info(f"Supabase credentials available: password={bool(supabase_password)}, API key={bool(supabase_api_key)}, DB URL={bool(supabase_db_url)}")
-    
-    # Debug the supabase configuration we're receiving
-    if "supabase" in config:
-        logger.info(f"Config has supabase section: {list(config['supabase'].keys())}")
-        has_db_url = "db_url" in config["supabase"] and config["supabase"]["db_url"]
-        db_url_is_stars = has_db_url and "********" in str(config["supabase"]["db_url"])
-        logger.info(f"Config supabase.db_url exists: {has_db_url}, contains stars: {db_url_is_stars}")
-    
-    if "database" in config and "supabase" in config["database"]:
-        logger.info(f"Config has database.supabase section: {list(config['database']['supabase'].keys())}")
-        has_conn_url = "connection_url" in config["database"]["supabase"] and config["database"]["supabase"]["connection_url"]
-        conn_url_is_stars = has_conn_url and "********" in str(config["database"]["supabase"]["connection_url"])
-        logger.info(f"Config database.supabase.connection_url exists: {has_conn_url}, contains stars: {conn_url_is_stars}")
-    
-    # Try different methods to construct the DATABASE_URI
-    if "supabase" in config["database"] and "connection_url" in config["database"]["supabase"] and config["database"]["supabase"]["connection_url"]:
-        # Method 1: Use the pre-parsed connection URL from config
-        DATABASE_URI = config["database"]["supabase"]["connection_url"]
-        
-        # Make sure we don't have stars in the actual connection string
-        if "********" in DATABASE_URI:
-            logger.warning("Connection URL contains stars! This suggests a logging issue. Falling back to environment variables.")
-            DATABASE_URI = ""  # Reset since it contains stars
-        else:
-            logger.info(f"Using Supabase connection URL from parsed config at {config['database']['supabase']['host']}")
-    
-    # If we don't have a valid DATABASE_URI yet, try other methods
-    if not DATABASE_URI:
-        if supabase_db_url:
-            # Method 2: Use the DB_URL environment variable directly
-            DATABASE_URI = supabase_db_url
-            logger.info(f"Using SUPABASE_DB_URL environment variable directly")
-        else:
-            # Method 3: Construct the URL using available credentials
-            # For Supabase, some sources say to use the password, others say to use the API key
-            # We'll try both options but prefer the dedicated password
-            db_password = supabase_password or supabase_api_key
-            
-            if not db_password:
-                logger.warning("No Supabase password or API key found! Connection will likely fail.")
-                db_password = ""
-            
-            DATABASE_URI = f"postgresql://postgres:{db_password}@db.qfuvwfghevxhnkfrwmwk.supabase.co:5432/postgres"
-            logger.info(f"Constructed Supabase connection URL with explicit parameters")
-    
-    # Debug output - mask password for security but show structure
-    debug_uri = DATABASE_URI
-    if '@' in debug_uri:
-        parts = debug_uri.split('@')
-        auth_part = parts[0].split(':')
-        # Replace password with ****** but keep structure visible
-        if len(auth_part) > 2:
-            masked_uri = f"{auth_part[0]}:******@{parts[1]}"
-            logger.info(f"Final connection string structure: {masked_uri}")
-    
-    # SSL required for Supabase connections
-    connect_args = {"sslmode": "require"}
-    poolclass = QueuePool
-    
-elif db_type == "mongodb":
-    # MongoDB support would require pymongo instead of SQLAlchemy
-    # This is a placeholder for potential future implementation
-    mongo_config = config["database"]["mongodb"]
-    logger.warning("MongoDB support is not yet fully implemented")
-    DATABASE_URI = f"mongodb://{mongo_config['host']}:{mongo_config['port']}/{mongo_config['database']}"
-    connect_args = {}
-    poolclass = None
-    
-else:
-    raise ValueError(f"Unsupported database type: {db_type}")
 
 # Create database engine with appropriate settings
 engine_args = {
-    "echo": config["app"]["debug"],  # SQL echo for debugging
+    "echo": env["app"]["debug"],  # SQL echo for debugging
     "connect_args": connect_args
 }
 
 if poolclass:
     engine_args["poolclass"] = poolclass
-    # Configure PostgreSQL specific pooling settings
+    
+    # Add pool settings if applicable
     if db_type in ["postgresql", "supabase"]:
-        engine_args["pool_size"] = 5  # Number of connections to keep open
-        engine_args["max_overflow"] = 10  # Max number of connections to create beyond pool_size
-        engine_args["pool_timeout"] = 30  # Seconds to wait before giving up on getting a connection
-        engine_args["pool_recycle"] = 1800  # Recycle connections after 30 minutes
-        
-        # For Supabase pooler connections, adjust settings
-        if db_type == "supabase" and config["supabase"]["use_pooler"]:
-            # Pooler already manages connection pooling, so we use minimal SQLAlchemy pooling
-            engine_args["pool_size"] = 2
-            engine_args["max_overflow"] = 3
+        pool_settings = env.get_db_pool_settings()
+        engine_args.update(pool_settings)
 
 # For logging, mask credentials but still show the host
 if '@' in DATABASE_URI:
@@ -163,7 +68,7 @@ else:
 logger.info(f"Engine arguments: {engine_args}")
 logger.info(f"SSL mode: {connect_args.get('sslmode', 'not specified')}")
 
-# Print without logging to ensure visibility
+# Print database connection info for visibility
 print(f"\n*** DATABASE CONNECTION INFORMATION ***")
 print(f"Database type: {db_type}")
 if '@' in DATABASE_URI:
@@ -262,7 +167,7 @@ def get_mongodb_client() -> Optional[Any]:
     
     try:
         from pymongo import MongoClient
-        mongo_config = config["database"]["mongodb"]
+        mongo_config = env["database"]["mongodb"]
         client = MongoClient(
             host=mongo_config["host"],
             port=mongo_config["port"]
