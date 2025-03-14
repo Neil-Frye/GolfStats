@@ -967,6 +967,10 @@ button.primary,
     padding: 10px 20px !important;
     z-index: 100 !important; /* Ensure the button is above other elements */
     position: relative !important; /* Make z-index work */
+    white-space: nowrap !important; /* Prevent text wrapping */
+    overflow: visible !important; /* Prevent text from being cut off */
+    height: auto !important; /* Allow height to adjust to content */
+    line-height: normal !important; /* Fix text vertical alignment */
 }
 
 .btn-secondary {
