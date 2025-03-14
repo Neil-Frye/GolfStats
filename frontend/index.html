@@ -1042,6 +1042,57 @@
                                 <span>Add New Club</span>
                             </div>
                         </div>
+                        
+                        <!-- Add Club Modal -->
+                        <div id="add-club-modal" class="modal">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h2>Add New Club</h2>
+                                    <button class="close-modal">&times;</button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="add-club-form">
+                                        <div class="form-group">
+                                            <label for="club-name">Club Name</label>
+                                            <input type="text" id="club-name" name="name" required>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="club-type">Club Type</label>
+                                            <select id="club-type" name="club_type" required>
+                                                <option value="">Select club type</option>
+                                                <option value="Driver">Driver</option>
+                                                <option value="Wood">Wood</option>
+                                                <option value="Hybrid">Hybrid</option>
+                                                <option value="Iron">Iron</option>
+                                                <option value="Wedge">Wedge</option>
+                                                <option value="Putter">Putter</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="club-brand">Brand (Optional)</label>
+                                            <input type="text" id="club-brand" name="brand">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="club-model">Model (Optional)</label>
+                                            <input type="text" id="club-model" name="model">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="club-loft">Loft (Optional)</label>
+                                            <input type="number" id="club-loft" name="loft" step="0.1">
+                                        </div>
+                                        
+                                        <div class="form-buttons">
+                                            <button type="button" class="btn-secondary cancel-btn">Cancel</button>
+                                            <button type="submit" class="btn-primary">Add Club</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="club-distances-chart">
@@ -1398,10 +1449,11 @@
                     
                     <div class="form-group">
                         <label for="shot-club">Club</label>
-                        <select id="shot-club" name="club" required>
+                        <select id="shot-club" name="club">
                             <option value="">Select club</option>
                             <!-- Club options will be dynamically populated -->
                         </select>
+                        <small class="input-help-text">Leave blank or select "No Club / Unknown" if not tracking by club</small>
                     </div>
                     
                     <div class="form-group">
