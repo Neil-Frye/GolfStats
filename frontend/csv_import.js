@@ -8,9 +8,10 @@
  * @param {File} file - The CSV file to import
  * @param {string|null} sourceSystem - Optional source system override (e.g., 'trackman', 'skytrak')
  * @param {string} shotType - Shot type (default: 'range')
+ * @param {boolean} debugMode - Enable debug mode for extra logging (default: false)
  * @returns {Promise<Object>} - Promise resolving to the import results
  */
-async function importCsvToRangeSession(sessionId, file, sourceSystem = null, shotType = 'range') {
+async function importCsvToRangeSession(sessionId, file, sourceSystem = null, shotType = 'range', debugMode = false) {
     // Validate input
     if (!sessionId) {
         throw new Error('Session ID is required');
@@ -38,6 +39,11 @@ async function importCsvToRangeSession(sessionId, file, sourceSystem = null, sho
         formData.append('shot_type', shotType);
     }
     
+    // Enable debug mode if requested
+    if (debugMode) {
+        formData.append('debug_import', '1');
+    }
+    
     try {
         // Send request to API
         const response = await fetch(`/api/range-sessions/${sessionId}/import-csv`, {
@@ -51,7 +57,13 @@ async function importCsvToRangeSession(sessionId, file, sourceSystem = null, sho
         
         // Check for errors
         if (!response.ok) {
-            throw new Error(result.error || 'Failed to import CSV');
+            // Enhanced error handling - get detailed error from import_stats if available
+            const errorMessage = result.error || 'Failed to import CSV';
+            const error = new Error(errorMessage);
+            
+            // Attach all result data to the error object for detailed error handling
+            error.importResult = result;
+            throw error;
         }
         
         return result;

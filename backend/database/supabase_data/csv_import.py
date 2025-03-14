@@ -6,13 +6,90 @@ This module provides functions to import golf data from CSV files.
 import csv
 import io
 import logging
+import os
 from typing import Dict, Any, List, Optional, Tuple
 import re
 
 from backend.database.supabase_data.shots import add_range_shots
 from backend.database.supabase_data.common import logger
 
-# Define field mappings for different data sources
+# Check if debug mode is enabled via environment variable
+DEBUG_IMPORT = os.environ.get('DEBUG_IMPORT', '0') == '1'
+
+# Define field mappings for different data sources using a more flexible approach
+# Format: "database_field_name": ["list", "of", "possible", "header", "variants"]
+HEADER_VARIANTS = {
+    "club": [
+        "club", "club name", "club type", "clubs", "clubname", "clubtype", 
+        "club_name", "club_type"
+    ],
+    "ball_speed_mph": [
+        "ball speed", "ball_speed", "ballspeed", "ball speed (mph)", 
+        "ball_speed_mph", "ballspeedmph", "speed", "ball mph", "ball_mph"
+    ],
+    "club_speed_mph": [
+        "club speed", "club_speed", "clubspeed", "club speed (mph)", 
+        "club_speed_mph", "clubspeedmph", "head speed", "headspeed", "swing speed"
+    ],
+    "smash_factor": [
+        "smash factor", "smash_factor", "smashfactor", "sm factor", "smash"
+    ],
+    "launch_angle_degrees": [
+        "launch angle", "launch_angle", "launchangle", "launch (deg)", "launch", 
+        "angle", "launch angle (deg)", "launch angle (°)", "launch_angle_degrees"
+    ],
+    "spin_rate_rpm": [
+        "spin rate", "spin_rate", "spinrate", "spin (rpm)", "spin", "backspin", 
+        "back spin", "spin rate (rpm)", "spin_rate_rpm", "total spin"
+    ],
+    "spin_axis_degrees": [
+        "spin axis", "spin_axis", "spinaxis", "axis", "spin direction", 
+        "spin axis (deg)", "spin axis (°)", "spin_axis_degrees"
+    ],
+    "carry_distance_yards": [
+        "carry", "carry distance", "carry_distance", "carrydistance", 
+        "carry (yards)", "carry (yds)", "carry yards", "carry yds", 
+        "carry_distance_yards", "carry_yards"
+    ],
+    "total_distance_yards": [
+        "total", "total distance", "total_distance", "totaldistance", 
+        "total (yards)", "total (yds)", "total yards", "total yds", 
+        "total_distance_yards", "total_yards"
+    ],
+    "side_deviation_yards": [
+        "side", "side deviation", "side_deviation", "sidedeviation", 
+        "side (yards)", "side (yds)", "side yards", "side yds", 
+        "side_deviation_yards", "side_yards", "lateral"
+    ],
+    "height_feet": [
+        "height", "apex", "max height", "peak height", 
+        "height (feet)", "height (ft)", "apex (feet)", "apex (ft)", 
+        "height feet", "height ft", "apex feet", "apex ft"
+    ],
+    "shot_number": [
+        "shot number", "shot_number", "shotnumber", "shot #", "shot no", "number"
+    ],
+    "club_path_degrees": [
+        "club path", "club_path", "clubpath", "path", 
+        "club path (deg)", "club path (°)", "club_path_degrees"
+    ],
+    "face_angle_degrees": [
+        "face angle", "face_angle", "faceangle", "face", 
+        "face angle (deg)", "face angle (°)", "face_angle_degrees"
+    ],
+    "attack_angle_degrees": [
+        "attack angle", "attack_angle", "attackangle", "angle of attack", 
+        "attack angle (deg)", "attack angle (°)", "attack_angle_degrees"
+    ],
+    "shot_date": [
+        "date", "shot date", "shot_date", "shotdate", "time", "datetime"
+    ],
+    "notes": [
+        "notes", "comments", "description", "note", "comment"
+    ]
+}
+
+# Legacy field mappings for backward compatibility
 # Format: "CSV Column Name": "database_field_name"
 FIELD_MAPPINGS = {
     # Default mappings for common field names
@@ -164,6 +241,12 @@ def normalize_header(header: str) -> str:
     Returns:
         Normalized header string
     """
+    # Check for BOM marker and remove it if present
+    if header.startswith('\ufeff'):
+        header = header[1:]
+        if DEBUG_IMPORT:
+            logger.debug(f"Removed BOM marker from header: {header}")
+    
     # Replace camel case with spaces (e.g., BallSpeed -> Ball Speed)
     # Do this before lowercase to properly handle camelCase
     header = re.sub(r'([a-z])([A-Z])', r'\1 \2', header)
@@ -185,6 +268,10 @@ def normalize_header(header: str) -> str:
     
     # Remove extra spaces and standardize case
     normalized = ' '.join(normalized.split())
+    
+    if DEBUG_IMPORT and normalized != header.lower().strip():
+        logger.debug(f"Normalized header: '{header}' -> '{normalized}'")
+        
     return normalized.strip()
 
 def map_csv_field(field_name: str, source: str) -> Optional[str]:
@@ -198,41 +285,74 @@ def map_csv_field(field_name: str, source: str) -> Optional[str]:
     Returns:
         Database field name or None if no mapping exists
     """
-    # 1. First try exact match in source-specific mappings
+    # First normalize the field name for consistent matching
+    normalized = normalize_header(field_name)
+    
+    # 1. Check against our comprehensive HEADER_VARIANTS dictionary
+    for db_field, variants in HEADER_VARIANTS.items():
+        # Try exact match on normalized variants
+        if normalized in variants:
+            if DEBUG_IMPORT:
+                logger.debug(f"Found exact match in HEADER_VARIANTS: '{field_name}' -> '{db_field}'")
+            return db_field
+            
+        # Try fuzzy matching with startswith
+        for variant in variants:
+            if normalized.startswith(variant) or variant.startswith(normalized):
+                if DEBUG_IMPORT:
+                    logger.debug(f"Found fuzzy match in HEADER_VARIANTS: '{field_name}' -> '{db_field}' (via '{variant}')")
+                return db_field
+                
+        # Try word-by-word matching (e.g. "carry dist" matches "carry distance")
+        if any(all(word in normalized.split() for word in variant.split()) for variant in variants):
+            if DEBUG_IMPORT:
+                logger.debug(f"Found word match in HEADER_VARIANTS: '{field_name}' -> '{db_field}'")
+            return db_field
+    
+    # 2. Legacy approach - try exact match in source-specific mappings
     if field_name in FIELD_MAPPINGS[source]:
         return FIELD_MAPPINGS[source][field_name]
     
-    # 2. Then try exact match in default mappings
+    # 3. Legacy approach - try exact match in default mappings
     if field_name in FIELD_MAPPINGS["default"]:
         return FIELD_MAPPINGS["default"][field_name]
     
-    # 3. Try normalized version
-    normalized = normalize_header(field_name)
-    
-    # Check normalized against source-specific mappings
+    # 4. Legacy approach - Check normalized against source-specific mappings
     for csv_field, db_field in FIELD_MAPPINGS[source].items():
         if normalized == normalize_header(csv_field):
             return db_field
     
-    # Check normalized against default mappings
+    # 5. Legacy approach - Check normalized against default mappings
     for csv_field, db_field in FIELD_MAPPINGS["default"].items():
         if normalized == normalize_header(csv_field):
             return db_field
     
-    # 4. Check if the field_name exactly matches a database field
+    # 6. Legacy approach - Check if the field_name exactly matches a database field
     if field_name in DB_FIELDS:
         return field_name
     
-    # 5. Check if the normalized field_name with spaces replaced by underscores matches a database field
+    # 7. Legacy approach - Check if normalized with underscores matches a DB field
     field_normalized_with_underscores = normalized.replace(' ', '_')
     if field_normalized_with_underscores in DB_FIELDS:
         return field_normalized_with_underscores
     
-    # 6. No mapping found
-    logger.debug(f"Unable to map field: {field_name}, normalized: {normalized}")
+    # Try partial matching against database fields as a last resort
+    for db_field in DB_FIELDS:
+        field_parts = db_field.split('_')
+        # Check if the main term is in the normalized field (e.g. "carry" in "carry_distance_yards")
+        if field_parts and field_parts[0] in normalized:
+            if DEBUG_IMPORT:
+                logger.debug(f"Found partial DB field match: '{field_name}' -> '{db_field}' (via '{field_parts[0]}')")
+            return db_field
+    
+    # No mapping found
+    if DEBUG_IMPORT:
+        logger.warning(f"Unable to map field: '{field_name}', normalized: '{normalized}'")
+    else:
+        logger.debug(f"Unable to map field: '{field_name}', normalized: '{normalized}'")
     return None
 
-def parse_csv_data(csv_content: str) -> Tuple[List[Dict[str, Any]], List[str]]:
+def parse_csv_data(csv_content: str) -> Tuple[List[Dict[str, Any]], List[str], Dict[str, Any]]:
     """
     Parse CSV content into a list of shot dictionaries.
     
@@ -240,7 +360,7 @@ def parse_csv_data(csv_content: str) -> Tuple[List[Dict[str, Any]], List[str]]:
         csv_content: CSV file content as string
         
     Returns:
-        Tuple of (list of shot dictionaries, list of unmapped fields)
+        Tuple of (list of shot dictionaries, list of unmapped fields, import stats)
     """
     # Parse CSV content
     csv_file = io.StringIO(csv_content)
@@ -251,7 +371,11 @@ def parse_csv_data(csv_content: str) -> Tuple[List[Dict[str, Any]], List[str]]:
         header_row = next(reader)
     except StopIteration:
         logger.error("CSV file is empty or invalid")
-        return [], []
+        return [], [], {"error": "CSV file is empty or invalid"}
+    
+    # Debug logging for the header row
+    if DEBUG_IMPORT:
+        logger.debug(f"DEBUG: Raw header row read from CSV: {header_row}")
     
     # Detect data source
     source = detect_data_source(header_row)
@@ -261,42 +385,81 @@ def parse_csv_data(csv_content: str) -> Tuple[List[Dict[str, Any]], List[str]]:
     field_mapping = {}
     unmapped_fields = []
     
+    # Track stats for the import process
+    import_stats = {
+        "total_fields": len(header_row),
+        "mapped_fields": 0,
+        "unmapped_fields": 0,
+        "data_source": source,
+        "total_rows": 0,
+        "skipped_rows": 0,
+        "empty_rows": 0,
+        "imported_rows": 0,
+        "invalid_numeric_values": 0,
+        "warnings": []
+    }
+    
     for i, field in enumerate(header_row):
         db_field = map_csv_field(field, source)
         if db_field:
             field_mapping[i] = db_field
-            logger.debug(f"Mapped field '{field}' -> '{db_field}'")
+            import_stats["mapped_fields"] += 1
+            if DEBUG_IMPORT:
+                logger.debug(f"Mapped field '{field}' -> '{db_field}'")
+            else:
+                logger.debug(f"Mapped field '{field}' -> '{db_field}'")
         else:
             unmapped_fields.append(field)
+            import_stats["unmapped_fields"] += 1
             logger.warning(f"Unmapped field: {field}")
     
     # Parse data rows
     shots_data = []
+    row_index = 0
+    
     for row in reader:
+        row_index += 1
+        import_stats["total_rows"] += 1
+        
         if not any(row):  # Skip empty rows
+            import_stats["empty_rows"] += 1
             continue
             
         shot_data = {}
+        row_has_data = False
+        
         for i, value in enumerate(row):
-            if i in field_mapping and value.strip():
+            if i in field_mapping:
                 field_name = field_mapping[i]
                 
-                # Convert numeric fields
-                if field_name in NUMERIC_FIELDS:
-                    try:
-                        # Remove any non-numeric characters (except decimal point)
-                        clean_value = re.sub(r'[^\d.-]', '', value)
-                        shot_data[field_name] = float(clean_value)
-                    except ValueError:
-                        # Skip invalid numeric values
-                        logger.warning(f"Invalid numeric value: {value} for field: {field_name}")
-                else:
-                    shot_data[field_name] = value
+                # Even empty values can be processed for optional fields
+                if value.strip():
+                    row_has_data = True
+                    
+                    # Convert numeric fields
+                    if field_name in NUMERIC_FIELDS:
+                        try:
+                            # Remove any non-numeric characters (except decimal point)
+                            clean_value = re.sub(r'[^\d.-]', '', value)
+                            shot_data[field_name] = float(clean_value)
+                        except ValueError:
+                            # Track invalid numeric values but don't fail the entire import
+                            import_stats["invalid_numeric_values"] += 1
+                            warning_msg = f"Invalid numeric value: '{value}' for field: {field_name} in row {row_index}"
+                            import_stats["warnings"].append(warning_msg)
+                            logger.warning(warning_msg)
+                    else:
+                        shot_data[field_name] = value
         
-        if shot_data:  # Only add non-empty shot data
+        if row_has_data:
+            # Check if we have at least one meaningful field with data
             shots_data.append(shot_data)
+            import_stats["imported_rows"] += 1
+        else:
+            import_stats["skipped_rows"] += 1
     
-    return shots_data, unmapped_fields
+    # Return extended information
+    return shots_data, unmapped_fields, import_stats
 
 def import_csv_to_range_session(
     session_id: int, 
@@ -304,7 +467,7 @@ def import_csv_to_range_session(
     source_system: str = None,
     shot_type: str = 'range',
     token: str = None
-) -> Tuple[List[Dict[str, Any]], List[str]]:
+) -> Tuple[List[Dict[str, Any]], List[str], Dict[str, Any]]:
     """
     Import CSV data to a range session.
     
@@ -316,15 +479,29 @@ def import_csv_to_range_session(
         token: JWT token for authorization
         
     Returns:
-        Tuple of (list of created shots, list of unmapped fields)
+        Tuple of (list of created shots, list of unmapped fields, import stats)
     """
+    import_stats = {
+        "success": False,
+        "session_id": session_id,
+        "attempted_rows": 0,
+        "successful_rows": 0,
+        "warnings": [],
+        "errors": []
+    }
+    
     try:
-        # Parse CSV data
-        shots_data, unmapped_fields = parse_csv_data(csv_content)
+        # Parse CSV data with extended stats
+        shots_data, unmapped_fields, parse_stats = parse_csv_data(csv_content)
+        
+        # Merge the parse stats with our import stats
+        import_stats.update(parse_stats)
         
         if not shots_data:
-            logger.error("No valid shot data found in CSV")
-            return [], unmapped_fields
+            error_msg = "No valid shot data found in CSV"
+            logger.error(error_msg)
+            import_stats["errors"].append(error_msg)
+            return [], unmapped_fields, import_stats
         
         # Set session ID, shot type, and source system for all shots
         for shot in shots_data:
@@ -338,21 +515,41 @@ def import_csv_to_range_session(
                 shot['source_system'] = 'csv_import'
             
             # Calculate derived metrics if possible
-            if 'carry_distance_yards' in shot and 'ball_speed_mph' in shot and shot['ball_speed_mph'] > 0:
+            if 'carry_distance_yards' in shot and 'ball_speed_mph' in shot and shot.get('ball_speed_mph', 0) > 0:
                 shot['carry_efficiency'] = shot['carry_distance_yards'] / shot['ball_speed_mph']
                 
-            if 'height_feet' in shot and 'carry_distance_yards' in shot and shot['carry_distance_yards'] > 0:
+            if 'height_feet' in shot and 'carry_distance_yards' in shot and shot.get('carry_distance_yards', 0) > 0:
                 shot['height_to_carry_ratio'] = shot['height_feet'] / shot['carry_distance_yards']
                 
-            if 'spin_rate_rpm' in shot and 'launch_angle_degrees' in shot and shot['launch_angle_degrees'] > 0:
+            if 'spin_rate_rpm' in shot and 'launch_angle_degrees' in shot and shot.get('launch_angle_degrees', 0) > 0:
                 shot['spin_to_launch_ratio'] = shot['spin_rate_rpm'] / shot['launch_angle_degrees']
         
         # Add shots to session
+        import_stats["attempted_rows"] = len(shots_data)
         logger.info(f"Importing {len(shots_data)} shots to range session {session_id}")
-        created_shots = add_range_shots(session_id, shots_data, token=token)
         
-        return created_shots, unmapped_fields
+        # Handle the actual database operation
+        try:
+            created_shots = add_range_shots(session_id, shots_data, token=token)
+            import_stats["successful_rows"] = len(created_shots)
+            import_stats["success"] = True
+            
+            # Check if some shots weren't created
+            if len(created_shots) < len(shots_data):
+                warning_msg = f"Only {len(created_shots)} out of {len(shots_data)} shots were successfully imported"
+                import_stats["warnings"].append(warning_msg)
+                logger.warning(warning_msg)
+                
+            return created_shots, unmapped_fields, import_stats
+            
+        except Exception as db_error:
+            error_msg = f"Database error while importing shots: {str(db_error)}"
+            import_stats["errors"].append(error_msg)
+            logger.error(error_msg)
+            return [], unmapped_fields, import_stats
         
     except Exception as e:
-        logger.error(f"Error importing CSV data to range session {session_id}: {str(e)}")
-        return [], []
+        error_msg = f"Error importing CSV data to range session {session_id}: {str(e)}"
+        logger.error(error_msg)
+        import_stats["errors"].append(error_msg)
+        return [], [], import_stats
