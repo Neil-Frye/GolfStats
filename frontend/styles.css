@@ -927,10 +927,40 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Fix for button visibility issues */
-button, .btn, .add-btn, .new-round-btn {
+button, .btn, .add-btn, .new-round-btn, input[type="submit"], 
+.form-buttons button, #save-round-btn, #create-session-btn, #save-shot-btn {
     opacity: 1 !important;
     visibility: visible !important;
     pointer-events: auto !important;
+    display: inline-block !important;
+}
+
+/* Extra specific styles for the Save Round button */
+.modal-body .form-buttons .btn-primary, 
+#save-round-btn, 
+#save-round-form [type="submit"],
+#create-session-form [type="submit"],
+input[type="submit"],
+button[type="submit"],
+.form-buttons button,
+.modal-footer button,
+.btn-save,
+.btn-create,
+.btn-add,
+button.primary,
+.btn.primary {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    border: none !important;
+    display: inline-block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    margin-top: 10px !important;
+    padding: 10px 20px !important;
+    z-index: 100 !important; /* Ensure the button is above other elements */
+    position: relative !important; /* Make z-index work */
 }
 
 .btn-secondary {
