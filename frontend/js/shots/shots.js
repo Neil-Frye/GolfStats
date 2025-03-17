@@ -75,6 +75,9 @@ export function initShotsView() {
     addClubCard.addEventListener('click', showAddClubModal);
   }
   
+  // Initialize filter controls
+  initFilters();
+  
   // Initialize range session form
   initRangeSessionForm();
   
@@ -89,6 +92,159 @@ export function initShotsView() {
   
   // Fetch clubs for shot form
   loadUserClubs();
+}
+
+/**
+ * Initialize filter UI and event handlers
+ */
+function initFilters() {
+  // Look for the filter controls element
+  const filterControls = document.querySelector('.filter-controls');
+  if (!filterControls) return;
+  
+  // Create filter UI
+  const filterPanel = document.createElement('div');
+  filterPanel.className = 'advanced-filters';
+  filterPanel.innerHTML = `
+    <button id="show-filters-btn" class="btn-secondary small">
+      <i class="fas fa-filter"></i> Advanced Filters
+    </button>
+    
+    <div id="filters-panel" class="filters-panel" style="display: none;">
+      <div class="filters-header">
+        <h3>Filter Shots</h3>
+        <button id="close-filters-btn" class="btn-icon">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="filter-group">
+        <h4>Date Range</h4>
+        <div class="filter-row">
+          <div class="filter-field">
+            <label for="filter-date-from">From</label>
+            <input type="date" id="filter-date-from" class="filter-input">
+          </div>
+          <div class="filter-field">
+            <label for="filter-date-to">To</label>
+            <input type="date" id="filter-date-to" class="filter-input">
+          </div>
+        </div>
+      </div>
+      
+      <div class="filter-group">
+        <h4>Distance (Carry)</h4>
+        <div class="filter-row">
+          <div class="filter-field">
+            <label for="filter-min-distance">Min (yards)</label>
+            <input type="number" id="filter-min-distance" class="filter-input" min="0" max="400">
+          </div>
+          <div class="filter-field">
+            <label for="filter-max-distance">Max (yards)</label>
+            <input type="number" id="filter-max-distance" class="filter-input" min="0" max="400">
+          </div>
+        </div>
+      </div>
+      
+      <div class="filter-group">
+        <h4>Club Type</h4>
+        <select id="filter-club" class="filter-select">
+          <option value="all">All Clubs</option>
+          <!-- Clubs will be loaded dynamically -->
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <h4>Lie Type</h4>
+        <select id="filter-lie-type" class="filter-select">
+          <option value="all">All Lies</option>
+          <option value="tee">Tee</option>
+          <option value="fairway">Fairway</option>
+          <option value="rough">Rough</option>
+          <option value="sand">Sand/Bunker</option>
+          <option value="green">Green</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <h4>Shot Type</h4>
+        <select id="filter-shot-type" class="filter-select">
+          <option value="all">All Types</option>
+          <option value="range">Range</option>
+          <option value="sim">Simulator</option>
+          <option value="course">On Course</option>
+        </select>
+      </div>
+      
+      <div class="filter-actions">
+        <button id="apply-filters-btn" class="btn-primary">Apply Filters</button>
+        <button id="reset-filters-btn" class="btn-secondary">Reset</button>
+      </div>
+    </div>
+    
+    <div id="filter-stats" class="filter-stats"></div>
+  `;
+  
+  // Add the filter panel to the filter controls
+  filterControls.appendChild(filterPanel);
+  
+  // Set up event handlers
+  const showFiltersBtn = document.getElementById('show-filters-btn');
+  const closeFiltersBtn = document.getElementById('close-filters-btn');
+  const filtersPanel = document.getElementById('filters-panel');
+  const applyFiltersBtn = document.getElementById('apply-filters-btn');
+  const resetFiltersBtn = document.getElementById('reset-filters-btn');
+  
+  // Show/hide filters panel
+  showFiltersBtn.addEventListener('click', () => {
+    filtersPanel.style.display = 'block';
+  });
+  
+  closeFiltersBtn.addEventListener('click', () => {
+    filtersPanel.style.display = 'none';
+  });
+  
+  // Apply filters
+  applyFiltersBtn.addEventListener('click', () => {
+    if (currentShots.length > 0) {
+      renderShotsTable(currentShots);
+    }
+    filtersPanel.style.display = 'none';
+  });
+  
+  // Reset filters
+  resetFiltersBtn.addEventListener('click', () => {
+    // Reset date inputs
+    const dateFrom = document.getElementById('filter-date-from');
+    const dateTo = document.getElementById('filter-date-to');
+    
+    if (dateFrom) dateFrom.value = '';
+    if (dateTo) dateTo.value = '';
+    
+    // Reset distance inputs
+    const minDistance = document.getElementById('filter-min-distance');
+    const maxDistance = document.getElementById('filter-max-distance');
+    
+    if (minDistance) minDistance.value = '';
+    if (maxDistance) maxDistance.value = '';
+    
+    // Reset selects
+    const selects = ['filter-club', 'filter-lie-type', 'filter-shot-type'];
+    selects.forEach(id => {
+      const select = document.getElementById(id);
+      if (select) select.value = 'all';
+    });
+    
+    // Re-render with reset filters
+    if (currentShots.length > 0) {
+      renderShotsTable(currentShots);
+    }
+  });
+  
+  // Set up club filter dropdown once clubs are loaded
+  document.addEventListener('clubsLoaded', () => {
+    populateClubFilter();
+  });
 }
 
 /**
@@ -331,20 +487,90 @@ function updateSessionDetails(session) {
 }
 
 /**
+ * Apply filters to shots
+ * @param {Array} shots - List of shots
+ * @param {Object} filters - Filter criteria
+ * @returns {Array} - Filtered shots
+ */
+function applyFilters(shots, filters) {
+  if (!filters || Object.keys(filters).length === 0) {
+    return shots;
+  }
+  
+  return shots.filter(shot => {
+    // Date range filter
+    if (filters.dateFrom && filters.dateTo) {
+      const shotDate = new Date(shot.created_at || shot.shot_date);
+      const fromDate = new Date(filters.dateFrom);
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999); // End of the selected day
+      
+      if (shotDate < fromDate || shotDate > toDate) {
+        return false;
+      }
+    }
+    
+    // Distance threshold filter
+    if (filters.minDistance && shot.carry_distance_yards < filters.minDistance) {
+      return false;
+    }
+    
+    if (filters.maxDistance && shot.carry_distance_yards > filters.maxDistance) {
+      return false;
+    }
+    
+    // Club filter
+    if (filters.club && filters.club !== 'all' && shot.club !== filters.club) {
+      return false;
+    }
+    
+    // Lie type filter
+    if (filters.lieType && filters.lieType !== 'all' && 
+       (shot.from_location !== filters.lieType)) {
+      return false;
+    }
+    
+    // Shot type filter (range, sim, course)
+    if (filters.shotType && filters.shotType !== 'all' && 
+       (shot.shot_type !== filters.shotType)) {
+      return false;
+    }
+    
+    return true;
+  });
+}
+
+/**
  * Render the shots table
  * @param {Array} shots - List of shots
  */
 function renderShotsTable(shots) {
   const tbody = document.getElementById('shots-table').querySelector('tbody');
   
+  // Get current filters
+  const filters = getCurrentFilters();
+  
+  // Apply filters
+  const filteredShots = applyFilters(shots, filters);
+  
   // Sort shots by shot number
-  shots.sort((a, b) => a.shot_number - b.shot_number);
+  filteredShots.sort((a, b) => a.shot_number - b.shot_number);
   
   // Clear table body
   tbody.innerHTML = '';
   
+  // If no shots after filtering, show message
+  if (filteredShots.length === 0) {
+    tbody.innerHTML = `
+      <tr class="no-data-row">
+        <td colspan="12">No shots match the current filters</td>
+      </tr>
+    `;
+    return;
+  }
+  
   // Add rows for each shot
-  shots.forEach(shot => {
+  filteredShots.forEach(shot => {
     const row = document.createElement('tr');
     
     // Format values and handle nulls
@@ -400,10 +626,77 @@ function renderShotsTable(shots) {
     tbody.appendChild(row);
   });
   
+  // Update filter stats
+  updateFilterStats(filteredShots, shots.length);
+  
   // Hide empty state
   const emptyState = document.querySelector('.shots-empty-state');
   if (emptyState) {
     emptyState.style.display = 'none';
+  }
+}
+
+/**
+ * Get current filter values from the filter UI
+ * @returns {Object} - Filter values
+ */
+function getCurrentFilters() {
+  const filters = {};
+  
+  // Date range filter
+  const dateFrom = document.getElementById('filter-date-from');
+  const dateTo = document.getElementById('filter-date-to');
+  
+  if (dateFrom && dateFrom.value) {
+    filters.dateFrom = dateFrom.value;
+  }
+  
+  if (dateTo && dateTo.value) {
+    filters.dateTo = dateTo.value;
+  }
+  
+  // Distance threshold filter
+  const minDistance = document.getElementById('filter-min-distance');
+  const maxDistance = document.getElementById('filter-max-distance');
+  
+  if (minDistance && minDistance.value) {
+    filters.minDistance = parseFloat(minDistance.value);
+  }
+  
+  if (maxDistance && maxDistance.value) {
+    filters.maxDistance = parseFloat(maxDistance.value);
+  }
+  
+  // Club filter
+  const clubSelect = document.getElementById('filter-club');
+  if (clubSelect && clubSelect.value !== 'all') {
+    filters.club = clubSelect.value;
+  }
+  
+  // Lie type filter
+  const lieTypeSelect = document.getElementById('filter-lie-type');
+  if (lieTypeSelect && lieTypeSelect.value !== 'all') {
+    filters.lieType = lieTypeSelect.value;
+  }
+  
+  // Shot type filter
+  const shotTypeSelect = document.getElementById('filter-shot-type');
+  if (shotTypeSelect && shotTypeSelect.value !== 'all') {
+    filters.shotType = shotTypeSelect.value;
+  }
+  
+  return filters;
+}
+
+/**
+ * Update filter stats UI
+ * @param {Array} filteredShots - Shots after filtering
+ * @param {number} totalShots - Total shots before filtering
+ */
+function updateFilterStats(filteredShots, totalShots) {
+  const filterStats = document.getElementById('filter-stats');
+  if (filterStats) {
+    filterStats.textContent = `Showing ${filteredShots.length} of ${totalShots} shots`;
   }
 }
 
@@ -552,10 +845,112 @@ async function loadUserClubs() {
           clubSelect.appendChild(option);
         });
       }
+      
+      // Dispatch event to notify clubs have been loaded
+      document.dispatchEvent(new CustomEvent('clubsLoaded'));
     }
   } catch (error) {
     console.error('Error loading user clubs:', error);
   }
+}
+
+/**
+ * Populate club filter dropdown with user clubs
+ */
+function populateClubFilter() {
+  const clubFilter = document.getElementById('filter-club');
+  if (!clubFilter) return;
+  
+  // Clear current options (except "All Clubs")
+  while (clubFilter.options.length > 1) {
+    clubFilter.remove(1);
+  }
+  
+  // Standard club types for grouping
+  const clubTypes = {
+    'driver': 'Drivers',
+    'wood': 'Woods',
+    'hybrid': 'Hybrids',
+    'iron': 'Irons',
+    'wedge': 'Wedges',
+    'putter': 'Putters',
+    'other': 'Other'
+  };
+  
+  // Create club type optgroups
+  const optgroups = {};
+  Object.keys(clubTypes).forEach(type => {
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = clubTypes[type];
+    optgroups[type] = optgroup;
+    clubFilter.appendChild(optgroup);
+  });
+  
+  // Helper function to determine club type
+  const getClubType = (club) => {
+    const clubName = club.name.toLowerCase();
+    
+    if (clubName.includes('driver')) return 'driver';
+    if (clubName.includes('wood')) return 'wood';
+    if (clubName.includes('hybrid')) return 'hybrid';
+    if (clubName.includes('iron')) return 'iron';
+    if (clubName.includes('wedge') || 
+        clubName.includes('pw') || 
+        clubName.includes('sw') || 
+        clubName.includes('lw') || 
+        clubName.includes('gw')) return 'wedge';
+    if (clubName.includes('putter')) return 'putter';
+    
+    return 'other';
+  };
+  
+  // Add user's custom clubs
+  if (userClubs && userClubs.length > 0) {
+    userClubs.forEach(club => {
+      const option = document.createElement('option');
+      option.value = club.name;
+      option.textContent = club.name;
+      
+      const clubType = getClubType(club);
+      optgroups[clubType].appendChild(option);
+    });
+  } else {
+    // Add standard clubs if user has none
+    const standardClubs = [
+      { name: "Driver", type: 'driver' },
+      { name: "3 Wood", type: 'wood' },
+      { name: "5 Wood", type: 'wood' },
+      { name: "2 Hybrid", type: 'hybrid' },
+      { name: "3 Hybrid", type: 'hybrid' },
+      { name: "4 Hybrid", type: 'hybrid' },
+      { name: "3 Iron", type: 'iron' },
+      { name: "4 Iron", type: 'iron' },
+      { name: "5 Iron", type: 'iron' },
+      { name: "6 Iron", type: 'iron' },
+      { name: "7 Iron", type: 'iron' },
+      { name: "8 Iron", type: 'iron' },
+      { name: "9 Iron", type: 'iron' },
+      { name: "PW", type: 'wedge' },
+      { name: "GW", type: 'wedge' },
+      { name: "SW", type: 'wedge' },
+      { name: "LW", type: 'wedge' },
+      { name: "Putter", type: 'putter' }
+    ];
+    
+    standardClubs.forEach(club => {
+      const option = document.createElement('option');
+      option.value = club.name;
+      option.textContent = club.name;
+      optgroups[club.type].appendChild(option);
+    });
+  }
+  
+  // Remove empty optgroups
+  Object.keys(optgroups).forEach(type => {
+    if (optgroups[type].children.length === 0) {
+      clubFilter.removeChild(optgroups[type]);
+    }
+  });
 }
 
 /**
