@@ -14,8 +14,10 @@ import {
 } from './js/ui/ui.js';
 
 import IntegrationsService from './js/integrations/integrations.js';
+import ApiService from './js/api/api.js';
 
-// Make IntegrationsService globally available
+// Make ApiService and IntegrationsService globally available
+window.ApiService = ApiService;
 window.IntegrationsService = IntegrationsService;
 
 // Define showIntegrationModal globally at the top level
@@ -163,20 +165,14 @@ if (typeof window.showIntegrationModal !== 'function') {
                 
                 console.log(`Attempting to connect to ${service} integration`);
                 
-                // Try to use API service directly instead of relying on IntegrationsService
-                try {
-                    // First look for imported ApiService, then fallback to window.ApiService
-                    const ApiService = (typeof window.ApiService !== 'undefined') ? 
-                        window.ApiService : 
-                        (window.GolfStatsApp && window.GolfStatsApp.api) ? 
-                            window.GolfStatsApp.api : null;
-                    
-                    if (!ApiService) {
+                // Use the globally available ApiService
+                try {                    
+                    if (!window.ApiService) {
                         throw new Error('API service not available');
                     }
                     
                     console.log(`Connecting to ${service} with provided credentials`);
-                    const result = await ApiService.connectIntegration(credentials);
+                    const result = await window.ApiService.connectIntegration(credentials);
                     
                     // Hide loading
                     loadingContainer.style.display = 'none';
@@ -294,12 +290,8 @@ document.addEventListener('DOMContentLoaded', function() {
         console.warn('IntegrationsService not found or initialize method not available');
     }
     
-    // Make ApiService globally available for the integration modal
-    // This helps ensure the integration buttons work properly
-    if (window.GolfStatsApp && window.GolfStatsApp.api) {
-        window.ApiService = window.GolfStatsApp.api;
-        console.log('Made ApiService globally available');
-    }
+    // ApiService is already globally available from the top of the file
+    console.log('ApiService is globally available');
     
     // Log all integration buttons for debugging
     const integrationButtons = document.querySelectorAll('.connect-integration-btn');
@@ -322,15 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initProfileFormSubmission();
     initProfileImageUpload();
     
-    // Make IntegrationsService available globally
-    window.IntegrationsService = IntegrationsService;
-    
-    // Initialize integrations
-    if (IntegrationsService && typeof IntegrationsService.initialize === 'function') {
-        IntegrationsService.initialize().catch(err => {
-            console.error('Error initializing integrations:', err);
-        });
-    }
+    // IntegrationsService is already initialized earlier in the code
     
     // Load data for the active view
     const hash = window.location.hash.substring(1);
