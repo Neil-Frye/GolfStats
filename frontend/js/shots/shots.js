@@ -987,22 +987,56 @@ function initAddShotForm() {
             shotData[key] = value;
           }
         }
-        // Convert numeric values to numbers
-        else if (key !== 'session_id' && value) {
-          shotData[key] = parseFloat(value);
+        // Convert numeric values to numbers (but only if they have a value)
+        else if (key !== 'session_id' && value !== '') {
+          // Try parsing as float
+          const numVal = parseFloat(value);
+          if (!isNaN(numVal)) {
+            shotData[key] = numVal;
+          } else {
+            shotData[key] = value;
+          }
         } else if (value) {
           shotData[key] = value;
         }
       });
+
+      // Add session ID to shot data if it's not set
+      if (!shotData.session_id && currentSessionId) {
+        shotData.session_id = currentSessionId;
+      }
       
       // Check if we have a shot ID (editing existing shot)
       const shotId = form.dataset.shotId;
       
       if (shotId) {
-        // Update existing shot - not implemented in the API yet
-        UI.showToast('Shot editing is not supported yet', 'info');
+        // Update existing shot
+        try {
+          const response = await ApiService.updateShot(shotId, shotData);
+          
+          if (response && response.shot) {
+            // Close modal
+            UI.closeModal('add-shot-modal');
+            
+            // Show success message
+            UI.showToast('Shot updated successfully!', 'success');
+            
+            // Reset form
+            form.reset();
+            form.dataset.shotId = '';
+            
+            // Reload session shots
+            loadSessionShots(currentSessionId);
+          } else {
+            throw new Error('Failed to update shot');
+          }
+        } catch (updateError) {
+          console.error('Error updating shot:', updateError);
+          UI.showToast(`Error: ${updateError.message || 'Failed to update shot'}`, 'error');
+        }
       } else {
         // Add new shot
+        console.log('Adding shot:', shotData);
         const response = await ApiService.addRangeShot(currentSessionId, shotData);
         
         if (response && response.shot) {
@@ -1371,8 +1405,34 @@ async function deleteRangeSession(sessionId) {
  */
 function confirmDeleteShot(shotId, shotNumber) {
   if (confirm(`Are you sure you want to delete shot #${shotNumber}? This cannot be undone.`)) {
-    UI.showToast('Shot deletion will be available soon', 'info');
-    // deleteShot(shotId); - Not implemented in the API yet
+    deleteShot(shotId);
+  }
+}
+
+/**
+ * Delete a shot
+ * @param {number} shotId - Shot ID
+ */
+async function deleteShot(shotId) {
+  try {
+    // Show loading toast
+    UI.showToast('Deleting shot...', 'info');
+    
+    // Delete shot
+    const response = await ApiService.deleteShot(shotId);
+    
+    if (response && response.success) {
+      // Show success message
+      UI.showToast('Shot deleted successfully', 'success');
+      
+      // Reload session shots
+      loadSessionShots(currentSessionId);
+    } else {
+      throw new Error('Failed to delete shot');
+    }
+  } catch (error) {
+    console.error('Error deleting shot:', error);
+    UI.showToast(`Error: ${error.message || 'Failed to delete shot'}`, 'error');
   }
 }
 
