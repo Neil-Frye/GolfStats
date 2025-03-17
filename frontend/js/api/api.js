@@ -527,6 +527,53 @@ const ApiService = {
     }
   },
   
+  async updateShot(shotId, shotData) {
+    try {
+      const token = await this._getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/shots/${shotId}`, {
+        method: 'PUT',
+        headers: headers,
+        credentials: 'include',
+        body: JSON.stringify(shotData)
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Update shot error:', error);
+      throw error;
+    }
+  },
+  
+  async deleteShot(shotId) {
+    try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/shots/${shotId}`, {
+        method: 'DELETE',
+        headers: headers,
+        credentials: 'include'
+      });
+      
+      return await this._handleResponse(response);
+    } catch (error) {
+      console.error('Delete shot error:', error);
+      throw error;
+    }
+  },
+  
   async getClubBenchmarks(shotType = null) {
     try {
       let url = '/api/club-benchmarks';
