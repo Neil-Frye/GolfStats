@@ -15,6 +15,9 @@ import {
 
 import IntegrationsService from './js/integrations/integrations.js';
 
+// Make IntegrationsService globally available
+window.IntegrationsService = IntegrationsService;
+
 // Define showIntegrationModal globally at the top level
 // Integration modal - make it globally available
 // Only define the function if it doesn't already exist
@@ -158,10 +161,22 @@ if (typeof window.showIntegrationModal !== 'function') {
                     credentials.username = formData.get('username');
                 }
                 
-                // Use IntegrationsService to connect
-                if (window.IntegrationsService && typeof window.IntegrationsService.connectIntegration === 'function') {
+                console.log(`Attempting to connect to ${service} integration`);
+                
+                // Try to use API service directly instead of relying on IntegrationsService
+                try {
+                    // First look for imported ApiService, then fallback to window.ApiService
+                    const ApiService = (typeof window.ApiService !== 'undefined') ? 
+                        window.ApiService : 
+                        (window.GolfStatsApp && window.GolfStatsApp.api) ? 
+                            window.GolfStatsApp.api : null;
+                    
+                    if (!ApiService) {
+                        throw new Error('API service not available');
+                    }
+                    
                     console.log(`Connecting to ${service} with provided credentials`);
-                    const result = await window.IntegrationsService.connectIntegration(service, credentials);
+                    const result = await ApiService.connectIntegration(credentials);
                     
                     // Hide loading
                     loadingContainer.style.display = 'none';
@@ -169,13 +184,43 @@ if (typeof window.showIntegrationModal !== 'function') {
                     if (result && result.success) {
                         // Show success message
                         successContainer.style.display = 'flex';
+                        
+                        // Update UI to show connected status without needing page refresh
+                        const integrationEl = document.getElementById(`${service}-integration`);
+                        if (integrationEl) {
+                            const statusEl = integrationEl.querySelector('.integration-status');
+                            const connectBtn = integrationEl.querySelector('.connect-integration-btn');
+                            
+                            if (statusEl) {
+                                statusEl.textContent = 'Connected';
+                                statusEl.classList.remove('disconnected');
+                                statusEl.classList.add('connected');
+                            }
+                            
+                            if (connectBtn) {
+                                connectBtn.textContent = 'Disconnect';
+                                connectBtn.classList.add('disconnect-btn');
+                                
+                                // Add test sync button if it doesn't exist
+                                if (!integrationEl.querySelector('.test-integration-btn')) {
+                                    const testBtn = document.createElement('button');
+                                    testBtn.className = 'test-integration-btn';
+                                    testBtn.textContent = 'Sync Now';
+                                    testBtn.setAttribute('data-service', service);
+                                    
+                                    // Insert before the disconnect button
+                                    connectBtn.parentNode.insertBefore(testBtn, connectBtn);
+                                }
+                            }
+                        }
                     } else {
                         // Show error message
                         errorMessage.textContent = result.message || `Failed to connect to ${serviceName}.`;
                         errorContainer.style.display = 'flex';
                     }
-                } else {
-                    throw new Error('Integration service not available');
+                } catch (error) {
+                    console.error(`Error with API call to connect ${service}:`, error);
+                    throw error;
                 }
             } catch (error) {
                 console.error(`Error connecting to ${service}:`, error);
@@ -238,6 +283,23 @@ if (typeof window.showIntegrationModal !== 'function') {
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize the application
     console.log('GolfStats frontend initialized');
+    
+    // Initialize IntegrationsService if it exists
+    if (window.IntegrationsService && typeof window.IntegrationsService.initialize === 'function') {
+        console.log('Initializing IntegrationsService');
+        window.IntegrationsService.initialize().catch(err => {
+            console.error('Error initializing IntegrationsService:', err);
+        });
+    } else {
+        console.warn('IntegrationsService not found or initialize method not available');
+    }
+    
+    // Make ApiService globally available for the integration modal
+    // This helps ensure the integration buttons work properly
+    if (window.GolfStatsApp && window.GolfStatsApp.api) {
+        window.ApiService = window.GolfStatsApp.api;
+        console.log('Made ApiService globally available');
+    }
     
     // Log all integration buttons for debugging
     const integrationButtons = document.querySelectorAll('.connect-integration-btn');
