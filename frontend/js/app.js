@@ -254,9 +254,37 @@ window.addEventListener('error', function(e) {
     }
 });
 
+// Add debug logging for hash changes
+window.addEventListener('hashchange', function() {
+    console.log('Hash changed to:', window.location.hash);
+});
+
 // Main initialization function
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing application...');
+    
+    // Add special debugging function to window for troubleshooting
+    window.debugNavigation = function() {
+        const hash = window.location.hash.substring(1) || 'dashboard';
+        console.log('Current hash:', hash);
+        
+        const contentSections = document.querySelectorAll('.content-section');
+        console.log('Total content sections:', contentSections.length);
+        
+        contentSections.forEach(section => {
+            console.log(`Section ${section.id} - active: ${section.classList.contains('active')}`);
+        });
+        
+        const navLinks = document.querySelectorAll('.sidebar-nav a');
+        console.log('Navigation links:', navLinks.length);
+        
+        const allSections = document.querySelectorAll('section');
+        console.log('All sections in document:', allSections.length);
+        allSections.forEach(section => {
+            console.log(`Section: ${section.id} - classes: ${section.className}`);
+        });
+    };
+    
     // Check if user is authenticated
     Auth.checkAuthentication()
         .then(() => {
@@ -285,6 +313,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Handle initial route
             handleRouteChange();
+            
+            // Log successful initialization
+            console.log('Application initialized successfully - navigation should be working');
+            
+            // Run debug after a short delay to ensure everything is ready
+            setTimeout(() => {
+                console.log('Running navigation debug check:');
+                window.debugNavigation();
+            }, 1000);
         })
         .catch(error => {
             console.error('Authentication error:', error);
@@ -296,7 +333,44 @@ function handleRouteChange() {
     const hash = window.location.hash.substring(1) || 'dashboard';
     console.log(`Route changed to: ${hash}`);
     
-    // Update based on route
+    // Get the content sections and sidebar links
+    const contentSections = document.querySelectorAll('.content-section');
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+    
+    // First, toggle visibility of the correct content section
+    if (contentSections.length > 0) {
+        // Hide all sections
+        contentSections.forEach(section => {
+            section.classList.remove('active');
+        });
+        
+        // Show the target section
+        const targetSection = document.getElementById(`${hash}-view`);
+        if (targetSection) {
+            console.log(`Activating section: ${hash}-view`);
+            targetSection.classList.add('active');
+            
+            // Update page title
+            const pageTitle = document.getElementById('page-title');
+            const activeLink = document.querySelector(`.sidebar-nav a[href="#${hash}"]`);
+            if (pageTitle && activeLink) {
+                pageTitle.textContent = activeLink.querySelector('span').textContent;
+            }
+            
+            // Update active nav link
+            navLinks.forEach(link => {
+                link.parentElement.classList.remove('active');
+            });
+            
+            if (activeLink) {
+                activeLink.parentElement.classList.add('active');
+            }
+        } else {
+            console.error(`Target section not found: ${hash}-view`);
+        }
+    }
+    
+    // Then, load the data for this route
     switch (hash) {
         case 'dashboard':
             Dashboard.loadDashboardData();
@@ -310,6 +384,22 @@ function handleRouteChange() {
         case 'clubs':
             // Ensure club buttons are initialized when navigating directly to clubs
             Clubs.initClubsView();
+            break;
+        case 'stats':
+            console.log('Stats view selected - loading statistics');
+            // Add stats loading code when implemented
+            break;
+        case 'insights':
+            console.log('Insights view selected - loading insights');
+            // Add insights loading code when implemented
+            break;
+        case 'goals':
+            console.log('Goals view selected - loading goals');
+            // Add goals loading code when implemented
+            break;
+        case 'settings':
+            console.log('Settings view selected');
+            // Add settings loading code when implemented
             break;
         // Add other routes as needed
     }
