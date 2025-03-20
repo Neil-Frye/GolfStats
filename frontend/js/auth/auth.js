@@ -34,30 +34,46 @@ async function checkAuthentication() {
 
 // Update user info in UI with data from API
 function updateUserInfo(user) {
-    if (!user) return;
+    console.log('Updating UI with user info:', user);
+    if (!user) {
+        console.warn('No user data provided to updateUserInfo');
+        return;
+    }
     
     // Update sidebar user info
     const userNameElement = document.querySelector('.user-name');
     const userHandicapElement = document.querySelector('.user-handicap');
     const userAvatarImg = document.querySelector('.user-avatar img');
     
+    // Get avatar URL from user or preferences
+    const avatarUrl = user.avatar_url || 
+                     (user.preferences && user.preferences.avatar_url) || 
+                     user.profile_picture;
+    console.log('Avatar URL:', avatarUrl);
+    
+    // Get user's display name with fallbacks
+    const displayName = user.name || 
+                      (user.preferences && user.preferences.display_name) || 
+                      user.full_name || 
+                      user.email.split('@')[0];
+    console.log('Display name:', displayName);
+    
     if (userNameElement) {
-        const displayName = user.name || 
-                          (user.preferences && user.preferences.display_name) || 
-                          user.full_name || 
-                          user.email.split('@')[0];
         userNameElement.textContent = displayName;
+        console.log('Updated user name element to:', displayName);
     }
     
     if (userHandicapElement && user.preferences) {
         // Handle case where handicap might be empty string
         const handicap = user.preferences.handicap;
         userHandicapElement.textContent = `Handicap: ${handicap ? handicap : 'N/A'}`;
+        console.log('Updated handicap element to:', handicap ? handicap : 'N/A');
     }
     
     // Update avatar in sidebar if available
-    if (userAvatarImg && (user.avatar_url || user.profile_picture)) {
-        userAvatarImg.src = user.avatar_url || user.profile_picture;
+    if (userAvatarImg && avatarUrl) {
+        userAvatarImg.src = avatarUrl;
+        console.log('Updated avatar image to:', avatarUrl);
     }
     
     // Update profile form fields
@@ -69,32 +85,41 @@ function updateUserInfo(user) {
     const profileImagePreview = document.getElementById('profile-image-preview');
     
     if (fullnameInput) {
-        fullnameInput.value = user.name || user.full_name || '';
+        fullnameInput.value = displayName;
+        console.log('Updated fullname input to:', displayName);
     }
     
     if (emailInput) {
         emailInput.value = user.email || '';
+        console.log('Updated email input to:', user.email || '');
     }
     
-    if (phoneInput && user.preferences) {
-        phoneInput.value = user.preferences.phone || '';
-    }
-    
-    if (handicapInput && user.preferences) {
-        handicapInput.value = user.preferences.handicap || '';
-    }
-    
-    if (homeCourseInput && user.preferences) {
-        homeCourseInput.value = user.preferences.home_course || '';
+    if (user.preferences) {
+        if (phoneInput) {
+            phoneInput.value = user.preferences.phone || '';
+            console.log('Updated phone input to:', user.preferences.phone || '');
+        }
+        
+        if (handicapInput) {
+            handicapInput.value = user.preferences.handicap || '';
+            console.log('Updated handicap input to:', user.preferences.handicap || '');
+        }
+        
+        if (homeCourseInput) {
+            homeCourseInput.value = user.preferences.home_course || '';
+            console.log('Updated home course input to:', user.preferences.home_course || '');
+        }
     }
     
     // Update profile image preview if available
-    if (profileImagePreview && (user.avatar_url || user.profile_picture)) {
-        profileImagePreview.src = user.avatar_url || user.profile_picture;
+    if (profileImagePreview && avatarUrl) {
+        profileImagePreview.src = avatarUrl;
+        console.log('Updated profile image preview to:', avatarUrl);
     }
     
     // Update profile completion indicator
     updateProfileCompletion(user);
+    console.log('Profile UI update complete');
 }
 
 // Initialize logout handler
@@ -240,11 +265,28 @@ async function initProfileFormSubmission() {
             const formData = new FormData();
             
             // Add profile fields - always append values, even if empty
-            formData.append('name', document.getElementById('fullname').value || '');
-            formData.append('email', document.getElementById('email').value || '');
-            formData.append('handicap', document.getElementById('handicap').value || '');
-            formData.append('phone', document.getElementById('phone').value || '');
-            formData.append('home_course', document.getElementById('home-course').value || '');
+            // Log what we're sending for debugging
+            console.log('Sending profile data:');
+            
+            const fullname = document.getElementById('fullname').value || '';
+            console.log('Fullname:', fullname);
+            formData.append('name', fullname);
+            
+            const email = document.getElementById('email').value || '';
+            console.log('Email:', email);
+            formData.append('email', email);
+            
+            const handicap = document.getElementById('handicap').value || '';
+            console.log('Handicap:', handicap);
+            formData.append('handicap', handicap);
+            
+            const phone = document.getElementById('phone').value || '';
+            console.log('Phone:', phone);
+            formData.append('phone', phone);
+            
+            const homeCourse = document.getElementById('home-course').value || '';
+            console.log('Home Course:', homeCourse);
+            formData.append('home_course', homeCourse);
             
             // Add image if available
             if (imageFile) {
@@ -266,12 +308,17 @@ async function initProfileFormSubmission() {
             const token = await ApiService._getAuthToken();
             
             // Update profile with proper authorization
+            console.log('Sending request with token:', token ? 'yes' : 'no');
+            
+            const requestHeaders = token ? {
+                'Authorization': `Bearer ${token}`
+            } : {};
+            console.log('Request headers:', requestHeaders);
+            
             const response = await fetch('/api/auth/profile', {
                 method: 'POST',
                 credentials: 'include',
-                headers: token ? {
-                    'Authorization': `Bearer ${token}`
-                } : {},
+                headers: requestHeaders,
                 body: formData
             });
             
@@ -281,18 +328,26 @@ async function initProfileFormSubmission() {
             }
             
             const result = await response.json();
+            console.log('Profile update response:', result);
             
             // Update UI with new user data
             if (result.user) {
+                console.log('Updating UI with user data:', result.user);
                 updateUserInfo(result.user);
+                
                 // Import showToast from UI module if needed
-                const { showToast } = await import('../ui/ui.js').catch(() => ({}));
+                const { showToast } = await import('../ui/ui.js').catch(() => {
+                    console.log('Could not import showToast, using fallback');
+                    return {};
+                });
                 
                 // Show success toast
                 if (typeof showToast === 'function') {
+                    console.log('Using showToast for success message');
                     showToast('Profile updated successfully!', 'success');
                 } else {
                     // Fallback if UI module not loaded
+                    console.log('Using fallback success message');
                     const successMsg = document.createElement('div');
                     successMsg.className = 'success-message';
                     successMsg.textContent = 'Profile updated successfully!';
@@ -305,6 +360,9 @@ async function initProfileFormSubmission() {
                         }
                     }, 3000);
                 }
+            } else {
+                console.warn('No user data in response:', result);
+            }
             }
         } catch (error) {
             console.error('Error updating profile:', error);
