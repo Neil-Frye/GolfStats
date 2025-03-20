@@ -1,5 +1,6 @@
 import ApiService from '../api/api.js';
-import { formatDate, showToast, openModal, closeModal, showLoadingState, hideLoadingState, showErrorState } from '../ui/ui.js';
+import * as UI from '../ui/ui.js';
+const { formatDate, showToast, openModal, closeModal, showLoadingState, hideLoadingState, showErrorState } = UI;
 
 // Function to load rounds data
 function loadRoundsData(filter = 'all') {
@@ -367,7 +368,7 @@ function viewRoundDetails(roundId) {
                 errorContainer.style.display = 'block';
                 
                 // Show a toast notification with the error
-                UI.showToast(`Error: ${errorMessage}`, 'error');
+                showToast(`Error: ${errorMessage}`, 'error');
             });
     }
 }
