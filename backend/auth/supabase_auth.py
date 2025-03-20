@@ -81,12 +81,14 @@ def get_current_user() -> Optional[Dict[str, Any]]:
     """
     # Check if user is already stored in flask's g object (request context)
     if hasattr(g, 'user'):
+        logger.info("Returning user from request context")
         return g.user
         
     # Check session first
     user_session = session.get('user')
     if user_session:
         # Store in request context
+        logger.info("Returning user from session")
         g.user = user_session
         return user_session
         
@@ -94,20 +96,36 @@ def get_current_user() -> Optional[Dict[str, Any]]:
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
         token = auth_header.replace('Bearer ', '')
+        logger.info(f"Found Bearer token in header, length: {len(token)}")
         try:
             # Verify token with Supabase
             # Pass the token to get_supabase to set it on the client for RLS
             try:
                 supabase = get_supabase(token)
                 user_obj = supabase.auth.get_user()
+                
                 if user_obj and hasattr(user_obj, 'user'):
+                    logger.info(f"Got user from Supabase: {user_obj.user.email}")
+                    
+                    # Get user preferences if they exist
+                    from backend.database.supabase_data.user_preferences import get_user_preferences
+                    preferences = get_user_preferences(user_obj.user.id, token) or {}
+                    logger.info(f"Retrieved user preferences: {preferences}")
+                    
                     user = {
                         'id': user_obj.user.id,
                         'email': user_obj.user.email,
                         'name': user_obj.user.user_metadata.get('full_name', ''),
                         'is_superuser': user_obj.user.app_metadata.get('is_superuser', False),
-                        'token': token
+                        'token': token,
+                        'preferences': preferences
                     }
+                    
+                    # If we have a display_name in preferences, use it
+                    if preferences and 'display_name' in preferences:
+                        user['name'] = preferences['display_name']
+                        logger.info(f"Using display_name from preferences: {user['name']}")
+                    
                     # Store in request context
                     g.user = user
                     logger.info(f"Successfully authenticated user {user['email']} with token")
@@ -119,7 +137,10 @@ def get_current_user() -> Optional[Dict[str, Any]]:
         except Exception as e:
             logger.warning(f"Failed to verify token: {str(e)}")
             return None
+    else:
+        logger.warning("No Authorization header with Bearer token found")
     
+    logger.warning("No authenticated user found")
     return None
 
 def get_authenticated_user() -> Tuple[Optional[Dict[str, Any]], Optional[str]]:

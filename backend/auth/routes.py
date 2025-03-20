@@ -160,11 +160,19 @@ def update_profile():
     if not is_authenticated():
         return jsonify({"error": "Authentication required"}), 401
     
+    # Enhanced logging for debugging request
+    logger.info(f"Profile update request received. Form data: {request.form}")
+    logger.info(f"Files in request: {request.files.keys() if request.files else 'None'}")
+    logger.info(f"Headers: {dict(request.headers)}")
+    
     # Get token from Authorization header for RLS
     auth_header = request.headers.get('Authorization')
     token = None
     if auth_header and auth_header.startswith('Bearer '):
         token = auth_header.replace('Bearer ', '')
+        logger.info(f"Bearer token extracted, length: {len(token)}")
+    else:
+        logger.warning("No Bearer token found in Authorization header")
     
     # Verify the JWT token first to ensure RLS will work
     if token:
@@ -173,6 +181,8 @@ def update_profile():
         if not jwt_payload:
             logger.warning("Invalid JWT token provided")
             return jsonify({"error": "Invalid token"}), 401
+    else:
+        logger.warning("No token available for verification")
     
     # Get current user with validated token
     user = get_current_user()
@@ -181,93 +191,140 @@ def update_profile():
         return jsonify({"error": "Authentication required"}), 401
         
     user_id = user['id']
+    logger.info(f"Processing profile update for user_id: {user_id}")
     
     # Handle form data for file uploads
     if request.files and 'profile_image' in request.files:
         profile_image = request.files['profile_image']
+        logger.info(f"Profile image found: {profile_image.filename if profile_image else 'None'}")
         
         if profile_image and profile_image.filename:
             # Secure filename and generate unique name
             filename = secure_filename(profile_image.filename)
             unique_filename = f"{user_id}_{uuid.uuid4()}_{filename}"
+            logger.info(f"Generated unique filename: {unique_filename}")
             
             # Ensure upload directory exists - use absolute path to be safe
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             upload_folder = os.path.join(base_dir, 'frontend', 'uploads', 'profiles')
-            os.makedirs(upload_folder, exist_ok=True)
-            
-            # Log the folder for debugging
             logger.info(f"Creating upload directory at: {upload_folder}")
             
-            # Save file
-            file_path = os.path.join(upload_folder, unique_filename)
-            profile_image.save(file_path)
-            
-            # Generate URL
-            avatar_url = f"/uploads/profiles/{unique_filename}"
-            
-            # Update user preferences with new avatar URL - pass token for RLS
+            try:
+                os.makedirs(upload_folder, exist_ok=True)
+                logger.info(f"Upload directory created/verified")
+                
+                # Save file
+                file_path = os.path.join(upload_folder, unique_filename)
+                logger.info(f"Saving file to: {file_path}")
+                profile_image.save(file_path)
+                logger.info(f"File saved successfully")
+                
+                # Generate URL and verify file exists
+                avatar_url = f"/uploads/profiles/{unique_filename}"
+                if os.path.exists(file_path):
+                    logger.info(f"File verified at {file_path}, size: {os.path.getsize(file_path)} bytes")
+                else:
+                    logger.error(f"File save failed - file does not exist at {file_path}")
+                    return jsonify({"error": "Failed to save profile image"}), 500
+                
+                # Update user preferences with new avatar URL - pass token for RLS
+                current_prefs = get_user_preferences(user_id, token) or {}
+                current_prefs['avatar_url'] = avatar_url
+                
+                # Update in database - pass token for RLS
+                logger.info(f"Updating preferences with new avatar_url: {avatar_url}")
+                success = update_user_preferences(user_id, current_prefs, token)
+                if not success:
+                    logger.error("Failed to update profile image in preferences")
+                    return jsonify({"error": "Failed to update profile image"}), 500
+                logger.info("Profile image updated successfully")
+            except Exception as e:
+                logger.error(f"Error handling profile image: {str(e)}")
+                return jsonify({"error": f"Error handling profile image: {str(e)}"}), 500
+    
+    # Update other profile fields - always include all form fields
+    preferences_data = {}
+    
+    # Always include all form fields, even if empty
+    for field in ['handicap', 'phone', 'home_course']:
+        if field in request.form:
+            preferences_data[field] = request.form.get(field) or ''
+            logger.info(f"Setting {field} to: '{preferences_data[field]}'")
+    
+    # Update user preferences if we have any form data
+    if preferences_data:
+        logger.info(f"Updating preferences with data: {preferences_data}")
+        
+        try:
+            # Get existing preferences - pass token for RLS
             current_prefs = get_user_preferences(user_id, token) or {}
-            current_prefs['avatar_url'] = avatar_url
+            logger.info(f"Current preferences before update: {current_prefs}")
+            
+            # Merge with new preferences
+            current_prefs.update(preferences_data)
+            logger.info(f"Merged preferences: {current_prefs}")
             
             # Update in database - pass token for RLS
             success = update_user_preferences(user_id, current_prefs, token)
             if not success:
-                return jsonify({"error": "Failed to update profile image"}), 500
+                logger.error("Failed to update preferences in database")
+                return jsonify({"error": "Failed to update preferences"}), 500
+            logger.info("Preferences updated successfully")
+        except Exception as e:
+            logger.error(f"Error updating preferences: {str(e)}")
+            return jsonify({"error": f"Error updating preferences: {str(e)}"}), 500
     
-    # Update other profile fields
-    preferences_data = {}
-    if request.form.get('handicap'):
-        preferences_data['handicap'] = request.form.get('handicap')
-    if request.form.get('phone'):
-        preferences_data['phone'] = request.form.get('phone')
-    if request.form.get('home_course'):
-        preferences_data['home_course'] = request.form.get('home_course')
-    
-    # Even if fields are empty, include them in the update to allow clearing values
-    if 'handicap' not in preferences_data and 'handicap' in request.form:
-        preferences_data['handicap'] = ''
-    if 'phone' not in preferences_data and 'phone' in request.form:
-        preferences_data['phone'] = ''
-    if 'home_course' not in preferences_data and 'home_course' in request.form:
-        preferences_data['home_course'] = ''
-    
-    # Update user preferences if we have data
-    if preferences_data:
+    # Update name in preferences for display purposes
+    # Always update name field, even if empty
+    try:
+        logger.info(f"Processing name update: '{request.form.get('name')}'")
         # Get existing preferences - pass token for RLS
         current_prefs = get_user_preferences(user_id, token) or {}
         
-        # Merge with new preferences
-        current_prefs.update(preferences_data)
-        
-        # Update in database - pass token for RLS
-        success = update_user_preferences(user_id, current_prefs, token)
-        if not success:
-            return jsonify({"error": "Failed to update preferences"}), 500
-    
-    # Update name in preferences for display purposes 
-    # (This doesn't update the auth profile, but at least stores the display name)
-    if request.form.get('name'):
-        # Get existing preferences - pass token for RLS
-        current_prefs = get_user_preferences(user_id, token) or {}
-        current_prefs['display_name'] = request.form.get('name')
-        
-        # Update in database - pass token for RLS
-        success = update_user_preferences(user_id, current_prefs, token)
-        if not success:
-            return jsonify({"error": "Failed to update name preference"}), 500
+        # Always update the display_name, even if empty
+        if 'name' in request.form:
+            current_prefs['display_name'] = request.form.get('name') or ''
+            logger.info(f"Setting display_name to: '{current_prefs['display_name']}'")
+            
+            # Update in database - pass token for RLS
+            success = update_user_preferences(user_id, current_prefs, token)
+            if not success:
+                logger.error("Failed to update display name in preferences")
+                return jsonify({"error": "Failed to update name preference"}), 500
+            logger.info("Display name updated successfully")
+    except Exception as e:
+        logger.error(f"Error updating display name: {str(e)}")
+        return jsonify({"error": f"Error updating display name: {str(e)}"}), 500
             
     # TODO: Update name and email in Supabase Auth using admin API
-    # This would typically be handled by Supabase Auth APIs
+    # This requires admin privileges or service_role token
     
     # Get updated user data
-    updated_user = get_current_user()
-    
-    # If we stored display name in preferences, use it for the response
-    if updated_user and 'preferences' in updated_user and 'display_name' in updated_user['preferences']:
-        updated_user['name'] = updated_user['preferences']['display_name']
-    
-    return jsonify({
-        "message": "Profile updated successfully",
-        "user": updated_user
-    }), 200
+    try:
+        updated_user = get_current_user()
+        logger.info(f"Got updated user: {updated_user is not None}")
+        
+        # Get fresh preferences directly
+        if updated_user:
+            # Reload preferences to ensure we have the latest data
+            fresh_prefs = get_user_preferences(user_id, token) or {}
+            logger.info(f"Fresh preferences: {fresh_prefs}")
+            
+            # Merge preferences into user object
+            updated_user['preferences'] = fresh_prefs
+            
+            # If we stored display name in preferences, use it for the response
+            if 'display_name' in fresh_prefs:
+                updated_user['name'] = fresh_prefs['display_name']
+                logger.info(f"Set display name in response to: '{updated_user['name']}'")
+        
+        return jsonify({
+            "message": "Profile updated successfully",
+            "user": updated_user
+        }), 200
+    except Exception as e:
+        logger.error(f"Error preparing response: {str(e)}")
+        return jsonify({
+            "message": "Profile updated but error preparing response data",
+            "error": str(e)
+        }), 200

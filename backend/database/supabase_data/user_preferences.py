@@ -49,15 +49,22 @@ def update_user_preferences(user_id: str, preferences: Dict[str, Any], token: st
         # Pass token to get_supabase to satisfy RLS policies
         supabase = get_supabase(token)
         
+        # Enhanced logging
+        logger.info(f"User ID: {user_id}, Token present: {bool(token)}")
+        logger.info(f"Existing preferences: {existing}")
+        logger.info(f"New preferences to save: {preferences}")
+        
         if existing:
             # Update existing preferences
             response = supabase.table('user_preferences') \
                 .update(preferences) \
                 .eq('user_id', user_id) \
                 .execute()
+            logger.info(f"Updated preferences for user {user_id}")
         else:
             # Create new preferences
             preferences['user_id'] = user_id
+            logger.info(f"Creating new preferences for user {user_id}: {preferences}")
             response = supabase.table('user_preferences') \
                 .insert(preferences) \
                 .execute()
