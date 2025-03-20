@@ -246,11 +246,21 @@ const Clubs = {
     }
 };
 
+// Add error handling for module loading issues
+window.addEventListener('error', function(e) {
+    console.error('Script error:', e);
+    if (e.error && e.error.stack) {
+        console.error('Stack trace:', e.error.stack);
+    }
+});
+
 // Main initialization function
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing application...');
     // Check if user is authenticated
     Auth.checkAuthentication()
         .then(() => {
+            console.log('User authenticated, setting up UI components...');
             // Initialize UI components
             UI.initNavigation();
             UI.setupEventListeners();
