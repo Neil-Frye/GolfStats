@@ -363,7 +363,6 @@ async function initProfileFormSubmission() {
             } else {
                 console.warn('No user data in response:', result);
             }
-            }
         } catch (error) {
             console.error('Error updating profile:', error);
             
