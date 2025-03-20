@@ -224,6 +224,14 @@ def update_profile():
     if request.form.get('home_course'):
         preferences_data['home_course'] = request.form.get('home_course')
     
+    # Even if fields are empty, include them in the update to allow clearing values
+    if 'handicap' not in preferences_data and 'handicap' in request.form:
+        preferences_data['handicap'] = ''
+    if 'phone' not in preferences_data and 'phone' in request.form:
+        preferences_data['phone'] = ''
+    if 'home_course' not in preferences_data and 'home_course' in request.form:
+        preferences_data['home_course'] = ''
+    
     # Update user preferences if we have data
     if preferences_data:
         # Get existing preferences - pass token for RLS
@@ -237,11 +245,27 @@ def update_profile():
         if not success:
             return jsonify({"error": "Failed to update preferences"}), 500
     
-    # TODO: Update name and email in Supabase Auth
+    # Update name in preferences for display purposes 
+    # (This doesn't update the auth profile, but at least stores the display name)
+    if request.form.get('name'):
+        # Get existing preferences - pass token for RLS
+        current_prefs = get_user_preferences(user_id, token) or {}
+        current_prefs['display_name'] = request.form.get('name')
+        
+        # Update in database - pass token for RLS
+        success = update_user_preferences(user_id, current_prefs, token)
+        if not success:
+            return jsonify({"error": "Failed to update name preference"}), 500
+            
+    # TODO: Update name and email in Supabase Auth using admin API
     # This would typically be handled by Supabase Auth APIs
     
     # Get updated user data
     updated_user = get_current_user()
+    
+    # If we stored display name in preferences, use it for the response
+    if updated_user and 'preferences' in updated_user and 'display_name' in updated_user['preferences']:
+        updated_user['name'] = updated_user['preferences']['display_name']
     
     return jsonify({
         "message": "Profile updated successfully",

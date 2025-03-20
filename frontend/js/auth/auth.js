@@ -42,11 +42,17 @@ function updateUserInfo(user) {
     const userAvatarImg = document.querySelector('.user-avatar img');
     
     if (userNameElement) {
-        userNameElement.textContent = user.name || user.full_name || user.email.split('@')[0];
+        const displayName = user.name || 
+                          (user.preferences && user.preferences.display_name) || 
+                          user.full_name || 
+                          user.email.split('@')[0];
+        userNameElement.textContent = displayName;
     }
     
     if (userHandicapElement && user.preferences) {
-        userHandicapElement.textContent = `Handicap: ${user.preferences.handicap || 'N/A'}`;
+        // Handle case where handicap might be empty string
+        const handicap = user.preferences.handicap;
+        userHandicapElement.textContent = `Handicap: ${handicap ? handicap : 'N/A'}`;
     }
     
     // Update avatar in sidebar if available
@@ -233,12 +239,12 @@ async function initProfileFormSubmission() {
             // Create FormData object for multipart form submission (for file upload)
             const formData = new FormData();
             
-            // Add profile fields
-            formData.append('name', document.getElementById('fullname').value);
-            formData.append('email', document.getElementById('email').value);
-            formData.append('handicap', document.getElementById('handicap').value);
-            formData.append('phone', document.getElementById('phone').value);
-            formData.append('home_course', document.getElementById('home-course').value);
+            // Add profile fields - always append values, even if empty
+            formData.append('name', document.getElementById('fullname').value || '');
+            formData.append('email', document.getElementById('email').value || '');
+            formData.append('handicap', document.getElementById('handicap').value || '');
+            formData.append('phone', document.getElementById('phone').value || '');
+            formData.append('home_course', document.getElementById('home-course').value || '');
             
             // Add image if available
             if (imageFile) {
