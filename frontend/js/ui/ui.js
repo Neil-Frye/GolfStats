@@ -1,8 +1,6 @@
 // Navigation handling
 function initNavigation() {
     const navLinks = document.querySelectorAll('.sidebar-nav a');
-    const contentSections = document.querySelectorAll('.content-section');
-    const pageTitle = document.getElementById('page-title');
     const mobileToggle = document.getElementById('mobile-toggle');
     const sidebar = document.querySelector('.sidebar');
     
@@ -16,56 +14,31 @@ function initNavigation() {
             
             // Get the target section ID from the href
             const targetId = this.getAttribute('href').substring(1);
-            const targetSection = document.getElementById(`${targetId}-view`);
             
-            console.log(`Navigating to: ${targetId}`, targetSection);
-            
-            if (!targetSection) {
-                console.error(`Target section not found: ${targetId}-view`);
-                return;
-            }
-            
-            // Update active nav link
-            navLinks.forEach(link => {
-                link.parentElement.classList.remove('active');
-            });
-            this.parentElement.classList.add('active');
-            
-            // Update visible section
-            contentSections.forEach(section => {
-                section.classList.remove('active');
-            });
-            targetSection.classList.add('active');
-            
-            // Update page title
-            pageTitle.textContent = this.querySelector('span').textContent;
+            console.log(`Navigation clicked for: ${targetId}`);
             
             // Close mobile sidebar if open
             if (window.innerWidth < 768) {
                 sidebar.classList.remove('open');
             }
             
-            // Update URL hash for better browser navigation
+            // Update URL hash to trigger hashchange event
+            // This will be handled by app.js handleRouteChange function
             window.location.hash = targetId;
         });
     });
     
-    // Check for hash in URL and activate corresponding tab
-    const checkUrlHash = () => {
+    // Check for hash in URL on initial load
+    const checkInitialHash = () => {
         const hash = window.location.hash.substring(1);
-        if (hash) {
-            const linkToActivate = document.querySelector(`.sidebar-nav a[href="#${hash}"]`);
-            if (linkToActivate) {
-                linkToActivate.click();
-            }
+        if (!hash) {
+            // Default to dashboard
+            window.location.hash = 'dashboard';
         }
     };
     
     // Check hash on initial load
-    checkUrlHash();
-    
-    // Listen for hash changes
-    window.addEventListener('hashchange', checkUrlHash);
+    checkInitialHash();
     
     // Mobile menu toggle
     mobileToggle.addEventListener('click', function() {
