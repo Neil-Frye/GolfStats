@@ -5,6 +5,7 @@ import * as UI from './ui/ui.js';
 import * as Dashboard from './dashboard/dashboard.js';
 import * as Rounds from './rounds/rounds.js';
 import * as Shots from './shots/shots.js';
+// import * as PracticeView from './practice/PracticeView.js';
 
 // Create a clubs module with enhanced functionality
 const Clubs = {
@@ -384,6 +385,10 @@ function handleRouteChange() {
         case 'clubs':
             // Ensure club buttons are initialized when navigating directly to clubs
             Clubs.initClubsView();
+            break;
+        case 'practice':
+            // PracticeView.initPracticeView(); // We'll uncomment this later
+            console.log('Practice view selected - loading practice mode UI.');
             break;
         case 'stats':
             console.log('Stats view selected - loading statistics');

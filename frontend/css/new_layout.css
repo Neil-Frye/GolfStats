@@ -1,0 +1,129 @@
+/* Shared Button Component Styles */
+.custom-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    text-decoration: none;
+    color: #ffffff; /* Default text color */
+}
+
+.custom-btn .fas {
+    margin-right: 8px;
+}
+
+.custom-btn span {
+    line-height: 1;
+}
+
+/* Variants */
+.custom-btn.variant-primary {
+    background-color: #28a745; /* Deep Green */
+    color: #ffffff;
+}
+
+.custom-btn.variant-primary:hover {
+    background-color: #218838;
+}
+
+.custom-btn.variant-accent {
+    background-color: #dc3545; /* Bright Red */
+    color: #ffffff;
+}
+
+.custom-btn.variant-accent:hover {
+    background-color: #c82333;
+}
+
+.custom-btn.variant-neutral {
+    background-color: #6c757d; /* Neutral Gray */
+    color: #ffffff;
+}
+
+.custom-btn.variant-neutral:hover {
+    background-color: #5a6268;
+}
+
+/* Active State (for toggles or when pressed) */
+.custom-btn.active {
+    /* Example: slightly darker or different border */
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+}
+
+/* Hover and Active/Press animations */
+.custom-btn:hover {
+    /* Example: slight brightness or color shift already handled by variant hover */
+}
+
+.custom-btn:active {
+    transform: scale(0.95);
+}
+
+/* Icon-only adjustments (if label is not present) */
+.custom-btn > .fas:only-child {
+    margin-right: 0;
+}
+
+/* Shared IconButton Component Styles */
+.custom-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px; /* Adjust padding for a more square look if desired */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem; /* Base size, icon size can be controlled via fas classes */
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    text-decoration: none;
+    color: #ffffff; /* Default text color, can be overridden by variants */
+    line-height: 1; /* Ensure icon is centered */
+}
+
+/* Variants (can reuse .variant-primary, .variant-accent, .variant-neutral from .custom-btn if styling is identical) */
+/* Or define specific ones if needed */
+.custom-icon-btn.variant-primary {
+    background-color: #28a745; /* Deep Green */
+    color: #ffffff;
+}
+
+.custom-icon-btn.variant-primary:hover {
+    background-color: #218838;
+}
+
+.custom-icon-btn.variant-accent {
+    background-color: #dc3545; /* Bright Red */
+    color: #ffffff;
+}
+
+.custom-icon-btn.variant-accent:hover {
+    background-color: #c82333;
+}
+
+.custom-icon-btn.variant-neutral {
+    background-color: #6c757d; /* Neutral Gray */
+    color: #ffffff;
+}
+
+.custom-icon-btn.variant-neutral:hover {
+    background-color: #5a6268;
+}
+
+/* Active State (for toggles or when pressed) */
+.custom-icon-btn.active {
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+}
+
+/* Hover and Active/Press animations */
+.custom-icon-btn:active {
+    transform: scale(0.95);
+}
+
+.custom-icon-btn .fas {
+    /* Icon is direct child, no extra margin needed unless specified */
+}
