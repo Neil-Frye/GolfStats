@@ -43,7 +43,7 @@ if config['google']['sheets']['api_key']:
     SCOPES.append('https://www.googleapis.com/auth/spreadsheets.readonly')
 
 # Create Blueprint for Google OAuth routes
-google_auth = Blueprint('google_auth', __name__)
+google_auth = Blueprint('google_auth', __name__, url_prefix='')
 
 def is_configured() -> bool:
     """
@@ -316,8 +316,8 @@ def callback():
     
     logger.info(f"User authenticated via Google: {user_info.get('email')}")
     
-    # Return to the main page
-    return redirect('/')
+    # Return to the main page with the SPA fragment for routing
+    return redirect('/#dashboard')
 
 @google_auth.route('/logout')
 def logout():
