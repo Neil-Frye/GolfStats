@@ -210,7 +210,15 @@ const ApiService = {
   // Clubs
   async getClubs() {
     try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/clubs', {
+        headers: headers,
         credentials: 'include'
       });
       
@@ -223,7 +231,15 @@ const ApiService = {
   
   async getClub(clubId) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/clubs/${clubId}`, {
+        headers: headers,
         credentials: 'include'
       });
       
@@ -236,11 +252,18 @@ const ApiService = {
   
   async saveClub(clubData) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/clubs', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         credentials: 'include',
         body: JSON.stringify(clubData)
       });
@@ -254,11 +277,18 @@ const ApiService = {
   
   async updateClub(clubId, clubData) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/clubs/${clubId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         credentials: 'include',
         body: JSON.stringify(clubData)
       });
@@ -272,8 +302,16 @@ const ApiService = {
   
   async deleteClub(clubId) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/clubs/${clubId}`, {
         method: 'DELETE',
+        headers: headers,
         credentials: 'include'
       });
       
@@ -287,11 +325,18 @@ const ApiService = {
   // Integrations
   async connectIntegration(credentials) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/integrations/connect', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         credentials: 'include',
         body: JSON.stringify(credentials)
       });
@@ -305,7 +350,15 @@ const ApiService = {
   
   async getIntegrationStatus() {
     try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/integrations/status', {
+        headers: headers,
         credentials: 'include'
       });
       
@@ -318,8 +371,16 @@ const ApiService = {
   
   async testIntegration(service) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/integrations/test/${service}`, {
         method: 'POST',
+        headers: headers,
         credentials: 'include'
       });
       
@@ -332,8 +393,16 @@ const ApiService = {
   
   async disconnectIntegration(service) {
     try {
+      const token = await this._getAuthToken();
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/integrations/disconnect/${service}`, {
         method: 'POST',
+        headers: headers,
         credentials: 'include'
       });
       

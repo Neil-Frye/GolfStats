@@ -18,140 +18,89 @@ const Clubs = {
         
         // Function to show the add club form modal
         const showAddClubForm = () => {
-            // Create the club form modal if it doesn't exist yet
-            let clubModal = document.getElementById('club-form-modal');
+            // Get the existing modal from HTML
+            const clubModal = document.getElementById('add-club-modal');
             
-            if (!clubModal) {
-                // Create modal if it doesn't exist
-                clubModal = document.createElement('div');
-                clubModal.id = 'club-form-modal';
-                clubModal.className = 'modal';
-                clubModal.innerHTML = `
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2>Add New Club</h2>
-                            <button class="close-modal">&times;</button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="club-form">
-                                <div class="form-group">
-                                    <label for="club-type">Club Type</label>
-                                    <select id="club-type" name="club-type" required>
-                                        <option value="">Select Club Type</option>
-                                        <option value="driver">Driver</option>
-                                        <option value="wood">Fairway Wood</option>
-                                        <option value="hybrid">Hybrid</option>
-                                        <option value="iron">Iron</option>
-                                        <option value="wedge">Wedge</option>
-                                        <option value="putter">Putter</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="club-name">Club Name</label>
-                                    <input type="text" id="club-name" name="club-name" placeholder="e.g. 7 Iron, Driver, Sand Wedge" required>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="club-brand">Brand</label>
-                                        <input type="text" id="club-brand" name="club-brand" placeholder="e.g. TaylorMade, Titleist" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="club-model">Model</label>
-                                        <input type="text" id="club-model" name="club-model" placeholder="e.g. Stealth, T200" required>
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="club-loft">Loft (degrees)</label>
-                                        <input type="number" id="club-loft" name="club-loft" step="0.5" min="0" max="70" placeholder="e.g. 10.5">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="club-distance">Typical Distance (yards)</label>
-                                        <input type="number" id="club-distance" name="club-distance" min="0" max="400" placeholder="e.g. 150">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="club-shaft">Shaft</label>
-                                    <input type="text" id="club-shaft" name="club-shaft" placeholder="e.g. True Temper AMT Black S300">
-                                </div>
-                                <div class="form-group">
-                                    <label for="club-notes">Notes</label>
-                                    <textarea id="club-notes" name="club-notes" rows="2" placeholder="Add any notes about this club..."></textarea>
-                                </div>
-                                <div class="form-buttons">
-                                    <button type="button" class="btn-secondary cancel-btn">Cancel</button>
-                                    <button type="submit" class="btn-primary">Save Club</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(clubModal);
+            if (clubModal) {
+                // Initialize the modal if not already done
+                UI.initModal('add-club-modal');
                 
-                // Initialize the modal
-                UI.initModal('club-form-modal');
-                
-                // Add form submit handler
-                const form = document.getElementById('club-form');
-                form.addEventListener('submit', async (e) => {
-                    e.preventDefault();
+                // Add form submit handler if not already added
+                const form = document.getElementById('add-club-form');
+                if (form && !form.hasAttribute('data-handler-added')) {
+                    form.setAttribute('data-handler-added', 'true');
                     
-                    // Show loading state on the button
-                    const submitBtn = form.querySelector('button[type="submit"]');
-                    const originalText = submitBtn.textContent;
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-                    
-                    try {
-                        // Collect form data
-                        const formData = new FormData(form);
-                        const clubData = {};
+                    form.addEventListener('submit', async (e) => {
+                        e.preventDefault();
                         
-                        formData.forEach((value, key) => {
-                            clubData[key.replace('-', '_')] = value;
-                        });
+                        // Show loading state on the button
+                        const submitBtn = e.target.querySelector('button[type="submit"]');
+                        const originalText = submitBtn.textContent;
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Saving...';
                         
-                        // Format data for API
-                        const apiClubData = {
-                            type: clubData.club_type,
-                            name: clubData.club_name,
-                            brand: clubData.club_brand,
-                            model: clubData.club_model,
-                            loft: clubData.club_loft ? parseFloat(clubData.club_loft) : null,
-                            distance: clubData.club_distance ? parseInt(clubData.club_distance) : null,
-                            shaft: clubData.club_shaft || '',
-                            notes: clubData.club_notes || ''
-                        };
-                        
-                        // Send to API
-                        const response = await ApiService.saveClub(apiClubData);
-                        
-                        if (response && response.club) {
-                            // Success - show message
-                            UI.showToast('Club added successfully!', 'success');
+                        try {
+                            // Get form data
+                            const formData = new FormData(e.target);
+                            const clubData = {};
+                            formData.forEach((value, key) => {
+                                clubData[key] = value;
+                            });
                             
-                            // Close modal and reset form
-                            UI.closeModal('club-form-modal');
-                            form.reset();
+                            // Format data for API - matching the backend expectations
+                            const apiClubData = {
+                                club_type: clubData.club_type,
+                                name: clubData.name,
+                                brand: clubData.brand || '',
+                                model: clubData.model || '',
+                                loft: clubData.loft ? parseFloat(clubData.loft) : null
+                            };
                             
-                            // Refresh the clubs view
-                            this.loadClubsData();
-                        } else {
-                            throw new Error('Failed to save club');
+                            console.log('Sending club data:', apiClubData);
+                            
+                            // Send to API
+                            const response = await ApiService.saveClub(apiClubData);
+                            
+                            if (response && response.club) {
+                                // Success - show message
+                                UI.showToast('Club added successfully!', 'success');
+                                
+                                // Close modal and reset form
+                                UI.closeModal('add-club-modal');
+                                form.reset();
+                                
+                                // Refresh the clubs view if the function exists
+                                if (typeof this.loadClubsData === 'function') {
+                                    this.loadClubsData();
+                                }
+                            } else {
+                                throw new Error(response?.error || 'Failed to save club');
+                            }
+                        } catch (error) {
+                            console.error('Error saving club:', error);
+                            UI.showToast(`Error: ${error.message || 'Failed to save club'}`, 'error');
+                        } finally {
+                            // Reset button state
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = originalText;
                         }
-                    } catch (error) {
-                        console.error('Error saving club:', error);
-                        UI.showToast(`Error: ${error.message || 'Failed to save club'}`, 'error');
-                    } finally {
-                        // Reset button state
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = originalText;
+                    });
+                    
+                    // Add cancel button handler
+                    const cancelBtn = form.querySelector('.cancel-btn');
+                    if (cancelBtn) {
+                        cancelBtn.addEventListener('click', () => {
+                            UI.closeModal('add-club-modal');
+                            form.reset();
+                        });
                     }
-                });
+                }
+                
+                // Show the modal
+                UI.openModal('add-club-modal');
+            } else {
+                console.error('Add club modal not found in HTML');
             }
-            
-            // Show the modal
-            UI.openModal('club-form-modal');
         };
         
         // Function to load clubs data
