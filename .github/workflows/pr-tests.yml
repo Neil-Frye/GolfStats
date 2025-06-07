@@ -8,6 +8,8 @@ on:
 jobs:
   api-validation:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # Allow action to comment on PRs
     
     env:
       APP_ENVIRONMENT: test
