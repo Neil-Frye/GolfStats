@@ -2459,6 +2459,215 @@ function showToast(message, type = 'info') {
     }
 }
 
+// Show integration credential modal
+window.showIntegrationModal = function(service) {
+    console.log(`Opening integration modal for ${service}`);
+    
+    // Create integration modal
+    const modalHtml = `
+        <div class="modal" id="integration-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Connect ${service.charAt(0).toUpperCase() + service.slice(1)}</h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="integration-form">
+                        <input type="hidden" id="integration-service" value="${service}">
+                        
+                        ${getIntegrationFormFields(service)}
+                        
+                        <div class="form-buttons">
+                            <button type="button" class="btn-secondary cancel-modal">Cancel</button>
+                            <button type="submit" class="btn-primary">Connect</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to document
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer.firstElementChild);
+    
+    // Get the modal element
+    const modal = document.getElementById('integration-modal');
+    
+    // Show the modal
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+    
+    // Add event listeners
+    const closeBtn = modal.querySelector('.close-modal');
+    const cancelBtn = modal.querySelector('.cancel-modal');
+    const form = document.getElementById('integration-form');
+    
+    // Close modal function
+    const closeModal = () => {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    };
+    
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    
+    // Form submission
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="loading-spinner small"></div> Connecting...';
+        
+        try {
+            const credentials = getIntegrationCredentials(service);
+            
+            // Call the integration service
+            if (window.IntegrationsService) {
+                const result = await window.IntegrationsService.connectIntegration(service, credentials);
+                
+                if (result.success) {
+                    showToast(`Successfully connected to ${service}!`, 'success');
+                    closeModal();
+                    
+                    // Reload integration status
+                    if (window.IntegrationsService.loadIntegrationStatus) {
+                        await window.IntegrationsService.loadIntegrationStatus();
+                    }
+                } else {
+                    throw new Error(result.message || 'Connection failed');
+                }
+            } else {
+                throw new Error('Integration service not loaded');
+            }
+        } catch (error) {
+            console.error('Error connecting integration:', error);
+            showToast(`Failed to connect: ${error.message}`, 'error');
+            
+            // Reset submit button
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    });
+};
+
+// Get integration form fields based on service
+function getIntegrationFormFields(service) {
+    switch (service) {
+        case 'trackman':
+            return `
+                <div class="integration-info">
+                    <p>Connect your TrackMan account to automatically import your practice and round data.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="trackman-username">TrackMan Username</label>
+                    <input type="text" id="trackman-username" name="username" required 
+                           placeholder="Enter your TrackMan username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="trackman-password">TrackMan Password</label>
+                    <input type="password" id="trackman-password" name="password" required
+                           placeholder="Enter your TrackMan password">
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="auto_sync" checked>
+                        <span>Enable automatic daily sync</span>
+                    </label>
+                </div>
+            `;
+            
+        case 'arccos':
+            return `
+                <div class="integration-info">
+                    <p>Connect your Arccos account to import your on-course shot data.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="arccos-username">Arccos Email</label>
+                    <input type="email" id="arccos-username" name="username" required
+                           placeholder="Enter your Arccos email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="arccos-password">Arccos Password</label>
+                    <input type="password" id="arccos-password" name="password" required
+                           placeholder="Enter your Arccos password">
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="import_history" checked>
+                        <span>Import last 90 days of rounds</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="auto_sync" checked>
+                        <span>Enable automatic daily sync</span>
+                    </label>
+                </div>
+            `;
+            
+        case 'skytrak':
+            return `
+                <div class="integration-info">
+                    <p>Connect your SkyTrak account to import your simulator session data.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="skytrak-username">SkyTrak Username</label>
+                    <input type="text" id="skytrak-username" name="username" required
+                           placeholder="Enter your SkyTrak username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="skytrak-password">SkyTrak Password</label>
+                    <input type="password" id="skytrak-password" name="password" required
+                           placeholder="Enter your SkyTrak password">
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="auto_sync" checked>
+                        <span>Enable automatic daily sync</span>
+                    </label>
+                </div>
+            `;
+            
+        default:
+            return '<p>Unknown service type</p>';
+    }
+}
+
+// Get integration credentials from form
+function getIntegrationCredentials(service) {
+    const form = document.getElementById('integration-form');
+    const formData = new FormData(form);
+    
+    const credentials = {
+        service: service,
+        username: formData.get('username'),
+        password: formData.get('password'),
+        settings: {
+            auto_sync: formData.get('auto_sync') === 'on',
+            import_history: formData.get('import_history') === 'on'
+        }
+    };
+    
+    return credentials;
+}
+
 // Initialize clubs distance chart
 function initClubsChart(clubs = []) {
     // Destroy existing chart if it exists
