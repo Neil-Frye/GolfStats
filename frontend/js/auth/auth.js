@@ -1,4 +1,57 @@
+console.log('auth.js execution started'); // Added for debugging
 import ApiService from '../api/api.js';
+
+// --- Supabase Client Initialization ---
+// IMPORTANT: Replace with your actual Supabase URL and Anon Key
+const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // e.g., 'https://xyz.supabase.co'
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // e.g., 'eyJh......'
+
+let supabase;
+try {
+    if (typeof window.supabaseClient !== 'undefined' && typeof window.supabaseClient.createClient === 'function') {
+        supabase = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabase = supabase; // Make it globally available
+        console.log('Supabase client initialized.');
+    } else {
+        console.error('Supabase JS library not found. Please ensure it is loaded.');
+        // Optionally, you could try to load it dynamically here if needed
+    }
+} catch (e) {
+    console.error('Error initializing Supabase client:', e);
+}
+
+// Handle OAuth callback and session management
+if (supabase) {
+    supabase.auth.onAuthStateChange((event, session) => {
+        console.log('Supabase auth state changed:', event, session);
+        if (event === 'SIGNED_IN' && session) {
+            // User is signed in.
+            // Store session or redirect.
+            // For SPA, you might update UI and store session.
+            // If login page, redirect to main app.
+            if (window.location.pathname.includes('login.html') || window.location.pathname.includes('signup.html')) {
+                window.location.href = '/'; // Redirect to dashboard or main page
+            }
+            // Update user info in UI
+            if (session.user) {
+                updateUserInfo(session.user);
+            }
+        } else if (event === 'SIGNED_OUT') {
+            // User is signed out.
+            // Redirect to login page if not already there.
+            if (!window.location.pathname.includes('login.html')) {
+                window.location.href = '/login.html';
+            }
+        }
+        // Handle other events like TOKEN_REFRESHED, USER_UPDATED, PASSWORD_RECOVERY
+        if (event === 'USER_UPDATED' && session && session.user) {
+            updateUserInfo(session.user);
+        }
+    });
+} else {
+    console.warn('Supabase client not available for onAuthStateChange listener.');
+}
+
 
 // Check if user is authenticated
 async function checkAuthentication() {
