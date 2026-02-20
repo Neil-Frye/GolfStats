@@ -1,6 +1,6 @@
 # Ultra-minimal requirements for Vercel serverless function
 # ONLY include what's directly imported in api/index.py
-Flask==2.3.2
+Flask==3.1.3
 python-dotenv==1.0.0
 supabase==1.0.3
 
